@@ -10,13 +10,33 @@ import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } fro
 import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
 import { defaultTutorProfileFieldConfig, indexResolvedFields } from "@shared/tutor-profile-field-registry";
 import { tutorSupportingDocumentLabels, type TutorSupportingDocumentType } from "@shared/tutor-documents";
-import { ArrowRight, BadgeCheck, CalendarClock, CalendarPlus, CircleAlert, FileText, Gauge, History, IdCard, Mail, MessageCircle, Phone, ShieldAlert, UserRound, UserRoundCog } from "lucide-react";
+import { ArrowRight, BadgeCheck, CalendarClock, CalendarPlus, ChevronDown, CircleAlert, Copy, FileText, Gauge, History, IdCard, Layers, Mail, MessageCircle, Phone, ShieldAlert, UserRound, UserRoundCog } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { useMemo, useState } from "react";
 import { Link, useRoute } from "wouter";
 import AdminTutorApplications from "@/components/AdminTutorApplications";
 import BackLink from "@/components/BackLink";
 import { TutorCvPreviewModal } from "@/components/TutorCvPreviewModal";
+import { toast } from "sonner";
+
+function formatWhatsAppUrl(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return null;
+  const standard = digits.startsWith("88") ? digits : digits.startsWith("0") ? `88${digits}` : `880${digits}`;
+  return `https://wa.me/${standard}`;
+}
+
+export type AdminTutorDetailTabKey = "all" | "overview" | "applications" | "documents" | "profile" | "history";
+
+export const adminTutorDetailTabs: { key: AdminTutorDetailTabKey; label: string; icon: React.ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean }> }[] = [
+  { key: "all", label: "All Sections", icon: Layers },
+  { key: "overview", label: "Overview", icon: UserRound },
+  { key: "applications", label: "Applications", icon: Gauge },
+  { key: "documents", label: "Documents & CV", icon: FileText },
+  { key: "profile", label: "Profile Data", icon: IdCard },
+  { key: "history", label: "Moderation & Logs", icon: History },
+];
 
 const statusStyles: Record<string, string> = {
   draft: "bg-j-surface-muted text-j-ink-soft",
@@ -69,33 +89,49 @@ const decidedAt = (value: Date | string) =>
 function ModerationHistory({ tutorId }: { tutorId: string }) {
   const history = trpc.admin.getTutorModerationHistory.useQuery({ tutorId });
   const events = history.data ?? [];
+  const [isOpen, setIsOpen] = useState(true);
 
-  return <section aria-labelledby="moderation-history-heading" className="rounded-2xl border border-j-border bg-white p-5 shadow-sm">
+  return <section aria-labelledby="moderation-history-heading" className="relative rounded-2xl border border-j-border bg-white p-5 shadow-sm">
+    <div className="absolute right-4 top-4 sm:right-5 sm:top-5 flex items-center gap-2">
+      <span className="rounded-full bg-j-surface-sunken px-2 py-0.5 text-3xs font-bold text-j-ink-soft">{events.length}</span>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-label={isOpen ? "Collapse moderation history" : "Expand moderation history"}
+        className="inline-flex size-7 items-center justify-center rounded-lg border border-j-border text-j-ink-soft hover:bg-j-surface-sunken transition"
+        title={isOpen ? "Collapse moderation history" : "Expand moderation history"}
+      >
+        <ChevronDown size={14} className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+    </div>
     <h3 id="moderation-history-heading" className="mb-3 flex items-center gap-2 font-bold tracking-[-0.02em] text-j-ink">
       <History size={16} className="text-[#8fb4d0]" aria-hidden={true} />Moderation history
     </h3>
-    {history.isLoading
-      ? <p className="flex items-center gap-2 text-sm text-j-ink-soft"><LoadingCradle /> Loading moderation history…</p>
-      : history.isError
-        ? <p className="text-sm text-red-700">Moderation history could not be loaded.</p>
-        : events.length === 0
-          ? <p className="text-sm text-j-ink-soft">No moderation decisions yet.</p>
-          : <ol className="divide-y divide-[#eef4f9]">
-              {events.map(event => <li key={event.id} className="grid gap-1.5 py-3 first:pt-0 last:pb-0 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-4">
-                <div className="text-2xs text-j-ink-muted">
-                  <time dateTime={new Date(event.createdAt).toISOString()} className="font-bold text-j-ink-strong">{decidedAt(event.createdAt)}</time>
-                  <span className="block">{event.adminName ?? "Admin"}</span>
-                </div>
-                <div className="min-w-0">
-                  <p className="flex flex-wrap items-center gap-1.5">
-                    <StatusPill status={event.previousStatus} />
-                    <ArrowRight size={13} className="text-j-ink-faint" aria-hidden={true} /><span className="sr-only">to</span>
-                    <StatusPill status={event.nextStatus} />
-                  </p>
-                  {event.reason ? <p className="mt-1.5 whitespace-pre-wrap break-words text-sm leading-6 text-j-ink-strong">{event.reason}</p> : null}
-                </div>
-              </li>)}
-            </ol>}
+    {isOpen ? (
+      history.isLoading
+        ? <p className="flex items-center gap-2 text-sm text-j-ink-soft"><LoadingCradle /> Loading moderation history…</p>
+        : history.isError
+          ? <p className="text-sm text-red-700">Moderation history could not be loaded.</p>
+          : events.length === 0
+            ? <p className="text-sm text-j-ink-soft">No moderation decisions yet.</p>
+            : <ol className="divide-y divide-[#eef4f9]">
+                {events.map(event => <li key={event.id} className="grid gap-1.5 py-3 first:pt-0 last:pb-0 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-4">
+                  <div className="text-2xs text-j-ink-muted">
+                    <time dateTime={new Date(event.createdAt).toISOString()} className="font-bold text-j-ink-strong">{decidedAt(event.createdAt)}</time>
+                    <span className="block">{event.adminName ?? "Admin"}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="flex flex-wrap items-center gap-1.5">
+                      <StatusPill status={event.previousStatus} />
+                      <ArrowRight size={13} className="text-j-ink-faint" aria-hidden={true} /><span className="sr-only">to</span>
+                      <StatusPill status={event.nextStatus} />
+                    </p>
+                    {event.reason ? <p className="mt-1.5 whitespace-pre-wrap break-words text-sm leading-6 text-j-ink-strong">{event.reason}</p> : null}
+                  </div>
+                </li>)}
+              </ol>
+    ) : null}
   </section>;
 }
 
@@ -132,6 +168,8 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
   const [cvOpen, setCvOpen] = useState(false);
   const [nextStatus, setNextStatus] = useState<ModerationTarget>("approved");
   const [reason, setReason] = useState("");
+  const [activeTab, setActiveTab] = useState<AdminTutorDetailTabKey>("all");
+  const [isDocsOpen, setIsDocsOpen] = useState(true);
   const moderation = trpc.admin.moderateTutorProfile.useMutation({
     onSuccess: () => {
       void utils.admin.getTutorProfile.invalidate({ tutorId });
@@ -172,7 +210,10 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
   const decisions = moderationOptions[profile.profileStatus] ?? [];
 
   return <div className="mx-auto w-full max-w-5xl space-y-4 pb-10">
-    <AdminTutorApplications tutorId={tutorId} />
+    {/* Applications is first in DOM order for document position compatibility */}
+    <div className={activeTab === "all" || activeTab === "applications" ? "block" : "hidden"}>
+      <AdminTutorApplications tutorId={tutorId} />
+    </div>
 
     <div className="flex flex-wrap items-center justify-between gap-3">
       <BackLink href="/admin/tutor-profiles">Back to Tutor Profiles</BackLink>
@@ -190,6 +231,31 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
       </div>
     </div>
 
+    {/* Sticky Segmented Mobile Tab HUD */}
+    <nav aria-label="Profile sections" className="sticky top-0 z-20 -mx-3 mb-4 rounded-xl border border-j-border bg-white/95 p-1.5 shadow-sm backdrop-blur sm:mx-0">
+      <div className="no-scrollbar flex items-center gap-1 overflow-x-auto">
+        {adminTutorDetailTabs.map(tab => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                isActive
+                  ? "bg-j-accent text-white shadow-xs"
+                  : "text-j-ink-soft hover:bg-j-surface-sunken hover:text-j-ink"
+              }`}
+            >
+              <Icon size={14} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+
     {/*
       Identity strip - the Admin's own header above the Tutor's own view.
       One grid, two shapes. On a phone the photo and the name share a row, the
@@ -198,7 +264,7 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
       `sm` it is the wide strip: photo, then name over the details, then the
       action on the right.
     */}
-    <section className="rounded-2xl border border-j-border bg-white p-4 shadow-sm sm:p-5">
+    <section className={`rounded-2xl border border-j-border bg-white p-4 shadow-sm sm:p-5 ${activeTab === "all" || activeTab === "overview" ? "block" : "hidden"}`}>
       <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start sm:gap-x-4 sm:gap-y-1.5">
         <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full border border-dashed border-sky-200 bg-[#f4f9fd] text-j-ink-faint sm:row-span-2 sm:size-20">
           {profile.profilePhotoUrl
@@ -229,52 +295,142 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
               <UserRoundCog size={16} /> Review &amp; moderate
             </button>
           : <p className="col-span-2 rounded-xl bg-j-surface-sunken px-3 py-2 text-2xs font-medium text-j-ink-soft sm:col-span-1 sm:col-start-3 sm:row-span-2 sm:row-start-1 sm:max-w-[16rem]">No Admin status action is currently available for this profile.</p>}
-      </div>
-    </section>
 
-    <ModerationHistory tutorId={tutorId} />
-
-    <AdminTutorRatings tutorId={tutorId} />
-
-    {profile.userId ? <AccountChangeHistory userId={profile.userId} /> : null}
-
-    {profile.userId ? <AdminPasswordResetLink userId={profile.userId} phone={profile.phone} /> : null}
-
-    {/* Official Tutor CV & Biodata Banner */}
-    <section className="rounded-2xl border border-sky-200 bg-gradient-to-r from-[#eff6ff] to-white p-4 shadow-sm sm:p-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0d5fae] text-white shadow-sm">
-            <FileText size={20} />
+        {/* Glanceable Hero Metrics Bar */}
+        <div className="col-span-2 grid grid-cols-2 gap-2 border-t border-[#eef4f9] pt-3 sm:col-span-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-j-border bg-j-surface-sunken p-2.5 text-center">
+            <span className="block text-3xs font-bold uppercase tracking-wider text-j-ink-faint">Tutor ID</span>
+            <span className="mt-0.5 block text-sm font-extrabold text-j-ink">{profile.tutorNumber ? `#${profile.tutorNumber}` : "—"}</span>
           </div>
-          <div>
-            <h3 className="font-bold text-j-ink">Official Tutor CV &amp; Biodata</h3>
-            <p className="text-2xs text-j-ink-soft">Executive 1-page printable biodata with Inter typography and verification seal</p>
+          <div className="rounded-xl border border-j-border bg-j-surface-sunken p-2.5 text-center">
+            <span className="block text-3xs font-bold uppercase tracking-wider text-j-ink-faint">Completion</span>
+            <span className="mt-0.5 block text-sm font-extrabold text-j-accent">{profile.completionPercentage}%</span>
+          </div>
+          <div className="rounded-xl border border-j-border bg-j-surface-sunken p-2.5 text-center">
+            <span className="block text-3xs font-bold uppercase tracking-wider text-j-ink-faint">Status</span>
+            <span className="mt-0.5 block text-xs font-bold uppercase tracking-wider text-j-ink">{profile.profileStatus.replaceAll("_", " ").toUpperCase()}</span>
+          </div>
+          <div className="rounded-xl border border-j-border bg-j-surface-sunken p-2.5 text-center">
+            <span className="block text-3xs font-bold uppercase tracking-wider text-j-ink-faint">Verification</span>
+            <span className={`mt-0.5 block text-xs font-bold uppercase tracking-wider ${profile.verified ? "text-emerald-700" : "text-amber-700"}`}>
+              {profile.verified ? "VERIFIED" : "UNVERIFIED"}
+            </span>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setCvOpen(true)}
-          className="inline-flex h-control items-center gap-2 rounded-xl bg-[#0d5fae] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#0a4c8c]"
-        >
-          <FileText size={15} /> Preview &amp; Download PDF
-        </button>
+
+        {/* Quick 1-Tap Action Row */}
+        <div className="col-span-2 flex flex-wrap items-center gap-2 border-t border-[#eef4f9] pt-3 sm:col-span-3">
+          {profile.phone ? (
+            <>
+              <a
+                href={`tel:${profile.phone}`}
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition"
+              >
+                <Phone size={13} /> Call
+              </a>
+              {formatWhatsAppUrl(profile.phone) && (
+                <a
+                  href={formatWhatsAppUrl(profile.phone)!}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 text-xs font-bold text-white hover:bg-emerald-700 transition"
+                >
+                  <MessageCircle size={13} /> WhatsApp
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  if (profile.phone) {
+                    navigator.clipboard.writeText(profile.phone);
+                    toast.success("Phone number copied to clipboard");
+                  }
+                }}
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-j-border px-2 text-xs font-bold text-j-ink-soft hover:bg-j-surface-sunken transition"
+                title="Copy phone number"
+              >
+                <Copy size={13} /> Copy Phone
+              </button>
+            </>
+          ) : null}
+          <Link
+            href={`/admin/tutor-chats?tutorId=${encodeURIComponent(tutorId)}`}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-j-border px-2.5 text-xs font-bold text-j-ink-soft hover:bg-j-surface-sunken transition"
+          >
+            <MessageCircle size={13} /> Chat Thread
+          </Link>
+        </div>
       </div>
     </section>
+
+    <div className={activeTab === "all" || activeTab === "history" ? "block" : "hidden"}>
+      <ModerationHistory tutorId={tutorId} />
+    </div>
+
+    <div className={activeTab === "all" || activeTab === "overview" ? "block" : "hidden"}>
+      <AdminTutorRatings tutorId={tutorId} />
+    </div>
+
+    <div className={activeTab === "all" || activeTab === "history" ? "space-y-4" : "hidden"}>
+      {profile.userId ? <AccountChangeHistory userId={profile.userId} /> : null}
+      {profile.userId ? <AdminPasswordResetLink userId={profile.userId} phone={profile.phone} /> : null}
+    </div>
+
+    {/* Official Tutor CV & Biodata Banner */}
+    <div className={activeTab === "all" || activeTab === "documents" ? "block" : "hidden"}>
+      <section className="rounded-2xl border border-sky-200 bg-gradient-to-r from-[#eff6ff] to-white p-4 shadow-sm sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0d5fae] text-white shadow-sm">
+              <FileText size={20} />
+            </div>
+            <div>
+              <h3 className="font-bold text-j-ink">Official Tutor CV &amp; Biodata</h3>
+              <p className="text-2xs text-j-ink-soft">Executive 1-page printable biodata with Inter typography and verification seal</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCvOpen(true)}
+            className="inline-flex h-control items-center gap-2 rounded-xl bg-[#0d5fae] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#0a4c8c]"
+          >
+            <FileText size={15} /> Preview &amp; Download PDF
+          </button>
+        </div>
+      </section>
+    </div>
 
     {/* Private documents - Admin-only signed URLs. */}
-    <section className="rounded-2xl border border-j-border bg-white p-5 shadow-sm">
-      <h3 className="mb-3 font-bold tracking-[-0.02em] text-j-ink">Documents</h3>
-      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        <DocumentTile label="University ID" url={profile.documents.universityId} />
-        {supporting.map(type => <DocumentTile key={type} label={tutorSupportingDocumentLabels[type]} url={profile.documents.supporting[type] ?? null} />)}
-      </div>
-    </section>
+    <div className={activeTab === "all" || activeTab === "documents" ? "block" : "hidden"}>
+      <section className="relative rounded-2xl border border-j-border bg-white p-4 shadow-sm sm:p-5">
+        <div className="absolute right-4 top-4 sm:right-5 sm:top-5">
+          <button
+            type="button"
+            onClick={() => setIsDocsOpen(!isDocsOpen)}
+            aria-expanded={isDocsOpen}
+            aria-label={isDocsOpen ? "Collapse documents" : "Expand documents"}
+            className="inline-flex size-7 items-center justify-center rounded-lg border border-j-border text-j-ink-soft hover:bg-j-surface-sunken transition"
+            title={isDocsOpen ? "Collapse documents" : "Expand documents"}
+          >
+            <ChevronDown size={14} className={`transition-transform duration-200 ${isDocsOpen ? "rotate-180" : ""}`} />
+          </button>
+        </div>
+        <h3 className="mb-3 font-bold tracking-[-0.02em] text-j-ink">Documents</h3>
+        {isDocsOpen ? (
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <DocumentTile label="University ID" url={profile.documents.universityId} />
+            {supporting.map(type => <DocumentTile key={type} label={tutorSupportingDocumentLabels[type]} url={profile.documents.supporting[type] ?? null} />)}
+          </div>
+        ) : null}
+      </section>
+    </div>
 
     {/* The Tutor's own read-only view, unchanged. */}
-    <SiteContentProvider page="tutor-profile">
-      <TutorProfileSummaryView sections={sections} />
-    </SiteContentProvider>
+    <div className={activeTab === "all" || activeTab === "profile" ? "block" : "hidden"}>
+      <SiteContentProvider page="tutor-profile">
+        <TutorProfileSummaryView sections={sections} />
+      </SiteContentProvider>
+    </div>
 
     {moderating ? <Modal size="dialog" onClose={() => setModerating(false)} busy={moderation.isPending}>
       <ModalHeader title={`Moderate ${profile.name}`} />
