@@ -460,9 +460,45 @@ export type ReelTimeline = {
   holdEnd: number;
   total: number;
   ramp: number;
-  /** The steady speed, pixels a second. */
+  /** The full speed, between cards, in pixels a second. */
   speed: number;
+  /** The seconds the run has taken on reaching each row of it (row 0 to `distance`); empty when there is no run. */
+  pace: Float64Array;
 };
+
+/** How much a card slows the list as it crosses the reading line - to this share of the full speed - and over how many rows either side. */
+export const REEL_READ_SLOWDOWN = 0.35;
+const READ_REACH = 130;
+
+/** Where the eye reads a scroll: the middle of the rows Facebook leaves clear. */
+function readingLine(frameHeight: number): number {
+  const safe = safeFor(frameHeight);
+  return safe.top + (frameHeight - safe.top - safe.bottom) / 2;
+}
+
+/**
+ * The run's pace, row by row: at full speed between cards, easing down as each
+ * card's middle crosses the reading line and back up after it, like a reader
+ * lingering on each - never stopping, so it never jolts - and picking up speed
+ * from rest at the start and slowing to a stop at the end, with the steady
+ * pull of a ramp of `REEL_RAMP` seconds.
+ */
+function paceTable(distance: number, pxPerSecond: number, lingerAt: number[]): Float64Array {
+  const rows = Math.max(0, Math.round(distance));
+  const times = new Float64Array(rows + 1);
+  // Rows covered while picking up speed: at a steady pull the speed grows as the square root of the ground covered.
+  const rampRows = Math.max(1, (pxPerSecond * REEL_RAMP) / 2);
+  for (let row = 0; row < rows; row += 1) {
+    const y = row + 0.5;
+    let speed = pxPerSecond * Math.min(1, Math.sqrt(y / rampRows), Math.sqrt((rows - y) / rampRows));
+    for (const at of lingerAt) {
+      const near = Math.abs(y - at) / READ_REACH;
+      if (near < 1) speed *= 1 - (1 - REEL_READ_SLOWDOWN) * (1 + Math.cos(Math.PI * near)) / 2;
+    }
+    times[row + 1] = times[row]! + 1 / Math.max(speed, 1e-3);
+  }
+  return times;
+}
 
 /**
  * When everything happens in a scroll. The title card is held, then either
@@ -492,8 +528,14 @@ export function reelTimeline(layout: ReelLayout, speed: ReelSpeed, ends: { openi
   const to = Math.round(closing === "rise" ? layout.height - frameHeight : last);
   const distance = Math.max(0, to - from);
   const pxPerSecond = frameHeight / REEL_CROSS_SECONDS[speed];
-  // A steady run, plus the ramps: each ramp covers half the ground a steady run would in that time.
-  const move = distance > 0 ? distance / pxPerSecond + REEL_RAMP : 0;
+  // Each card is lingered on as its middle crosses the reading line.
+  const line = readingLine(frameHeight);
+  const lingerAt = layout.blocks
+    .filter(block => block.kind === "card")
+    .map(block => block.top + block.height / 2 - line - from)
+    .filter(at => at > 0 && at < distance);
+  const pace = paceTable(distance, pxPerSecond, lingerAt);
+  const move = distance > 0 ? pace[pace.length - 1]! : 0;
   const ramp = Math.min(REEL_RAMP, move / 2);
   // A list that is faded to and from waits a moment on its screen; one that fits the frame stays long enough to read.
   const pause = distance > 0 ? LIST_PAUSE : LIST_STILL;
@@ -516,27 +558,30 @@ export function reelTimeline(layout: ReelLayout, speed: ReelSpeed, ends: { openi
     total: closeStart + closeDuration + REEL_HOLD_END,
     ramp,
     speed: pxPerSecond,
+    pace,
   };
 }
 
 /**
  * The strip row at the top of the frame at `t` seconds: still through the
- * opening, then up to speed, steady, down to a stop, and still again to the
- * end.
+ * opening, then along the run at its pace (see `paceTable`), and still again
+ * to the end.
  */
 export function reelOffsetAt(t: number, timeline: ReelTimeline): number {
-  const { from, distance, move, ramp } = timeline;
+  const { from, distance, move, pace } = timeline;
   const s = t - timeline.scrollStart;
   if (s <= 0 || distance <= 0) return from;
   if (s >= move) return from + distance;
-  if (ramp <= 0) return from + (distance * s) / move;
-  const top = distance / (move - ramp);
-  if (s < ramp) return from + (0.5 * top * s * s) / ramp;
-  if (s > move - ramp) {
-    const left = move - s;
-    return from + distance - (0.5 * top * left * left) / ramp;
+  // The row reached at `s`: the last row whose time is not past it, and the fraction of the way to the next.
+  let low = 0;
+  let high = pace.length - 1;
+  while (high - low > 1) {
+    const middle = (low + high) >> 1;
+    if (pace[middle]! <= s) low = middle;
+    else high = middle;
   }
-  return from + 0.5 * top * ramp + top * (s - ramp);
+  const span = pace[high]! - pace[low]!;
+  return from + low + (span > 0 ? (s - pace[low]!) / span : 0);
 }
 
 /** Eases a 0-1 progress in and out. */
