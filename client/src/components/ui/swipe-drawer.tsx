@@ -139,6 +139,38 @@ export function SwipeDrawer({ open, onOpenChange, label = "Navigation", classNam
     };
   }, [open]);
 
+  // Hardware back button & mobile gesture trap: an open drawer can be shut
+  // with the device back gesture rather than navigating the page away.
+  React.useEffect(() => {
+    if (!open || typeof window === "undefined" || !window.history) return;
+    let closedByPopstate = false;
+    const DRAWER_STATE_KEY = "mobile_drawer_open";
+
+    try {
+      window.history.pushState({ ...(window.history.state ?? {}), [DRAWER_STATE_KEY]: true }, "");
+    } catch {
+      // Silently ignore if pushState is restricted by environment
+    }
+
+    const onPopState = () => {
+      closedByPopstate = true;
+      changeRef.current(false);
+    };
+
+    window.addEventListener("popstate", onPopState);
+
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      if (!closedByPopstate && window.history.state?.[DRAWER_STATE_KEY]) {
+        try {
+          window.history.back();
+        } catch {
+          // Silently ignore if history operation is restricted
+        }
+      }
+    };
+  }, [open]);
+
   const reachable = open || dragging;
   return (
     <>
@@ -147,8 +179,13 @@ export function SwipeDrawer({ open, onOpenChange, label = "Navigation", classNam
         data-swipe-backdrop=""
         data-dragging={dragging}
         onClick={() => onOpenChange(false)}
-        className="fixed inset-0 z-40 bg-[rgb(16_40_73/0.42)] transition-opacity duration-[260ms] ease-out motion-reduce:transition-none data-[dragging=true]:transition-none"
-        style={{ opacity: shown, pointerEvents: shown > 0.02 ? "auto" : "none" }}
+        className="fixed inset-0 z-40 bg-[rgb(16_40_73/0.38)] backdrop-blur-sm transition-[opacity,backdrop-filter] duration-[260ms] ease-out motion-reduce:transition-none data-[dragging=true]:transition-none"
+        style={{
+          opacity: shown,
+          pointerEvents: shown > 0.02 ? "auto" : "none",
+          backdropFilter: shown > 0.02 ? `blur(${Math.round(shown * 4)}px)` : "none",
+          WebkitBackdropFilter: shown > 0.02 ? `blur(${Math.round(shown * 4)}px)` : "none",
+        }}
       />
       <div
         ref={panelRef}
