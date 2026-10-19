@@ -1,5 +1,5 @@
 import type { Express, Request } from "express";
-import { buildRobotsTxt, buildSitemapXml, isCanonicalHost } from "@shared/site-discovery";
+import { buildAssetLinksJson, buildRobotsTxt, buildSitemapXml, isCanonicalHost } from "@shared/site-discovery";
 import { ENV } from "./_core/env";
 import { pingDatabase } from "./db";
 
@@ -19,9 +19,10 @@ function requestHost(request: Request) {
 }
 
 /**
- * `/healthz` for an uptime monitor, and `/robots.txt` and `/sitemap.xml` for
- * search engines. All three must be registered before the single-page app's
- * catch-all, which would otherwise answer each of them with index.html.
+ * `/healthz` for an uptime monitor, `/robots.txt` and `/sitemap.xml` for search
+ * engines, and `/.well-known/assetlinks.json` for Google Android TWA app verification.
+ * All must be registered before the single-page app's catch-all, which would
+ * otherwise answer each of them with index.html.
  */
 export function registerSiteDiscoveryRoutes(app: Express, overrides: Partial<SiteDiscoveryDependencies> = {}) {
   const dependencies: SiteDiscoveryDependencies = {
@@ -54,4 +55,10 @@ export function registerSiteDiscoveryRoutes(app: Express, overrides: Partial<Sit
     }
     response.type("application/xml").send(buildSitemapXml(publicSiteUrl));
   });
+
+  app.get("/.well-known/assetlinks.json", (_request, response) => {
+    response.set("Cache-Control", "public, max-age=86400");
+    response.type("application/json").send(buildAssetLinksJson());
+  });
 }
+
