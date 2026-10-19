@@ -23,6 +23,28 @@ describe("how far open a drag has made the drawer", () => {
     expect(progressFromDrag({ startProgress: 1, dx: -900, width: 300 })).toBe(0);
     expect(progressFromDrag({ startProgress: 0.7, dx: 50, width: 0 })).toBe(0.7);
   });
+
+  it("provides damped rubberband resistance when dragging beyond bounds", () => {
+    // Normal range with rubberband enabled
+    expect(progressFromDrag({ startProgress: 0, dx: 150, width: 300, rubberband: true })).toBeCloseTo(0.5);
+
+    // Overdrag past open (raw progress = 2.0, overshoot = 1.0)
+    const overdrag = progressFromDrag({ startProgress: 1, dx: 300, width: 300, rubberband: true });
+    expect(overdrag).toBeGreaterThan(1);
+    expect(overdrag).toBeLessThan(1.2);
+    expect(overdrag).toBeCloseTo(1 + 0.18 / 1.35);
+
+    // Extreme overdrag shows logarithmic damping
+    const extremeOverdrag = progressFromDrag({ startProgress: 1, dx: 3000, width: 300, rubberband: true });
+    expect(extremeOverdrag).toBeGreaterThan(1);
+    expect(extremeOverdrag).toBeLessThan(1.52);
+
+    // Undershoot below shut (raw progress = -1.0, undershoot = 1.0)
+    const undershoot = progressFromDrag({ startProgress: 0, dx: -300, width: 300, rubberband: true });
+    expect(undershoot).toBeLessThan(0);
+    expect(undershoot).toBeGreaterThan(-0.2);
+    expect(undershoot).toBeCloseTo(-(0.18 / 1.35));
+  });
 });
 
 describe("what happens when the finger lifts", () => {

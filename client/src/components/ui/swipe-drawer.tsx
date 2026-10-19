@@ -89,7 +89,7 @@ export function SwipeDrawer({ open, onOpenChange, label = "Navigation", classNam
         current.lastX = touch.clientX;
         current.lastTime = now;
       }
-      setDragProgress(progressFromDrag({ startProgress: current.startProgress, dx, width: current.width }));
+      setDragProgress(progressFromDrag({ startProgress: current.startProgress, dx, width: current.width, rubberband: true }));
     };
     const onEnd = (event: TouchEvent) => {
       const current = drag.current;
@@ -181,10 +181,10 @@ export function SwipeDrawer({ open, onOpenChange, label = "Navigation", classNam
         onClick={() => onOpenChange(false)}
         className="fixed inset-0 z-40 bg-[rgb(16_40_73/0.38)] backdrop-blur-sm transition-[opacity,backdrop-filter] duration-[260ms] ease-out motion-reduce:transition-none data-[dragging=true]:transition-none"
         style={{
-          opacity: shown,
+          opacity: Math.min(1, Math.max(0, shown)),
           pointerEvents: shown > 0.02 ? "auto" : "none",
-          backdropFilter: shown > 0.02 ? `blur(${Math.round(shown * 4)}px)` : "none",
-          WebkitBackdropFilter: shown > 0.02 ? `blur(${Math.round(shown * 4)}px)` : "none",
+          backdropFilter: shown > 0.02 ? `blur(${Math.round(Math.min(1, Math.max(0, shown)) * 4)}px)` : "none",
+          WebkitBackdropFilter: shown > 0.02 ? `blur(${Math.round(Math.min(1, Math.max(0, shown)) * 4)}px)` : "none",
         }}
       />
       <div
