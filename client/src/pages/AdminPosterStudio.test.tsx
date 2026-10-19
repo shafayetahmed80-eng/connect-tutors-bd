@@ -102,4 +102,28 @@ describe("the poster studio", () => {
     render(<PosterStudioContent />);
     expect(screen.getByRole("button", { name: "Without photo" }).getAttribute("aria-pressed")).toBe("true");
   });
+
+  it("picks WhatsApp, the website or no contact line, one at a time", async () => {
+    render(<PosterStudioContent />);
+    expect(lastRender().content).toMatchObject({ contact: "whatsapp", website: "connecttutorsbd.com" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Website" }));
+    await waitFor(() => expect(lastRender().content.contact).toBe("website"));
+    expect(screen.getByRole("button", { name: "WhatsApp" }).getAttribute("aria-pressed")).toBe("false");
+    fireEvent.change(screen.getByLabelText("Website address"), { target: { value: "www.example.test" } });
+    await waitFor(() => expect(lastRender().content.website).toBe("www.example.test"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Website" }));
+    await waitFor(() => expect(lastRender().content.contact).toBe("none"));
+    expect(screen.queryByLabelText("Website address")).toBeNull();
+  });
+
+  it("scales the text with one size step and one slider per part, and remembers them", async () => {
+    render(<PosterStudioContent />);
+    fireEvent.click(screen.getByRole("button", { name: "Large" }));
+    fireEvent.change(screen.getByLabelText("Headline"), { target: { value: "1.2" } });
+
+    await waitFor(() => expect(lastRender().textSize).toMatchObject({ all: 1.12, headline: 1.2, points: 1 }));
+    expect(JSON.parse(window.localStorage.getItem("connect-poster-studio-v1")!).textSize.all).toBe(1.12);
+  });
 });

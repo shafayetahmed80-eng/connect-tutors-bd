@@ -24,7 +24,16 @@ export type PosterContent = {
   cta: string;
   showQr: boolean;
   qrCaption: string;
+  /** The line at the foot of the band: WhatsApp, the website, or nothing (the band then shrinks and the rest grows). */
+  contact: PosterContact;
+  website: string;
 };
+
+export type PosterContact = "whatsapp" | "website" | "none";
+
+/** Multipliers on the template's type sizes: `all` scales everything, the others one part each. */
+export type PosterTextSize = { all: number; headline: number; subline: number; points: number; button: number; contact: number };
+export const defaultPosterTextSize: PosterTextSize = { all: 1, headline: 1, subline: 1, points: 1, button: 1, contact: 1 };
 
 export type PosterTheme = {
   ground: string;
@@ -41,8 +50,6 @@ export type PosterTemplate = {
   id: string;
   name: string;
   theme: PosterTheme;
-  /** The big icon in the middle of the picture-free layout. */
-  heroIcon: PosterIconName;
   content: PosterContent;
 };
 
@@ -69,7 +76,6 @@ export const posterTemplates: readonly PosterTemplate[] = [
   {
     id: "female-tutor",
     name: "নারী টিউটর",
-    heroIcon: "cap",
     theme: {
       ground: "#ffffff",
       tint: "#fdeef4",
@@ -97,6 +103,8 @@ export const posterTemplates: readonly PosterTemplate[] = [
       cta: "Book Now",
       showQr: true,
       qrCaption: "স্ক্যান করুন",
+      contact: "whatsapp",
+      website: "connecttutorsbd.com",
     },
   },
 ];
@@ -131,14 +139,15 @@ export type PosterRender = {
   whatsapp: string;
   qrUrl: string;
   photo?: PosterPhoto | null;
-  /** "photo" (default) fades the photo in on the right; "plain" draws an icon medallion there instead. */
+  /** "photo" (default) fades the photo in on the right; "plain" gives the text the whole width. */
   layout?: PosterLayout;
+  textSize?: PosterTextSize;
 };
 
 /** The photo's frame on the picture, in pixels: right of the text column, from the top to just under the band's edge. */
-export function posterPhotoFrame(width: number, height: number) {
+export function posterPhotoFrame(width: number, height: number, band = BAND) {
   const u = width / 1080;
-  const bandTop = height - BAND * u;
+  const bandTop = height - band * u;
   return { x: width * 0.34, y: 0, width: width * 0.66, height: bandTop + 70 * u };
 }
 
@@ -164,6 +173,12 @@ function easedFade() {
 
 const PAD = 70;
 const BAND = 330;
+/** The band without a contact line is shorter, so the text above it gets the room. */
+function bandHeight(hasContact: boolean, hasQr: boolean) {
+  if (hasContact) return BAND;
+  return hasQr ? 304 : 240;
+}
+const GLOBE = ["M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z", "M2 12h20", "M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"];
 
 function stack(primary: string, secondary: string) {
   return `"${primary}", "${secondary}", ${POSTER_FONT_STACK}`;
@@ -192,6 +207,7 @@ export function wrapWords(measureWidth: (text: string) => number, text: string, 
 
 type Plan = {
   k: number;
+  circle: number;
   headlineSize: number;
   headlineTop: number;
   dividerY: number;
@@ -215,87 +231,6 @@ function iconPaths(ctx: CanvasRenderingContext2D, paths: readonly string[], x: n
   ctx.lineJoin = "round";
   for (const d of paths) ctx.stroke(new Path2D(d));
   ctx.restore();
-}
-
-type MedallionTheme = PosterTheme;
-
-/** The picture-free hero: a soft halo, a dashed ring, an accent disc with a big icon, and three small icon bubbles riding the ring. */
-function drawMedallion(
-  ctx: CanvasRenderingContext2D,
-  o: { cx: number; cy: number; r: number; theme: MedallionTheme; hero: PosterIconName; satellites: PosterIconName[]; u: number },
-) {
-  const { cx, cy, r, theme, u } = o;
-  ctx.save();
-  ctx.fillStyle = theme.accent;
-  ctx.globalAlpha = 0.08;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r * 1.32, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 0.14;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r * 1.1, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
-  ctx.save();
-  ctx.strokeStyle = theme.accent;
-  ctx.globalAlpha = 0.45;
-  ctx.lineWidth = 3 * u;
-  ctx.setLineDash([2 * u, 14 * u]);
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.arc(cx, cy, r * 1.22, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.restore();
-
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.22)";
-  ctx.shadowBlur = 28 * u;
-  ctx.shadowOffsetY = 10 * u;
-  const disc = ctx.createLinearGradient(cx - r * 0.7, cy - r * 0.8, cx + r * 0.7, cy + r * 0.8);
-  disc.addColorStop(0, theme.accent);
-  disc.addColorStop(1, theme.navy);
-  ctx.fillStyle = disc;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r * 0.8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-  ctx.strokeStyle = "#ffffff";
-  ctx.globalAlpha = 0.55;
-  ctx.lineWidth = 3 * u;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r * 0.7, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.globalAlpha = 1;
-  const heroSize = r * 0.78;
-  iconPaths(ctx, posterIcons[o.hero], cx - heroSize / 2, cy - heroSize / 2, heroSize, "#ffffff", 1.6);
-
-  const bubble = r * 0.27;
-  o.satellites.forEach((name, i) => {
-    const angle = ((-150 + i * 135) * Math.PI) / 180;
-    const x = cx + Math.cos(angle) * r * 1.22;
-    const y = cy + Math.sin(angle) * r * 1.22;
-    ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,0.18)";
-    ctx.shadowBlur = 14 * u;
-    ctx.shadowOffsetY = 5 * u;
-    ctx.fillStyle = "#ffffff";
-    ctx.beginPath();
-    ctx.arc(x, y, bubble, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    const size = bubble * 1.05;
-    iconPaths(ctx, posterIcons[name], x - size / 2, y - size / 2, size, theme.accent, 2.2);
-  });
-
-  ctx.fillStyle = theme.navy;
-  for (const [dx, dy, dr, alpha] of [[-1.5, 0.95, 7, 0.35], [1.45, -0.55, 9, 0.3], [1.3, 1.05, 6, 0.4], [-0.35, -1.5, 6, 0.3]] as const) {
-    ctx.globalAlpha = alpha;
-    ctx.beginPath();
-    ctx.arc(cx + dx * r, cy + dy * r, dr * u, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
 }
 
 const SEAL_R = 96;
@@ -394,15 +329,20 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRender) {
   };
 
   const pad = PAD * u;
-  const bandTop = H - BAND * u;
-  const column = W * 0.56;
+  const plain = input.layout === "plain";
+  const hasQr = content.showQr && Boolean(input.qrUrl);
+  const contact = content.contact === "website" && !content.website.trim() ? "none" : content.contact;
+  const bandH = bandHeight(contact !== "none", hasQr);
+  const bandTop = H - bandH * u;
+  // With a photo the text keeps to the left 56%; without one it takes the whole width.
+  const column = plain ? W - pad : W * 0.56;
+  const size = { ...defaultPosterTextSize, ...input.textSize };
 
   ctx.fillStyle = theme.ground;
   ctx.fillRect(0, 0, W, H);
 
   // The photo, faded into the page on its left and top, or a quiet stand-in.
-  const frame = posterPhotoFrame(W, H);
-  const plain = input.layout === "plain";
+  const frame = posterPhotoFrame(W, H, bandH);
   if (input.photo && !plain) {
     const { sx, sy, sw, sh } = photoCrop(input.photo.source, frame, input.photo.zoom, input.photo.x, input.photo.y);
     ctx.drawImage(input.photo.source, sx, sy, sw, sh, frame.x, frame.y, frame.width, frame.height);
@@ -423,17 +363,7 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRender) {
   for (const [at, alpha] of easedFade()) glow.addColorStop(at, `${theme.tint}${alpha}`);
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, W, H);
-  if (plain) {
-    drawMedallion(ctx, {
-      cx: W * 0.775,
-      cy: (290 * u + bandTop - 40 * u) / 2,
-      r: Math.min(W * 0.16, (bandTop - 330 * u) * 0.46),
-      theme,
-      hero: input.template.heroIcon,
-      satellites: input.content.features.map(feature => feature.icon).slice(0, 3),
-      u,
-    });
-  } else if (!input.photo) {
+  if (!input.photo || plain) {
     ctx.save();
     ctx.globalAlpha = 0.09;
     ctx.fillStyle = theme.accent;
@@ -472,20 +402,26 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRender) {
   const headlines = content.headline.filter(line => line.text.trim());
   const features = content.features.filter(feature => feature.text.trim());
   const limit = bandTop - 44 * u;
+  // The seal sits top right, so the first headline line stops short of it when the text has the whole width.
+  const sealLeft = W - pad - SEAL_R * 2 * u;
+  const firstLineWidth = plain && content.badge.trim() ? sealLeft - pad - 24 * u : column - pad;
+  const grow = plain ? 1.38 : 1;
   const plan = (k: number): Plan => {
     const headlineTop = pad + 140 * u;
-    let size = 118 * u * k;
-    for (const line of headlines) {
-      const w = widthIn(headlineFont(size))(line.text);
-      if (w > column - pad) size *= (column - pad) / w;
-    }
-    const headlineBottom = headlineTop + headlines.length * size * 1.2;
+    let headlineSize = 118 * u * k * grow * size.all * size.headline;
+    headlines.forEach((line, index) => {
+      const w = widthIn(headlineFont(headlineSize))(line.text);
+      const room = index === 0 ? firstLineWidth : column - pad;
+      if (w > room) headlineSize *= room / w;
+    });
+    const size_ = headlineSize;
+    const headlineBottom = headlineTop + headlines.length * size_ * 1.2;
     const dividerY = headlineBottom + 30 * u * k;
-    const sublineSize = 38 * u * k;
+    const sublineSize = 38 * u * k * grow * size.all * size.subline;
     const sublineTop = dividerY + 36 * u * k;
     const sublineLines = content.subline.trim() ? wrapWords(widthIn(bodyFont(sublineSize)), content.subline, column - pad, 3) : [];
-    const featureSize = 34 * u * k;
-    const circle = 92 * u * k;
+    const featureSize = 34 * u * k * grow * size.all * size.points;
+    const circle = 92 * u * k * grow * Math.min(1.25, size.all * size.points);
     const featureTop = sublineTop + sublineLines.length * sublineSize * 1.45 + 34 * u * k;
     const textWidth = column - pad - circle - 26 * u * k;
     const featureRows = features.map(feature => {
@@ -493,7 +429,7 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRender) {
       return { lines, height: Math.max(circle, lines.length * featureSize * 1.35) + 22 * u * k };
     });
     const bottom = featureTop + featureRows.reduce((sum, row) => sum + row.height, 0);
-    return { k, headlineSize: size, headlineTop, dividerY, sublineTop, sublineLines, sublineSize, featureTop, featureRows, featureSize, bottom };
+    return { k, headlineSize: size_, circle, headlineTop, dividerY, sublineTop, sublineLines, sublineSize, featureTop, featureRows, featureSize, bottom };
   };
   let chosen = plan(1);
   for (let k = 0.96; chosen.bottom > limit && k >= 0.5; k -= 0.04) chosen = plan(k);
@@ -539,7 +475,7 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRender) {
 
   // The points: an accent circle with a white icon, the text beside it, a hairline between rows.
   let rowTop = chosen.featureTop + shift;
-  const circle = 92 * u * chosen.k;
+  const circle = chosen.circle;
   features.forEach((feature, index) => {
     const row = chosen.featureRows[index];
     const centreY = rowTop + (row.height - 22 * u * chosen.k) / 2;
@@ -580,8 +516,7 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRender) {
   ctx.fill();
 
   const qrSize = 204 * u;
-  const qrY = bandTop + 48 * u;
-  const hasQr = content.showQr && Boolean(input.qrUrl);
+  const qrY = bandTop + (contact !== "none" ? 48 : hasQr ? 42 : 0) * u;
   const leftWidth = hasQr ? W - pad * 2 - qrSize - 44 * u : W - pad * 2;
   const centreX = pad + leftWidth / 2;
 
@@ -589,9 +524,12 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRender) {
   if (content.badge.trim()) drawSeal(ctx, content.badge, W - pad - SEAL_R * u, pad + SEAL_R * u - 6 * u, SEAL_R * u, theme.accent, englishFont, widthIn);
 
   // Book Now: a white-ringed pill with the button's own blues and an arrow.
-  const ctaHeight = 112 * u;
-  const ctaY = qrY + qrSize / 2 - ctaHeight / 2;
-  ctx.font = englishFont(58 * u, 800);
+  const buttonScale = Math.min(1.3, size.all * size.button);
+  const ctaHeight = 112 * u * buttonScale;
+  // The button shares the QR code's centre line; with no QR it takes the band's own middle.
+  const ctaCentre = hasQr ? qrY + qrSize / 2 : bandTop + (contact !== "none" ? 150 : bandH / 2 + 8) * u;
+  const ctaY = ctaCentre - ctaHeight / 2;
+  ctx.font = englishFont(58 * u * buttonScale, 800);
   const ctaText = content.cta.trim() || "Book Now";
   const ctaWidth = Math.min(leftWidth, ctx.measureText(ctaText).width + 190 * u);
   const ctaX = centreX - ctaWidth / 2;
@@ -619,24 +557,26 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRender) {
   ctx.lineTo(arrowX, ctaY + ctaHeight / 2 + 16 * u);
   ctx.stroke();
 
-  // WhatsApp: a green disc with a handset, and the number.
-  const waSize = 50 * u;
-  ctx.font = englishFont(46 * u, 800);
-  const waText = `WhatsApp: ${input.whatsapp}`;
-  let waTextSize = 46 * u;
-  while (waTextSize > 20 * u && widthIn(englishFont(waTextSize, 800))(waText) > leftWidth - waSize - 24 * u) waTextSize -= 1 * u;
-  ctx.font = englishFont(waTextSize, 800);
-  const waWidth = waSize + 20 * u + ctx.measureText(waText).width;
-  const waY = H - 62 * u;
-  const waX = centreX - waWidth / 2;
-  ctx.fillStyle = "#25d366";
-  ctx.beginPath();
-  ctx.arc(waX + waSize / 2, waY, waSize / 2, 0, Math.PI * 2);
-  ctx.fill();
-  iconPaths(ctx, [PHONE], waX + waSize * 0.24, waY - waSize * 0.26, waSize * 0.52, "#ffffff", 2.4);
-  ctx.fillStyle = "#ffffff";
-  ctx.textAlign = "left";
-  ctx.fillText(waText, waX + waSize + 20 * u, waY + 2 * u);
+  // The contact line: WhatsApp (green disc, handset) or the website (white disc, globe); none leaves the band shorter.
+  if (contact !== "none") {
+    const discSize = 50 * u * Math.min(1.25, size.all * size.contact);
+    const lineText = contact === "whatsapp" ? `WhatsApp: ${input.whatsapp}` : content.website.trim().replace(/^https?:\/\//i, "");
+    let lineSize = 46 * u * size.all * size.contact;
+    while (lineSize > 20 * u && widthIn(englishFont(lineSize, 800))(lineText) > leftWidth - discSize - 24 * u) lineSize -= 1 * u;
+    ctx.font = englishFont(lineSize, 800);
+    const lineWidth = discSize + 20 * u + ctx.measureText(lineText).width;
+    const lineY = H - 62 * u;
+    const lineX = centreX - lineWidth / 2;
+    ctx.fillStyle = contact === "whatsapp" ? "#25d366" : "#ffffff";
+    ctx.beginPath();
+    ctx.arc(lineX + discSize / 2, lineY, discSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+    if (contact === "whatsapp") iconPaths(ctx, [PHONE], lineX + discSize * 0.24, lineY - discSize * 0.26, discSize * 0.52, "#ffffff", 2.4);
+    else iconPaths(ctx, GLOBE, lineX + discSize * 0.2, lineY - discSize * 0.3, discSize * 0.6, theme.band[0], 2.2);
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "left";
+    ctx.fillText(lineText, lineX + discSize + 20 * u, lineY + 2 * u);
+  }
 
   // The QR code to the request page, with its caption.
   if (hasQr) {
