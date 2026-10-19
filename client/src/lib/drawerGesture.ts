@@ -31,10 +31,30 @@ export function lockAxis(dx: number, dy: number): DragAxis | null {
   return ax > ay * AXIS_LOCK_RATIO ? "x" : "y";
 }
 
-/** The drawer's openness for a drag, held between shut and open. */
-export function progressFromDrag({ startProgress, dx, width }: { startProgress: number; dx: number; width: number }): number {
+/** The drawer's openness for a drag, held between shut and open, with optional rubberband resistance. */
+export function progressFromDrag({
+  startProgress,
+  dx,
+  width,
+  rubberband = false,
+}: {
+  startProgress: number;
+  dx: number;
+  width: number;
+  rubberband?: boolean;
+}): number {
   if (width <= 0) return startProgress;
-  return Math.min(1, Math.max(0, startProgress + dx / width));
+  const raw = startProgress + dx / width;
+  if (!rubberband) return Math.min(1, Math.max(0, raw));
+  if (raw > 1) {
+    const overshoot = raw - 1;
+    return 1 + (overshoot * 0.18) / (1 + overshoot * 0.35);
+  }
+  if (raw < 0) {
+    const undershoot = -raw;
+    return -((undershoot * 0.18) / (1 + undershoot * 0.35));
+  }
+  return raw;
 }
 
 /**

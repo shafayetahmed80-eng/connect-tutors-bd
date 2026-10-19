@@ -61,6 +61,21 @@ describe("the swipe drawer", () => {
     expect(panel().getAttribute("data-dragging")).toBe("true");
   });
 
+  it("applies rubberband elastic damping when dragging past fully open", () => {
+    mount(true);
+    fireEvent.touchStart(document, touch(100));
+    tick(400);
+    // Drag to the right past 100% open
+    fireEvent.touchMove(document, touch(400));
+    const transform = panel().style.transform;
+    expect(transform).toMatch(/translate3d\(([0-9.]+)%, 0, 0\)/);
+    const match = transform.match(/translate3d\(([0-9.]+)%, 0, 0\)/);
+    const percent = parseFloat(match![1]);
+    expect(percent).toBeGreaterThan(0);
+    expect(percent).toBeLessThan(20);
+    expect(panel().getAttribute("data-dragging")).toBe("true");
+  });
+
   it("springs back when the drag stopped short, and opens on a quick flick", () => {
     const short = mount(false);
     drag([20, 60, 90]);
