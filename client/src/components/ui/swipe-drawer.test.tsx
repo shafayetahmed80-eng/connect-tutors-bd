@@ -105,4 +105,12 @@ describe("the swipe drawer", () => {
     act(() => { (document.querySelector("[data-swipe-backdrop]") as HTMLElement).click(); });
     expect(change).toHaveBeenCalledWith(false);
   });
+
+  it("closes when a popstate (hardware back button) event is fired while open", () => {
+    const change = mount(true);
+    act(() => {
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(change).toHaveBeenCalledWith(false);
+  });
 });
