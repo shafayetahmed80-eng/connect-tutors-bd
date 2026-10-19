@@ -67,4 +67,8 @@ describe("poster studio helpers", () => {
     expect(parsePosterBadge("Trusted by parents")).toBeNull();
     expect(parsePosterBadge("Since 2015 | Member")).toBeNull();
   });
+
+  it("lets a shorter band give the photo frame more height", () => {
+    expect(posterPhotoFrame(1080, 1350, 240).height).toBeGreaterThan(posterPhotoFrame(1080, 1350).height);
+  });
 });

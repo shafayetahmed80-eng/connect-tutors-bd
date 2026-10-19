@@ -32,7 +32,10 @@ import {
   renderPoster,
   type PosterContent,
   type PosterIconName,
+  type PosterContact,
   type PosterLayout,
+  type PosterTextSize,
+  defaultPosterTextSize,
   type PosterPhoto,
   type PosterTone,
 } from "@/lib/poster-studio";
@@ -49,11 +52,26 @@ const field = "h-control w-full rounded-xl border border-j-border px-3 text-sm";
 const label = "mb-1 block text-xs font-bold text-j-ink-soft";
 const legend = "mb-2 text-xs font-bold uppercase tracking-wide text-j-ink-soft";
 
-type Draft = { templateId: string; content: PosterContent; fonts: FontChoice; accent: string | null; layout: PosterLayout };
+type Draft = { templateId: string; content: PosterContent; fonts: FontChoice; accent: string | null; layout: PosterLayout; textSize: PosterTextSize };
+
+const SIZE_STEPS = [["Small", 0.9], ["Normal", 1], ["Large", 1.12], ["Extra large", 1.25]] as const;
+const SIZE_PARTS = [["headline", "Headline"], ["subline", "Line under the headline"], ["points", "Points"], ["button", "Button"], ["contact", "Contact line"]] as const;
+
+function cleanTextSize(saved: Partial<PosterTextSize> | undefined): PosterTextSize {
+  const clean = (value: unknown) => (typeof value === "number" && value >= 0.5 && value <= 1.6 ? value : 1);
+  return {
+    all: clean(saved?.all),
+    headline: clean(saved?.headline),
+    subline: clean(saved?.subline),
+    points: clean(saved?.points),
+    button: clean(saved?.button),
+    contact: clean(saved?.contact),
+  };
+}
 
 function readDraft(): Draft {
   const template = posterTemplates[0];
-  const fresh: Draft = { templateId: template.id, content: template.content, fonts: DEFAULT_FONTS, accent: null, layout: "photo" };
+  const fresh: Draft = { templateId: template.id, content: template.content, fonts: DEFAULT_FONTS, accent: null, layout: "photo", textSize: defaultPosterTextSize };
   try {
     const saved = JSON.parse(window.localStorage.getItem(DRAFT_KEY) ?? "null") as Partial<Draft> | null;
     if (!saved || !saved.templateId || !findPosterTemplate(saved.templateId) || !saved.content) return fresh;
@@ -67,6 +85,7 @@ function readDraft(): Draft {
         english: known(saved.fonts?.english, "en", DEFAULT_FONTS.english),
       },
       layout: saved.layout === "plain" ? "plain" : "photo",
+      textSize: cleanTextSize(saved.textSize),
       accent: typeof saved.accent === "string" && /^#[0-9a-f]{6}$/i.test(saved.accent) ? saved.accent : null,
     };
   } catch {
@@ -145,6 +164,7 @@ export function PosterStudioContent() {
     qrUrl: typeof window === "undefined" ? "" : `${window.location.origin}/request-tutor`,
     photo,
     layout: draft.layout,
+    textSize: draft.textSize,
     fonts: {
       headline: studioFontFamily(draft.fonts.headline),
       headlineWeight: studioFontBoldWeight(draft.fonts.headline),
@@ -335,7 +355,29 @@ export function PosterStudioContent() {
           </label>
           {content.showQr ? <input aria-label="QR caption" value={content.qrCaption} maxLength={24} onChange={event => edit({ qrCaption: event.target.value })} className={field} /> : null}
         </div>
-        <p className="text-xs text-j-ink-soft sm:col-span-2">WhatsApp: {formatPosterPhone(contact.number)}</p>
+      </fieldset>
+
+      <fieldset className="space-y-3">
+        <legend className={legend}>Contact line</legend>
+        <div className="flex flex-wrap gap-2">
+          {([["whatsapp", "WhatsApp"], ["website", "Website"]] as const).map(([value, name]) => <button key={value} type="button" aria-pressed={content.contact === value} onClick={() => edit({ contact: content.contact === value ? "none" : (value as PosterContact) })} className={chip(content.contact === value)}>{name}</button>)}
+        </div>
+        {content.contact === "website" ? <input aria-label="Website address" value={content.website} maxLength={60} onChange={event => edit({ website: event.target.value })} className={field} /> : null}
+      </fieldset>
+
+      <fieldset className="space-y-3">
+        <legend className={legend}>Text size</legend>
+        <div className="flex flex-wrap gap-2">
+          {SIZE_STEPS.map(([name, value]) => <button key={name} type="button" aria-pressed={draft.textSize.all === value} onClick={() => save({ ...draft, textSize: { ...draft.textSize, all: value } })} className={chip(draft.textSize.all === value)}>{name}</button>)}
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {SIZE_PARTS.map(([key, name]) => (
+            <label key={key} className="block">
+              <span className={label}>{name} <span className="font-normal">{Math.round(draft.textSize[key] * 100)}%</span></span>
+              <input type="range" aria-label={name} min={0.7} max={1.4} step={0.05} value={draft.textSize[key]} onChange={event => save({ ...draft, textSize: { ...draft.textSize, [key]: Number(event.target.value) } })} className="w-full accent-[var(--j-accent)]" />
+            </label>
+          ))}
+        </div>
       </fieldset>
 
       <fieldset className="space-y-3">
