@@ -5,6 +5,7 @@ import {
   photoCrop,
   posterFileName,
   posterIconNames,
+  parsePosterBadge,
   posterPhotoFrame,
   posterTemplates,
   wrapWords,
@@ -58,5 +59,12 @@ describe("poster studio helpers", () => {
 
   it("names the file for the template, size and scale", () => {
     expect(posterFileName("female-tutor", { id: "portrait-post", width: 1080, height: 1350 }, "png", 2)).toBe("connect-tutors-poster-female-tutor-portrait-post-2160x2700.png");
+  });
+
+  it("splits the badge into the seal's label, number and foot, or leaves odd text alone", () => {
+    expect(parsePosterBadge("Since 2015 | BTPA Member · Code: BTPA-077")).toEqual({ label: "BTPA MEMBER", big: "077", foot: "SINCE 2015" });
+    expect(parsePosterBadge("Est. 2019 | Licensed · No. 42")).toEqual({ label: "LICENSED", big: "42", foot: "EST. 2019" });
+    expect(parsePosterBadge("Trusted by parents")).toBeNull();
+    expect(parsePosterBadge("Since 2015 | Member")).toBeNull();
   });
 });
