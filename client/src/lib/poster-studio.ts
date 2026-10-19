@@ -210,6 +210,81 @@ function iconPaths(ctx: CanvasRenderingContext2D, paths: readonly string[], x: n
   ctx.restore();
 }
 
+const SEAL_R = 96;
+
+/** "Since 2015 | BTPA Member · Code: BTPA-077" -> the seal's three lines: top label, big number, foot. */
+export function parsePosterBadge(badge: string) {
+  const parts = badge.split("|");
+  if (parts.length < 2) return null;
+  const rest = parts.slice(1).join(" ").trim();
+  const number = /(\d+)\s*$/.exec(rest);
+  if (!number) return null;
+  const label = rest.slice(0, number.index).split(/[·•]/)[0].replace(/[-:\s]+$/, "").trim() || "Member";
+  return { label: label.toUpperCase(), big: number[1], foot: parts[0].trim().toUpperCase() };
+}
+
+/** A round stamp: two white rings on the accent, the number big in the middle. Text that does not fit the pattern is wrapped inside it. */
+function drawSeal(
+  ctx: CanvasRenderingContext2D,
+  badge: string,
+  cx: number,
+  cy: number,
+  r: number,
+  colour: string,
+  font: (size: number, weight?: number) => string,
+  widthIn: (font: string) => (text: string) => number,
+) {
+  const k = r / SEAL_R;
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.2)";
+  ctx.shadowBlur = 18 * k;
+  ctx.shadowOffsetY = 6 * k;
+  ctx.fillStyle = colour;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 3.5 * k;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r - 9 * k, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = 1.5 * k;
+  ctx.globalAlpha = 0.7;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r - 17 * k, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  ctx.fillStyle = "#ffffff";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const fit = (text: string, size: number, weight: number, max: number) => {
+    let s = size;
+    while (s > 8 * k && widthIn(font(s, weight))(text) > max) s -= 0.5 * k;
+    return s;
+  };
+  const parsed = parsePosterBadge(badge);
+  if (parsed) {
+    const max = 124 * k;
+    ctx.font = font(fit(parsed.label, 17 * k, 800, max), 800);
+    ctx.fillText(parsed.label, cx, cy - 40 * k);
+    ctx.font = font(fit(parsed.big, 62 * k, 800, max), 800);
+    ctx.fillText(parsed.big, cx, cy + 3 * k);
+    ctx.font = font(fit(parsed.foot, 17 * k, 800, max), 800);
+    ctx.fillText(parsed.foot, cx, cy + 46 * k);
+    ctx.globalAlpha = 0.7;
+    ctx.fillRect(cx - 34 * k, cy - 26 * k, 68 * k, 1.5 * k);
+    ctx.fillRect(cx - 34 * k, cy + 32 * k, 68 * k, 1.5 * k);
+    ctx.globalAlpha = 1;
+    return;
+  }
+  const size = 20 * k;
+  ctx.font = font(size, 800);
+  const lines = wrapWords(widthIn(font(size, 800)), badge, 124 * k, 4);
+  lines.forEach((line, i) => ctx.fillText(line, cx, cy + (i - (lines.length - 1) / 2) * size * 1.3));
+}
+
 /** Draws the whole poster onto `canvas`, sized `width × height` times `scale`. */
 export function renderPoster(canvas: HTMLCanvasElement, input: PosterRender) {
   const { width: W, height: H, scale } = input;
@@ -297,8 +372,7 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRender) {
   // Lay the text column out, shrinking the type until it fits above the band.
   const headlines = content.headline.filter(line => line.text.trim());
   const features = content.features.filter(feature => feature.text.trim());
-  const badgeHalf = 37 * u;
-  const limit = bandTop - badgeHalf - 28 * u;
+  const limit = bandTop - 44 * u;
   const plan = (k: number): Plan => {
     const headlineTop = pad + 140 * u;
     let size = 118 * u * k;
@@ -406,40 +480,21 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRender) {
   ctx.closePath();
   ctx.fill();
 
-  const qrSize = 186 * u;
+  const qrSize = 204 * u;
+  const qrY = bandTop + 48 * u;
   const hasQr = content.showQr && Boolean(input.qrUrl);
   const leftWidth = hasQr ? W - pad * 2 - qrSize - 44 * u : W - pad * 2;
   const centreX = pad + leftWidth / 2;
 
-  // The badge, sitting on the band's edge.
-  if (content.badge.trim()) {
-    let badgeSize = 30 * u;
-    const maxBadge = leftWidth - 60 * u;
-    while (badgeSize > 16 * u && widthIn(englishFont(badgeSize, 700))(content.badge) > maxBadge) badgeSize -= 1 * u;
-    ctx.font = englishFont(badgeSize, 700);
-    const badgeWidth = ctx.measureText(content.badge).width + 64 * u;
-    const badgeX = centreX - badgeWidth / 2;
-    const badgeY = bandTop - badgeHalf + 6 * u;
-    ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,0.18)";
-    ctx.shadowBlur = 16 * u;
-    ctx.shadowOffsetY = 6 * u;
-    ctx.fillStyle = theme.accent;
-    roundedRectPath(ctx, badgeX, badgeY, badgeWidth, badgeHalf * 2, badgeHalf);
-    ctx.fill();
-    ctx.restore();
-    ctx.fillStyle = "#ffffff";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(content.badge, centreX, badgeY + badgeHalf + 1 * u);
-  }
+  // The trust seal, top right.
+  if (content.badge.trim()) drawSeal(ctx, content.badge, W - pad - SEAL_R * u, pad + SEAL_R * u - 6 * u, SEAL_R * u, theme.accent, englishFont, widthIn);
 
   // Book Now: a white-ringed pill with the button's own blues and an arrow.
-  const ctaHeight = 104 * u;
-  const ctaY = bandTop + 70 * u;
-  ctx.font = englishFont(54 * u, 800);
+  const ctaHeight = 112 * u;
+  const ctaY = qrY + qrSize / 2 - ctaHeight / 2;
+  ctx.font = englishFont(58 * u, 800);
   const ctaText = content.cta.trim() || "Book Now";
-  const ctaWidth = Math.min(leftWidth, ctx.measureText(ctaText).width + 180 * u);
+  const ctaWidth = Math.min(leftWidth, ctx.measureText(ctaText).width + 190 * u);
   const ctaX = centreX - ctaWidth / 2;
   const ctaFill = ctx.createLinearGradient(0, ctaY, 0, ctaY + ctaHeight);
   ctaFill.addColorStop(0, theme.ctaFrom);
@@ -487,7 +542,6 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRender) {
   // The QR code to the request page, with its caption.
   if (hasQr) {
     const qrX = W - pad - qrSize;
-    const qrY = bandTop + 44 * u;
     drawQrTile(ctx, input.qrUrl, qrX, qrY, qrSize, theme.navy, 12 * u, 18 * u);
     if (content.qrCaption.trim()) {
       ctx.fillStyle = "#ffffff";
