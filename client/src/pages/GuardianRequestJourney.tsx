@@ -915,7 +915,11 @@ export function PhoneStage({ phone, onPhoneChange, pending, onContinue }: { phon
       {valid ? <span className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-j-ok"><span className="h-1.5 w-1.5 rounded-full bg-j-ok" aria-hidden="true" />Valid mobile number</span> : null}
     </label>
     <div className="mt-6 flex max-w-md flex-col gap-3">
-      <button type="button" className={`${primaryButton} w-full`} disabled={pending} onClick={onContinue}>{pending && <Loader2 className="animate-spin" size={18} />} <SiteText slotId="button-section.journey.phoneContinue" fallback="Continue" /></button>
+      <button type="button" className={`${primaryButton} w-full relative`} disabled={pending} onClick={onContinue}>
+        {valid && !pending ? <span aria-hidden="true" className="button-ready-halo pointer-events-none absolute -inset-px rounded-xl motion-reduce:hidden" /> : null}
+        {pending ? <span aria-hidden="true" className="sign-in-submit-glow pointer-events-none absolute -inset-px rounded-xl motion-reduce:hidden" /> : null}
+        {pending && <Loader2 className="animate-spin" size={18} />} <SiteText slotId="button-section.journey.phoneContinue" fallback="Continue" />
+      </button>
       <div className="text-center"><SignInPrompt href="/auth?role=guardian" /></div>
     </div>
   </div>;
@@ -1020,7 +1024,10 @@ export function AccountStage(props: GuardianAccountStageProps) {
         <button type="button" className={ghostButton} onClick={props.onBack}><SiteText slotId="button-section.journey.accountBack" fallback="Back to phone" /></button>
         <SignInPrompt href="/auth?role=guardian" />
       </div>
-      <button type="button" className={`${primaryButton} shrink-0`} disabled={props.pending} onClick={props.onCreate}>{props.pending && <Loader2 className="animate-spin" size={18} />} <SiteText slotId="button-section.journey.accountCreate" fallback="Continue" /></button>
+      <button type="button" className={`${primaryButton} shrink-0 relative`} disabled={props.pending} onClick={props.onCreate}>
+        {props.pending ? <span aria-hidden="true" className="sign-in-submit-glow pointer-events-none absolute -inset-px rounded-xl motion-reduce:hidden" /> : null}
+        {props.pending && <Loader2 className="animate-spin" size={18} />} <SiteText slotId="button-section.journey.accountCreate" fallback="Continue" />
+      </button>
     </div>
   </section>;
 }
@@ -1045,6 +1052,7 @@ export function RequestStage(props: RequestStageProps) {
   const { requestInput: input } = props;
   const resolveSlot = useSiteContentResolver();
   const locationSelection = getGuardianLocationSelectionState(input.tuitionCityLocationId, input.tuitionLocationId, props.tuitionCityLabel, props.tuitionLocationLabel);
+  const isStep1Ready = !getGuardianRequestStepValidation(input, 1, props.needsLimits);
   // Step 2 sends the request, so its button says so rather than "Continue" -
   // the Guardian has to know the press is the one that posts the job.
   const submitLabel = props.isEditMode
@@ -1232,20 +1240,22 @@ export function RequestStage(props: RequestStageProps) {
           <button
             key="advance"
             type="button"
-            className={`${primaryButton} w-full sm:w-auto`}
+            className={`${primaryButton} w-full sm:w-auto relative`}
             aria-label="Continue to tuition preferences"
             onClick={props.onAdvance}
           >
+            {isStep1Ready ? <span aria-hidden="true" className="button-ready-halo pointer-events-none absolute -inset-px rounded-xl motion-reduce:hidden" /> : null}
             <SiteText slotId="button-section.journey.stepContinue" fallback="Continue" />
           </button>
         ) : (
           <button
             key={props.isPreviewMode ? "submit-preview" : "submit-direct"}
             type="submit"
-            className={`${primaryButton} w-full sm:w-auto`}
+            className={`${primaryButton} w-full sm:w-auto relative`}
             disabled={props.pending}
             aria-label={props.isPreviewMode ? (props.isEditMode ? "Confirm & Save changes" : "Confirm & Send request") : submitLabel}
           >
+            {props.pending ? <span aria-hidden="true" className="sign-in-submit-glow pointer-events-none absolute -inset-px rounded-xl motion-reduce:hidden" /> : null}
             {props.pending && <Loader2 className="animate-spin" size={18} />}
             {props.isPreviewMode
               ? (props.isEditMode ? "Confirm & Save changes" : "Confirm & Send request")

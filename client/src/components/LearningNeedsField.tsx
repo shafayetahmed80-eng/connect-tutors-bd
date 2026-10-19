@@ -170,8 +170,12 @@ export default function LearningNeedsField({
                     type="button"
                     aria-pressed={selected}
                     onClick={() => toggleSubject(need.category, item.classCourse, subject)}
-                    className={`${look.chip} ${selected ? "border-j-accent bg-j-accent-wash text-[#126ea9]" : "border-[#dbe7ef] bg-white text-j-ink hover:bg-[#f2f8fd]"}`}
-                  >{selected ? <Check size={tight ? 11 : 13} aria-hidden={true} /> : null}{subject}</button>;
+                    className={`${look.chip} relative ${selected ? "border-j-accent bg-j-accent-wash text-[#126ea9]" : "border-[#dbe7ef] bg-white text-j-ink hover:bg-[#f2f8fd]"}`}
+                  >
+                    {selected ? <span aria-hidden="true" className="journey-chip-halo pointer-events-none absolute -inset-px rounded-xl motion-reduce:hidden" /> : null}
+                    {selected ? <Check size={tight ? 11 : 13} aria-hidden={true} /> : null}
+                    {subject}
+                  </button>;
                 })}
               </div>
             </fieldset>;

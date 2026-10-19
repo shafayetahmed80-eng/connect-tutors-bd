@@ -374,7 +374,19 @@ export default function JoinTutor() {
             {submitError ? <p role="alert" className="mt-4 rounded-xl border border-j-err-border bg-j-err-wash px-4 py-3 text-sm font-semibold leading-6 text-j-err">{submitError}</p> : null}
             <div className={registrationFooter}>
               <SignInPrompt href={TUTOR_SIGN_IN_HREF} />
-              <button type="submit" disabled={registerTutor.isPending || sendPhoneCode.isPending || locationsLoading} className={`${primaryButton} shrink-0`}>{registerTutor.isPending ? <><LoaderCircle className="animate-spin" size={17} /> Creating your account…</> : sendPhoneCode.isPending && !codeSentTo ? <><LoaderCircle className="animate-spin" size={17} /> Sending code…</> : codeSentTo ? <SiteText slotId="button-section.tutorRegistration.verify" fallback="Verify and create account" /> : <SiteText slotId="button-section.tutorRegistration.create" fallback="Create Tutor account" />}</button>
+              <button
+                type="submit"
+                disabled={registerTutor.isPending || sendPhoneCode.isPending || locationsLoading}
+                className={`${primaryButton} shrink-0 relative`}
+              >
+                {agreed && form.name.trim() && form.phone.trim() && form.gender && form.cityId && form.locationId && !registerTutor.isPending && !sendPhoneCode.isPending && !locationsLoading ? (
+                  <span aria-hidden="true" className="button-ready-halo pointer-events-none absolute -inset-px rounded-xl motion-reduce:hidden" />
+                ) : null}
+                {registerTutor.isPending || sendPhoneCode.isPending ? (
+                  <span aria-hidden="true" className="sign-in-submit-glow pointer-events-none absolute -inset-px rounded-xl motion-reduce:hidden" />
+                ) : null}
+                {registerTutor.isPending ? <><LoaderCircle className="animate-spin" size={17} /> Creating your account…</> : sendPhoneCode.isPending && !codeSentTo ? <><LoaderCircle className="animate-spin" size={17} /> Sending code…</> : codeSentTo ? <SiteText slotId="button-section.tutorRegistration.verify" fallback="Verify and create account" /> : <SiteText slotId="button-section.tutorRegistration.create" fallback="Create Tutor account" />}
+              </button>
             </div>
           </section>
         </form>
