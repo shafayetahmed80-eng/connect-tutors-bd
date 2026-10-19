@@ -733,7 +733,7 @@ function DashboardLayoutContent({
                     onClick={() => {
                       if (isMobile) triggerMobileHapticFeedback();
                       if (isCollapsed) handleNavigation(row.members[0].item);
-                      else setExpandedGroups(current => ({ ...current, [groupKey]: !open }));
+                      else setExpandedGroups(current => (isMobile && !open ? { [groupKey]: true } : { ...current, [groupKey]: !open }));
                     }}
                     className={getDashboardNavigationItemClassName(false) + (containsActive && !open ? " sb-item-current font-semibold" : "")}
                     style={{ ...sidebarFontStyle, ...sidebarPaddingStyle, ...sidebarHeightStyle }}
