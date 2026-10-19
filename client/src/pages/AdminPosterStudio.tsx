@@ -32,6 +32,7 @@ import {
   renderPoster,
   type PosterContent,
   type PosterIconName,
+  type PosterLayout,
   type PosterPhoto,
   type PosterTone,
 } from "@/lib/poster-studio";
@@ -48,11 +49,11 @@ const field = "h-control w-full rounded-xl border border-j-border px-3 text-sm";
 const label = "mb-1 block text-xs font-bold text-j-ink-soft";
 const legend = "mb-2 text-xs font-bold uppercase tracking-wide text-j-ink-soft";
 
-type Draft = { templateId: string; content: PosterContent; fonts: FontChoice; accent: string | null };
+type Draft = { templateId: string; content: PosterContent; fonts: FontChoice; accent: string | null; layout: PosterLayout };
 
 function readDraft(): Draft {
   const template = posterTemplates[0];
-  const fresh: Draft = { templateId: template.id, content: template.content, fonts: DEFAULT_FONTS, accent: null };
+  const fresh: Draft = { templateId: template.id, content: template.content, fonts: DEFAULT_FONTS, accent: null, layout: "photo" };
   try {
     const saved = JSON.parse(window.localStorage.getItem(DRAFT_KEY) ?? "null") as Partial<Draft> | null;
     if (!saved || !saved.templateId || !findPosterTemplate(saved.templateId) || !saved.content) return fresh;
@@ -65,6 +66,7 @@ function readDraft(): Draft {
         body: known(saved.fonts?.body, "bn", DEFAULT_FONTS.body),
         english: known(saved.fonts?.english, "en", DEFAULT_FONTS.english),
       },
+      layout: saved.layout === "plain" ? "plain" : "photo",
       accent: typeof saved.accent === "string" && /^#[0-9a-f]{6}$/i.test(saved.accent) ? saved.accent : null,
     };
   } catch {
@@ -142,6 +144,7 @@ export function PosterStudioContent() {
     whatsapp: formatPosterPhone(contact.number),
     qrUrl: typeof window === "undefined" ? "" : `${window.location.origin}/request-tutor`,
     photo,
+    layout: draft.layout,
     fonts: {
       headline: studioFontFamily(draft.fonts.headline),
       headlineWeight: studioFontBoldWeight(draft.fonts.headline),
@@ -172,8 +175,8 @@ export function PosterStudioContent() {
 
   // Dragging the preview moves the photo inside its frame, the way a phone's photo crop does.
   const onPointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!photo) return;
-    drag.current = { x: event.clientX, y: event.clientY };
+    if (!photo || draft.layout !== "photo") return;
+    drag.current ={ x: event.clientX, y: event.clientY };
     event.currentTarget.setPointerCapture?.(event.pointerId);
   };
   const onPointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -235,7 +238,7 @@ export function PosterStudioContent() {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        className={`h-auto max-h-[70vh] w-auto max-w-full touch-none rounded-lg shadow-sm ${photo ? "cursor-grab active:cursor-grabbing" : ""}`}
+        className={`h-auto max-h-[70vh] w-auto max-w-full touch-none rounded-lg shadow-sm ${photo && draft.layout === "photo" ? "cursor-grab active:cursor-grabbing" : ""}`}
       />
     </div>
 
@@ -247,7 +250,14 @@ export function PosterStudioContent() {
         </div>
       </fieldset>
 
-      <fieldset className="space-y-3">
+      <fieldset>
+        <legend className={legend}>Layout</legend>
+        <div className="flex flex-wrap gap-2">
+          {([["photo", "With photo"], ["plain", "Without photo"]] as const).map(([value, name]) => <button key={value} type="button" aria-pressed={draft.layout === value} onClick={() => save({ ...draft, layout: value })} className={chip(draft.layout === value)}>{name}</button>)}
+        </div>
+      </fieldset>
+
+      {draft.layout === "photo" ? <fieldset className="space-y-3">
         <legend className={legend}>Photo</legend>
         <div className="flex flex-wrap gap-2">
           <label className="inline-flex h-control cursor-pointer items-center gap-2 rounded-xl border border-j-accent px-4 text-sm font-bold text-j-accent">
@@ -266,7 +276,7 @@ export function PosterStudioContent() {
             </label>
           ))}
         </div> : null}
-      </fieldset>
+      </fieldset> : null}
 
       <fieldset className="space-y-3">
         <legend className={legend}>Headline</legend>
