@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.connecttutorsbd.app",
+      "sha256_cert_fingerprints": [
+        "F9:6B:4A:18:4D:49:AE:51:91:7D:4C:4E:4D:26:3A:2B:36:4C:C5:3F:60:98:54:50:E3:11:8A:85:3E:03:E6:2D"
+      ]
+    }
+  }
+]

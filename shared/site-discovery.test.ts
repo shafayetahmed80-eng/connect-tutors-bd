@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { buildRobotsTxt, buildSitemapXml, isCanonicalHost, robotsDisallowedPaths, sitemapPaths } from "./site-discovery";
+import { buildAssetLinksJson, buildRobotsTxt, buildSitemapXml, defaultAndroidAppConfig, isCanonicalHost, robotsDisallowedPaths, sitemapPaths } from "./site-discovery";
 
 const SITE = "https://connecttutorsbd.com";
 
@@ -70,3 +70,22 @@ describe("the published address", () => {
     expect(isCanonicalHost("connecttutorsbd.com", "not a url")).toBe(false);
   });
 });
+
+describe("Android Digital Asset Links (assetlinks.json)", () => {
+  it("generates valid JSON with the default package name and SHA256 cert fingerprint", () => {
+    const raw = buildAssetLinksJson();
+    const parsed = JSON.parse(raw);
+    expect(Array.isArray(parsed)).toBe(true);
+    expect(parsed[0].relation).toContain("delegate_permission/common.handle_all_urls");
+    expect(parsed[0].target.namespace).toBe("android_app");
+    expect(parsed[0].target.package_name).toBe(defaultAndroidAppConfig.packageName);
+    expect(parsed[0].target.sha256_cert_fingerprints).toEqual(defaultAndroidAppConfig.sha256Fingerprints);
+  });
+
+  it("supports passing custom or additional fingerprints", () => {
+    const custom = ["11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00"];
+    const parsed = JSON.parse(buildAssetLinksJson(custom));
+    expect(parsed[0].target.sha256_cert_fingerprints).toEqual(custom);
+  });
+});
+

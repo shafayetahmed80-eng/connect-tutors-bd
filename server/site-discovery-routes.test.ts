@@ -91,3 +91,17 @@ describe("/sitemap.xml", () => {
     await request(app()).get("/sitemap.xml").set("Host", "localhost:3000").expect(404);
   });
 });
+
+describe("/.well-known/assetlinks.json", () => {
+  it("serves assetlinks JSON with public cache control header", async () => {
+    const response = await request(app()).get("/.well-known/assetlinks.json").expect(200);
+    expect(response.headers["content-type"]).toContain("application/json");
+    expect(response.headers["cache-control"]).toBe("public, max-age=86400");
+    expect(Array.isArray(response.body)).toBe(true);
+    expect(response.body[0].target.package_name).toBe("com.connecttutorsbd.app");
+    expect(response.body[0].target.sha256_cert_fingerprints).toContain(
+      "F9:6B:4A:18:4D:49:AE:51:91:7D:4C:4E:4D:26:3A:2B:36:4C:C5:3F:60:98:54:50:E3:11:8A:85:3E:03:E6:2D"
+    );
+  });
+});
+

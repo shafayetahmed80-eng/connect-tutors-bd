@@ -64,3 +64,33 @@ export function buildSitemapXml(publicSiteUrl: string) {
   const urls = sitemapPaths.map(path => `  <url><loc>${escapeXml(`${publicSiteUrl}${path}`)}</loc></url>`);
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
 }
+
+/**
+ * Android Digital Asset Links (TWA) configuration for Connect Tutors Android App.
+ * Establishes cryptographic verification between the domain and the Android app
+ * to remove the browser address bar for a 100% full-screen native experience.
+ */
+export const defaultAndroidAppConfig = {
+  packageName: "com.connecttutorsbd.app",
+  sha256Fingerprints: [
+    "F9:6B:4A:18:4D:49:AE:51:91:7D:4C:4E:4D:26:3A:2B:36:4C:C5:3F:60:98:54:50:E3:11:8A:85:3E:03:E6:2D",
+  ],
+};
+
+export function buildAssetLinksJson(fingerprints: string[] = defaultAndroidAppConfig.sha256Fingerprints) {
+  return JSON.stringify(
+    [
+      {
+        relation: ["delegate_permission/common.handle_all_urls"],
+        target: {
+          namespace: "android_app",
+          package_name: defaultAndroidAppConfig.packageName,
+          sha256_cert_fingerprints: fingerprints,
+        },
+      },
+    ],
+    null,
+    2
+  );
+}
+
