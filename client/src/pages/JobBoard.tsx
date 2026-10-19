@@ -274,7 +274,10 @@ function JobBoardApplyConfirm({ mismatchNote, busy, onConfirm, onClose }: { mism
     </ModalBody>
     <ModalFooter>
       <button type="button" onClick={onClose} disabled={busy} className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft disabled:opacity-50">No</button>
-      <button type="button" onClick={onConfirm} disabled={busy} data-motion={busy ? "pending" : undefined} data-ripple="true" className="h-control rounded-xl bg-j-accent px-5 text-sm font-bold text-white hover:bg-j-accent-hover disabled:cursor-progress disabled:opacity-60">{busy ? "Applying…" : "Yes, apply"}</button>
+      <button type="button" onClick={onConfirm} disabled={busy} data-motion={busy ? "pending" : undefined} data-ripple="true" className="relative h-control rounded-xl bg-j-accent px-5 text-sm font-bold text-white hover:bg-j-accent-hover disabled:cursor-progress disabled:opacity-60">
+        {busy ? <span aria-hidden="true" className="sign-in-submit-glow pointer-events-none absolute -inset-px rounded-xl motion-reduce:hidden" /> : null}
+        {busy ? "Applying…" : "Yes, apply"}
+      </button>
     </ModalFooter>
   </Modal>;
 }
@@ -691,8 +694,11 @@ function JobCard({ job, onDetails, interest, isTutor, isApprovedTutor, isInteres
           disabled={isInterestSaving}
           data-ripple="true"
           onClick={event => { event.stopPropagation(); onInterestAction(); }}
-          className="inline-flex h-control items-center rounded-lg bg-[#1677e8] px-3.5 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50 max-md:h-control max-md:px-5"
-        >{isInterestSaving ? "Saving…" : interestCopy.actionLabel ?? applyCopy.label}</button>}
+          className="relative inline-flex h-control items-center rounded-lg bg-[#1677e8] px-3.5 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50 max-md:h-control max-md:px-5"
+        >
+          {isInterestSaving ? <span aria-hidden="true" className="sign-in-submit-glow pointer-events-none absolute -inset-px rounded-lg motion-reduce:hidden" /> : null}
+          {isInterestSaving ? "Saving…" : interestCopy.actionLabel ?? applyCopy.label}
+        </button>}
   />;
 }
 
@@ -789,8 +795,9 @@ function JobDetails({ job, onClose, interest, isTutor, isApprovedTutor, isIntere
             disabled={isInterestSaving}
             data-ripple="true"
             onClick={onInterestAction}
-            className="inline-flex h-control items-center justify-center rounded-lg bg-[#1677e8] px-4 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50 max-md:flex-1 md:order-4 md:flex-none"
+            className="relative inline-flex h-control items-center justify-center rounded-lg bg-[#1677e8] px-4 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50 max-md:flex-1 md:order-4 md:flex-none"
           >
+            {isInterestSaving ? <span aria-hidden="true" className="sign-in-submit-glow pointer-events-none absolute -inset-px rounded-lg motion-reduce:hidden" /> : null}
             {isInterestSaving ? "Saving…" : label}
           </button>
         </div>

@@ -325,18 +325,51 @@
   100% { transform: scale(1.7); opacity: 0; }
 }
 
-/* The same ripple for a chosen subject. A chip is wide, so instead of scaling
-   the shape the ring grows outward a few pixels from its edge and fades, on
-   the step mark's own rhythm. */
+/* The same ripple for a chosen subject: 3 gentle pulses then settles into
+   the chip's selected style, adhering strictly to the 3-pulse rule. */
 .journey-chip-halo {
-  animation: journey-chip-halo 2.4s cubic-bezier(.22, .61, .36, 1) infinite;
+  animation: journey-chip-halo 1.1s cubic-bezier(.22, .61, .36, 1) 3;
 }
 
 @keyframes journey-chip-halo {
-  0% { box-shadow: 0 0 0 0 rgba(22, 119, 232, .4); }
+  0% { box-shadow: 0 0 0 0 rgba(22, 119, 232, .45); }
   70% { box-shadow: 0 0 0 8px rgba(22, 119, 232, 0); }
   100% { box-shadow: 0 0 0 8px rgba(22, 119, 232, 0); }
 }
+
+/* Home hero primary CTA entrance halo: announces the button with 3 gentle pulses on arrival. */
+.hero-cta-halo {
+  animation: hero-cta-halo 1.2s cubic-bezier(.22, .61, .36, 1) 3;
+}
+
+@keyframes hero-cta-halo {
+  0% { box-shadow: 0 0 0 0 rgba(22, 119, 232, .45); }
+  70% { box-shadow: 0 0 0 12px rgba(22, 119, 232, 0); }
+  100% { box-shadow: 0 0 0 12px rgba(22, 119, 232, 0); }
+}
+
+/* Tuition format toggle button: 3 soft pulses on selection. */
+.tuition-toggle-halo {
+  animation: tuition-toggle-halo 1.1s cubic-bezier(.22, .61, .36, 1) 3;
+}
+
+@keyframes tuition-toggle-halo {
+  0% { box-shadow: 0 0 0 0 rgba(22, 119, 232, .4); }
+  70% { box-shadow: 0 0 0 10px rgba(22, 119, 232, 0); }
+  100% { box-shadow: 0 0 0 10px rgba(22, 119, 232, 0); }
+}
+
+/* Primary action buttons when valid and ready: 3 pulses to gently guide the user to the next step. */
+.button-ready-halo {
+  animation: button-ready-halo 1.2s cubic-bezier(.22, .61, .36, 1) 3;
+}
+
+@keyframes button-ready-halo {
+  0% { box-shadow: 0 0 0 0 rgba(22, 119, 232, .4); }
+  70% { box-shadow: 0 0 0 12px rgba(22, 119, 232, 0); }
+  100% { box-shadow: 0 0 0 12px rgba(22, 119, 232, 0); }
+}
+
 
 /*
  * The same idea, sized for the sign-in role cards: a wider ring since the

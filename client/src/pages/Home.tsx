@@ -77,7 +77,10 @@ function HomeContent() {
               <h1>{t("home.hero.title.lead", hero.title.lead)}<span>{t("home.hero.title.accent", hero.title.accent)}</span>{t("home.hero.title.tail", hero.title.tail)}</h1>
               <p className="hero-description">{t("home.hero.description", hero.description)}</p>
               <div className="hero-actions">
-                <Link href="/request-tutor" className="button-primary">{t("home.hero.primaryAction", hero.primaryAction)} <ArrowRight size={18} /></Link>
+                <Link href="/request-tutor" className="button-primary relative">
+                  <span aria-hidden="true" className="hero-cta-halo pointer-events-none absolute -inset-px rounded-xl motion-reduce:hidden" />
+                  {t("home.hero.primaryAction", hero.primaryAction)} <ArrowRight size={18} />
+                </Link>
                 <Link href="/become-tutor" className="button-secondary">{t("home.hero.secondaryAction", hero.secondaryAction)}</Link>
               </div>
               <div className="hero-assurance"><BadgeCheck size={18} />{t("home.hero.assurance", hero.assurance)}</div>
@@ -111,8 +114,14 @@ function HomeContent() {
               <p>{t("home.tuition.description", tuition.description)}</p>
             </div>
             <div className="tuition-toggle" role="tablist" aria-label="Tuition format" data-reveal>
-              <button type="button" role="tab" aria-selected={mode === "home"} className={mode === "home" ? "selected" : ""} onClick={() => setMode("home")}><School size={17} /> {t("home.tuition.homeToggle", tuition.homeToggle)}</button>
-              <button type="button" role="tab" aria-selected={mode === "online"} className={mode === "online" ? "selected" : ""} onClick={() => setMode("online")}><MonitorSmartphone size={17} /> {t("home.tuition.onlineToggle", tuition.onlineToggle)}</button>
+              <button type="button" role="tab" aria-selected={mode === "home"} className={`relative ${mode === "home" ? "selected" : ""}`} onClick={() => setMode("home")}>
+                {mode === "home" ? <span aria-hidden="true" className="tuition-toggle-halo pointer-events-none absolute -inset-px rounded-full motion-reduce:hidden" /> : null}
+                <School size={17} /> {t("home.tuition.homeToggle", tuition.homeToggle)}
+              </button>
+              <button type="button" role="tab" aria-selected={mode === "online"} className={`relative ${mode === "online" ? "selected" : ""}`} onClick={() => setMode("online")}>
+                {mode === "online" ? <span aria-hidden="true" className="tuition-toggle-halo pointer-events-none absolute -inset-px rounded-full motion-reduce:hidden" /> : null}
+                <MonitorSmartphone size={17} /> {t("home.tuition.onlineToggle", tuition.onlineToggle)}
+              </button>
             </div>
             <div className="tuition-cards" data-reveal-group>
               {tuition.cards.map(card => {

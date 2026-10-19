@@ -109,6 +109,16 @@ describe("LearningNeedsField", () => {
     expect(within(screen.getByRole("group", { name: "Bangla Medium" })).getByRole("combobox", { name: /^Grade/ })).toBeTruthy();
     expect(screen.getByText(/Topics — Class 5/)).toBeTruthy();
   });
+
+  it("renders a 3-pulse journey-chip-halo indicator on selected subject buttons", () => {
+    render(<LearningNeedsField value={[bangla]} onChange={vi.fn()} limits={limits} />);
+
+    const englishButton = within(screen.getByRole("group", { name: "Subjects for Class 5" })).getByRole("button", { name: "English" });
+    expect(englishButton.querySelector(".journey-chip-halo")).toBeTruthy();
+
+    const banglaButton = within(screen.getByRole("group", { name: "Subjects for Class 5" })).getByRole("button", { name: "Bangla" });
+    expect(banglaButton.querySelector(".journey-chip-halo")).toBeNull();
+  });
 });
 
 describe("describeLearningNeedsGap", () => {
