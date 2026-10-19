@@ -238,6 +238,11 @@ mv dist-next dist
 printf '%s\n' "$REMOTE" > dist/.commit
 
 if restart_and_check; then
+  # pnpm keeps a copy of every package it ever fetched (~45,000 files). The site runs from node_modules,
+  # not from that store, and the host's file-count limit is 150,000, so tidy it once the site is up.
+  # Best effort: a failure here must never turn a good update into a failed one.
+  say "Tidying the package store (frees the host's file allowance)"
+  pnpm store prune >/dev/null 2>&1 || echo "(Could not tidy the package store; the update itself is fine.)"
   printf '\nUpdate finished.\n'
   exit 0
 fi
