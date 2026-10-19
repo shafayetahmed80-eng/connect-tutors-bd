@@ -41,6 +41,8 @@ export type PosterTemplate = {
   id: string;
   name: string;
   theme: PosterTheme;
+  /** The big icon in the middle of the picture-free layout. */
+  heroIcon: PosterIconName;
   content: PosterContent;
 };
 
@@ -67,6 +69,7 @@ export const posterTemplates: readonly PosterTemplate[] = [
   {
     id: "female-tutor",
     name: "নারী টিউটর",
+    heroIcon: "cap",
     theme: {
       ground: "#ffffff",
       tint: "#fdeef4",
@@ -114,6 +117,8 @@ export type PosterFonts = { headline: string; body: string; english: string; hea
 /** Where the photo sits in its frame: `zoom` 1 just covers it; `x` and `y` run -1..1 across whatever is left over. */
 export type PosterPhoto = { source: CanvasImageSource & { width: number; height: number }; zoom: number; x: number; y: number };
 
+export type PosterLayout = "photo" | "plain";
+
 export type PosterRender = {
   width: number;
   height: number;
@@ -126,6 +131,8 @@ export type PosterRender = {
   whatsapp: string;
   qrUrl: string;
   photo?: PosterPhoto | null;
+  /** "photo" (default) fades the photo in on the right; "plain" draws an icon medallion there instead. */
+  layout?: PosterLayout;
 };
 
 /** The photo's frame on the picture, in pixels: right of the text column, from the top to just under the band's edge. */
@@ -208,6 +215,87 @@ function iconPaths(ctx: CanvasRenderingContext2D, paths: readonly string[], x: n
   ctx.lineJoin = "round";
   for (const d of paths) ctx.stroke(new Path2D(d));
   ctx.restore();
+}
+
+type MedallionTheme = PosterTheme;
+
+/** The picture-free hero: a soft halo, a dashed ring, an accent disc with a big icon, and three small icon bubbles riding the ring. */
+function drawMedallion(
+  ctx: CanvasRenderingContext2D,
+  o: { cx: number; cy: number; r: number; theme: MedallionTheme; hero: PosterIconName; satellites: PosterIconName[]; u: number },
+) {
+  const { cx, cy, r, theme, u } = o;
+  ctx.save();
+  ctx.fillStyle = theme.accent;
+  ctx.globalAlpha = 0.08;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 1.32, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 0.14;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 1.1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = theme.accent;
+  ctx.globalAlpha = 0.45;
+  ctx.lineWidth = 3 * u;
+  ctx.setLineDash([2 * u, 14 * u]);
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 1.22, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.22)";
+  ctx.shadowBlur = 28 * u;
+  ctx.shadowOffsetY = 10 * u;
+  const disc = ctx.createLinearGradient(cx - r * 0.7, cy - r * 0.8, cx + r * 0.7, cy + r * 0.8);
+  disc.addColorStop(0, theme.accent);
+  disc.addColorStop(1, theme.navy);
+  ctx.fillStyle = disc;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = "#ffffff";
+  ctx.globalAlpha = 0.55;
+  ctx.lineWidth = 3 * u;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.7, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  const heroSize = r * 0.78;
+  iconPaths(ctx, posterIcons[o.hero], cx - heroSize / 2, cy - heroSize / 2, heroSize, "#ffffff", 1.6);
+
+  const bubble = r * 0.27;
+  o.satellites.forEach((name, i) => {
+    const angle = ((-150 + i * 135) * Math.PI) / 180;
+    const x = cx + Math.cos(angle) * r * 1.22;
+    const y = cy + Math.sin(angle) * r * 1.22;
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.18)";
+    ctx.shadowBlur = 14 * u;
+    ctx.shadowOffsetY = 5 * u;
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(x, y, bubble, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    const size = bubble * 1.05;
+    iconPaths(ctx, posterIcons[name], x - size / 2, y - size / 2, size, theme.accent, 2.2);
+  });
+
+  ctx.fillStyle = theme.navy;
+  for (const [dx, dy, dr, alpha] of [[-1.5, 0.95, 7, 0.35], [1.45, -0.55, 9, 0.3], [1.3, 1.05, 6, 0.4], [-0.35, -1.5, 6, 0.3]] as const) {
+    ctx.globalAlpha = alpha;
+    ctx.beginPath();
+    ctx.arc(cx + dx * r, cy + dy * r, dr * u, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
 }
 
 const SEAL_R = 96;
@@ -314,7 +402,8 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRender) {
 
   // The photo, faded into the page on its left and top, or a quiet stand-in.
   const frame = posterPhotoFrame(W, H);
-  if (input.photo) {
+  const plain = input.layout === "plain";
+  if (input.photo && !plain) {
     const { sx, sy, sw, sh } = photoCrop(input.photo.source, frame, input.photo.zoom, input.photo.x, input.photo.y);
     ctx.drawImage(input.photo.source, sx, sy, sw, sh, frame.x, frame.y, frame.width, frame.height);
     // Eased stops, so the photo melts into the page instead of ending on a seam.
@@ -334,7 +423,17 @@ export function renderPoster(canvas: HTMLCanvasElement, input: PosterRender) {
   for (const [at, alpha] of easedFade()) glow.addColorStop(at, `${theme.tint}${alpha}`);
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, W, H);
-  if (!input.photo) {
+  if (plain) {
+    drawMedallion(ctx, {
+      cx: W * 0.775,
+      cy: (290 * u + bandTop - 40 * u) / 2,
+      r: Math.min(W * 0.16, (bandTop - 330 * u) * 0.46),
+      theme,
+      hero: input.template.heroIcon,
+      satellites: input.content.features.map(feature => feature.icon).slice(0, 3),
+      u,
+    });
+  } else if (!input.photo) {
     ctx.save();
     ctx.globalAlpha = 0.09;
     ctx.fillStyle = theme.accent;

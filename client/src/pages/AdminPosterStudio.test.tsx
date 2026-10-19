@@ -87,4 +87,19 @@ describe("the poster studio", () => {
     await waitFor(() => expect(mocks.saveBlob).toHaveBeenCalledWith(expect.any(Blob), "connect-tutors-poster-female-tutor-square-post-1080x1080.jpg"));
     expect(mocks.canvasToImageBlob).toHaveBeenCalledWith(expect.anything(), "jpg");
   });
+
+  it("switches to the picture-free layout, hides the photo controls and remembers the choice", async () => {
+    render(<PosterStudioContent />);
+    expect(screen.getByLabelText("Poster photo")).toBeTruthy();
+    expect(lastRender().layout).toBe("photo");
+
+    fireEvent.click(screen.getByRole("button", { name: "Without photo" }));
+    await waitFor(() => expect(lastRender().layout).toBe("plain"));
+    expect(screen.queryByLabelText("Poster photo")).toBeNull();
+    expect(JSON.parse(window.localStorage.getItem("connect-poster-studio-v1")!).layout).toBe("plain");
+
+    cleanup();
+    render(<PosterStudioContent />);
+    expect(screen.getByRole("button", { name: "Without photo" }).getAttribute("aria-pressed")).toBe("true");
+  });
 });
