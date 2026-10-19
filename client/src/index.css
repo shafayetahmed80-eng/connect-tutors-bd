@@ -571,8 +571,8 @@
 }
 /* Tactile spring press-down motion on active touch or click */
 .sb-root .sb-item:active {
-  transform: scale(0.94) translateY(2.5px);
-  box-shadow: inset 0 3px 6px rgb(0 0 0 / 0.22);
+  transform: scale(0.965) translateY(1.5px);
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / 0.16);
   transition-duration: 75ms;
 }
 .sb-root .sb-item:active::after {
@@ -588,8 +588,8 @@
   background: radial-gradient(circle at center, rgb(0 0 0 / 0.1) 0%, transparent 70%);
 }
 .sb-root .sb-item-active:active {
-  transform: scale(0.94) translateY(2.5px);
-  box-shadow: inset 0 3px 6px rgb(0 0 0 / 0.16);
+  transform: scale(0.965) translateY(1.5px);
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / 0.12);
   transition-duration: 75ms;
 }
 .sb-root .sb-item-current { color: var(--sb-text); }
