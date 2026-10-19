@@ -580,7 +580,10 @@
 .sb-root .sb-indicator {
   z-index: 0;
   border-radius: 0.5rem;
-  transition: transform 240ms cubic-bezier(0.23, 1, 0.32, 1), width 240ms cubic-bezier(0.23, 1, 0.32, 1), height 240ms cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: transform, width, height;
+  transition: transform 280ms cubic-bezier(0.34, 1.25, 0.64, 1),
+              width 260ms cubic-bezier(0.34, 1.25, 0.64, 1),
+              height 260ms cubic-bezier(0.34, 1.25, 0.64, 1);
 }
 .sb-root .sb-heading { color: var(--sb-soft); }
 .sb-root .sb-icon { color: var(--sb-icon); }
@@ -648,7 +651,7 @@
 }
 .sb-root .sb-item > svg:first-child { transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1); }
 .sb-root .sb-item:hover > svg:first-child { transform: translateX(1px); }
-.sb-root .sb-badge[data-pulse] { animation: sb-pulse 480ms cubic-bezier(0.23, 1, 0.32, 1); }
+.sb-root .sb-badge[data-pulse] { animation: sb-pulse 520ms cubic-bezier(0.34, 1.56, 0.64, 1); }
 @keyframes sb-rise {
   0% {
     opacity: 0;
@@ -659,7 +662,13 @@
     transform: translateY(0) scale(1);
   }
 }
-@keyframes sb-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.22); box-shadow: 0 0 0 4px rgb(254 243 199 / 0.45); } 100% { transform: scale(1); } }
+@keyframes sb-pulse {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.28) translateY(-1.5px); box-shadow: 0 0 0 4px rgb(254 243 199 / 0.55), 0 2px 6px rgb(146 64 14 / 0.22); }
+  60% { transform: scale(0.94) translateY(0.5px); }
+  80% { transform: scale(1.06) translateY(-0.5px); }
+  100% { transform: scale(1) translateY(0); box-shadow: 0 0 0 1px rgb(255 255 255 / 0.35); }
+}
 
 /* The header bell: the unread count in the sidebar's amber badge colours,
    ringed in the header's own colour so it reads as cut out of the bell, and
