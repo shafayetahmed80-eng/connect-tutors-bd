@@ -2,6 +2,7 @@ import { useSiteContact } from "@/lib/siteContent";
 import { formatSalaryAmount } from "@shared/salary-amount";
 import SiteFooter from "@/components/SiteFooter";
 import SiteHeader from "@/components/SiteHeader";
+import BackToTopButton from "@/components/BackToTopButton";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import SharedJobCard from "@/components/JobCard";
@@ -807,5 +808,12 @@ function JobDetails({ job, onClose, interest, isTutor, isApprovedTutor, isIntere
 }
 
 export default function JobBoard() {
-  return <div className="min-h-screen bg-[#f4f8fb] text-j-ink"><SiteHeader /><main><JobBoardContent /></main><SiteFooter /></div>;
+  return (
+    <div className="min-h-screen bg-[#f4f8fb] text-j-ink">
+      <SiteHeader />
+      <main><JobBoardContent /></main>
+      <SiteFooter />
+      <BackToTopButton />
+    </div>
+  );
 }

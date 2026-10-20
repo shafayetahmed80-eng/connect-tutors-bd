@@ -13,6 +13,7 @@ import { homeCopy } from "@shared/public-content";
 import { SiteContentProvider, useSiteContentResolver } from "@/lib/siteContent";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import BackToTopButton from "@/components/BackToTopButton";
 import { useScrollReveal } from "@/lib/scrollReveal";
 
 export const homeEditorialImages = {
@@ -260,6 +261,7 @@ function HomeContent() {
         </div></section>
       </main>
       <SiteFooter />
+      <BackToTopButton />
     </div>
   );
 }
