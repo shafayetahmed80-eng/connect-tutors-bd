@@ -687,7 +687,7 @@ function JobCard({ job, onDetails, interest, isTutor, isApprovedTutor, isInteres
     }}
     onOpen={onDetails}
     action={applied
-      ? <span className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#e7f5ee] px-3.5 text-xs font-bold text-[#0f7048]">
+      ? <span className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-[#e7f5ee] px-3.5 text-xs font-bold text-[#0f7048]">
           <Check size={13} aria-hidden={true} />{applied.label} <span className="font-semibold text-[#3f8468]">{applied.appliedOn}</span>
         </span>
       : <button
@@ -695,9 +695,9 @@ function JobCard({ job, onDetails, interest, isTutor, isApprovedTutor, isInteres
           disabled={isInterestSaving}
           data-ripple="true"
           onClick={event => { event.stopPropagation(); onInterestAction(); }}
-          className="relative inline-flex h-control items-center rounded-lg bg-[#1677e8] px-3.5 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50 max-md:h-control max-md:px-5"
+          className="relative inline-flex h-control items-center rounded-xl bg-[#1677e8] px-3.5 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50 max-md:h-control max-md:px-5"
         >
-          {isInterestSaving ? <span aria-hidden="true" className="sign-in-submit-glow pointer-events-none absolute -inset-px rounded-lg motion-reduce:hidden" /> : null}
+          {isInterestSaving ? <span aria-hidden="true" className="sign-in-submit-glow pointer-events-none absolute -inset-px rounded-xl motion-reduce:hidden" /> : null}
           {isInterestSaving ? "Saving…" : interestCopy.actionLabel ?? applyCopy.label}
         </button>}
   />;
@@ -787,7 +787,7 @@ function JobDetails({ job, onClose, interest, isTutor, isApprovedTutor, isIntere
           <button
             type="button"
             onClick={onClose}
-            className="h-control rounded-lg border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa] max-md:flex-1 max-md:justify-center md:order-3 md:flex-none"
+            className="h-control rounded-xl border border-[#dce9f1] bg-white px-3.5 text-xs font-bold text-[#173d60] hover:bg-[#f1f6fa] max-md:flex-1 max-md:justify-center md:order-3 md:flex-none"
           >
             Close
           </button>
@@ -796,9 +796,9 @@ function JobDetails({ job, onClose, interest, isTutor, isApprovedTutor, isIntere
             disabled={isInterestSaving}
             data-ripple="true"
             onClick={onInterestAction}
-            className="relative inline-flex h-control items-center justify-center rounded-lg bg-[#1677e8] px-4 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50 max-md:flex-1 md:order-4 md:flex-none"
+            className="relative inline-flex h-control items-center justify-center rounded-xl bg-[#1677e8] px-4 text-xs font-bold text-white hover:bg-[#1267c8] disabled:opacity-50 max-md:flex-1 md:order-4 md:flex-none"
           >
-            {isInterestSaving ? <span aria-hidden="true" className="sign-in-submit-glow pointer-events-none absolute -inset-px rounded-lg motion-reduce:hidden" /> : null}
+            {isInterestSaving ? <span aria-hidden="true" className="sign-in-submit-glow pointer-events-none absolute -inset-px rounded-xl motion-reduce:hidden" /> : null}
             {isInterestSaving ? "Saving…" : label}
           </button>
         </div>
