@@ -157,7 +157,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
   return <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
     <BackLink href="/admin/posted-jobs">Back to Posted jobs</BackLink>
 
-    <section className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-2xl border border-j-border bg-white p-4 shadow-sm lg:justify-start">
+    <section className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-xl border border-j-border bg-white p-4 shadow-sm lg:justify-start">
       <span className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl bg-[#eaf4fd] px-3.5 text-sm font-bold text-[#1267c8]">
         Applied: <span className="tabular-nums">{applied.data?.appliedTotal ?? 0}</span>
       </span>
@@ -191,7 +191,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
     </section>
 
     {/* Quick Timeframe Filter */}
-    <section className="flex flex-wrap items-center gap-2 rounded-2xl border border-j-border bg-white p-3 shadow-sm" aria-label="Filter applicants by time">
+    <section className="flex flex-wrap items-center gap-2 rounded-xl border border-j-border bg-white p-3 shadow-sm" aria-label="Filter applicants by time">
       <div className="flex items-center gap-1.5 px-2 text-xs font-semibold text-j-ink-muted">
         <Clock className="h-3.5 w-3.5 text-j-ink-soft" />
         <span>Applied Within:</span>
@@ -228,7 +228,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
       </div>
     </section>
 
-    {filtersOpen ? <section className="rounded-2xl border border-j-border bg-white p-4 shadow-sm">
+    {filtersOpen ? <section className="rounded-xl border border-j-border bg-white p-4 shadow-sm">
       <TutorDirectoryFilters filters={filters} onChange={updateFilter} onClear={() => setFilters(current => ({ ...defaultAppliedTutorFilters, appliedTimeframe: current.appliedTimeframe }))} />
     </section> : null}
 

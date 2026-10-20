@@ -91,7 +91,7 @@ function ModerationHistory({ tutorId }: { tutorId: string }) {
   const events = history.data ?? [];
   const [isOpen, setIsOpen] = useState(true);
 
-  return <section aria-labelledby="moderation-history-heading" className="relative rounded-2xl border border-j-border bg-white p-5 shadow-sm">
+  return <section aria-labelledby="moderation-history-heading" className="relative rounded-xl border border-j-border bg-white p-5 shadow-sm">
     <div className="absolute right-4 top-4 sm:right-5 sm:top-5 flex items-center gap-2">
       <span className="rounded-full bg-j-surface-sunken px-2 py-0.5 text-3xs font-bold text-j-ink-soft">{events.length}</span>
       <button
@@ -264,7 +264,7 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
       `sm` it is the wide strip: photo, then name over the details, then the
       action on the right.
     */}
-    <section className={`rounded-2xl border border-j-border bg-white p-4 shadow-sm sm:p-5 ${activeTab === "all" || activeTab === "overview" ? "block" : "hidden"}`}>
+    <section className={`rounded-xl border border-j-border bg-white p-4 shadow-sm sm:p-5 ${activeTab === "all" || activeTab === "overview" ? "block" : "hidden"}`}>
       <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start sm:gap-x-4 sm:gap-y-1.5">
         <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-full border border-dashed border-sky-200 bg-[#f4f9fd] text-j-ink-faint sm:row-span-2 sm:size-20">
           {profile.profilePhotoUrl
@@ -378,7 +378,7 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
 
     {/* Official Tutor CV & Biodata Banner */}
     <div className={activeTab === "all" || activeTab === "documents" ? "block" : "hidden"}>
-      <section className="rounded-2xl border border-sky-200 bg-gradient-to-r from-[#eff6ff] to-white p-4 shadow-sm sm:p-5">
+      <section className="rounded-xl border border-sky-200 bg-gradient-to-r from-[#eff6ff] to-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#0d5fae] text-white shadow-sm">
@@ -402,7 +402,7 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
 
     {/* Private documents - Admin-only signed URLs. */}
     <div className={activeTab === "all" || activeTab === "documents" ? "block" : "hidden"}>
-      <section className="relative rounded-2xl border border-j-border bg-white p-4 shadow-sm sm:p-5">
+      <section className="relative rounded-xl border border-j-border bg-white p-4 shadow-sm sm:p-5">
         <div className="absolute right-4 top-4 sm:right-5 sm:top-5">
           <button
             type="button"

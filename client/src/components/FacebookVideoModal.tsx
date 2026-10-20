@@ -321,7 +321,7 @@ export default function FacebookVideoModal({ onClose, jobs, caption }: {
       <ModalBody className="max-sm:pt-0">
         <div className="flex flex-col">
           <div className="order-1 max-sm:sticky max-sm:top-0 max-sm:z-10 max-sm:-mx-4 max-sm:bg-background max-sm:px-4 max-sm:py-3 sm:order-2 sm:mt-4">
-            <div className="flex justify-center rounded-2xl border border-j-border bg-j-border-light/40 p-3">
+            <div className="flex justify-center rounded-xl border border-j-border bg-j-border-light/40 p-3">
               <canvas
                 ref={canvasRef}
                 width={width}

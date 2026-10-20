@@ -107,7 +107,7 @@ export function AccountSettings({ items, basePath }: { items: AccountSettingsIte
         })}
       </nav>
 
-      <section aria-labelledby="account-setting-heading" className={`rounded-2xl border bg-white p-6 shadow-sm ${active.danger ? "border-red-200" : "border-j-border"}`}>
+      <section aria-labelledby="account-setting-heading" className={`rounded-xl border bg-white p-6 shadow-sm ${active.danger ? "border-red-200" : "border-j-border"}`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="account-setting-heading" className={`text-lg font-bold tracking-[-0.02em] ${active.danger ? "text-red-700" : "text-j-ink"}`}>{active.label}</h2>
           {active.status ? <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-2xs font-bold ${statusChip[active.status.tone]}`}>{active.status.label}</span> : null}
@@ -123,7 +123,7 @@ export function AccountSettings({ items, basePath }: { items: AccountSettingsIte
         const open = item.alwaysOpen || item.key === requested;
         const Icon = item.icon;
         const toggle = () => (item.key === requested ? setLocation(basePath) : choose(item.key));
-        return <li key={item.key} className="rounded-2xl bg-white p-4 shadow-[0_1px_3px_rgba(36,86,129,.08)] ring-1 ring-[#e6eef4]">
+        return <li key={item.key} className="rounded-xl bg-white p-4 shadow-[0_1px_3px_rgba(36,86,129,.08)] ring-1 ring-[#e6eef4]">
           <div className="flex items-center gap-3">
             <span className={`grid size-10 shrink-0 place-items-center rounded-full ${item.danger ? iconTones.red : iconTones[item.iconTone ?? "sky"]}`}>
               <Icon aria-hidden={true} className="size-[18px]" />

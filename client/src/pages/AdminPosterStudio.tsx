@@ -249,7 +249,7 @@ export function PosterStudioContent() {
   );
 
   return <div className="space-y-4">
-    <div className="grid place-items-center rounded-2xl border border-j-border bg-j-surface-sunken p-3 sm:p-5">
+    <div className="grid place-items-center rounded-xl border border-j-border bg-j-surface-sunken p-3 sm:p-5">
       <canvas
         ref={preview}
         data-testid="poster-preview"
@@ -262,7 +262,7 @@ export function PosterStudioContent() {
       />
     </div>
 
-    <div className="space-y-5 rounded-2xl border border-j-border bg-white p-4">
+    <div className="space-y-5 rounded-xl border border-j-border bg-white p-4">
       <fieldset>
         <legend className={legend}>Template</legend>
         <div className="flex flex-wrap gap-2">

@@ -5,7 +5,7 @@ import type { TutorRatingSummary } from "@shared/tutor-reviews";
 
 /** The strip a Guardian reads first: photo, name, the verified mark, headline, Tutor ID and the Guardians' star rating. */
 export function GuardianTutorProfileHeader({ profile }: { profile: { profilePhotoUrl?: string | null; name?: string | null; verified?: boolean; headline?: string | null; tutorNumber?: number | null; rating?: TutorRatingSummary | null } }) {
-  return <section className="rounded-2xl border border-j-border bg-white p-5 shadow-sm">
+  return <section className="rounded-xl border border-j-border bg-white p-5 shadow-sm">
     <div className="flex flex-wrap items-center gap-4">
       <span className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-full border border-dashed border-sky-200 bg-[#f4f9fd] text-j-ink-faint">
         {profile.profilePhotoUrl

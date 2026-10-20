@@ -293,7 +293,7 @@ export function TutorApplicationTimelineModal({
         {/* Contextual Guidance Callout */}
         <section
           aria-label="Stage Guidance"
-          className={cn("flex items-start gap-3 rounded-2xl border p-4 shadow-xs transition-all", stageConfig.guidanceBoxClass)}
+          className={cn("flex items-start gap-3 rounded-xl border p-4 shadow-xs transition-all", stageConfig.guidanceBoxClass)}
         >
           <div className="mt-0.5 shrink-0 rounded-xl bg-white/70 p-2 shadow-2xs backdrop-blur-xs">
             <GuidanceIcon className="size-5" />
@@ -312,7 +312,7 @@ export function TutorApplicationTimelineModal({
         {hasGuardianContact && (
           <section
             aria-label="Guardian Contact"
-            className="rounded-2xl border border-sky-200/80 bg-gradient-to-br from-sky-50/50 via-white to-blue-50/40 p-4 shadow-xs"
+            className="rounded-xl border border-sky-200/80 bg-gradient-to-br from-sky-50/50 via-white to-blue-50/40 p-4 shadow-xs"
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -337,7 +337,7 @@ export function TutorApplicationTimelineModal({
         )}
 
         {/* Interactive Vertical Timeline Stepper */}
-        <section aria-label="Progress Stepper" className="rounded-2xl border border-j-border bg-white p-4 sm:p-5 shadow-xs">
+        <section aria-label="Progress Stepper" className="rounded-xl border border-j-border bg-white p-4 sm:p-5 shadow-xs">
           <h4 className="text-xs font-bold uppercase tracking-wider text-j-ink-muted">
             Application Progress Tracker
           </h4>
@@ -424,7 +424,7 @@ export function TutorApplicationTimelineModal({
         {/* Tuition Overview Card */}
         <section
           aria-label="Tuition Overview"
-          className="rounded-2xl border border-j-border bg-slate-50/60 p-4"
+          className="rounded-xl border border-j-border bg-slate-50/60 p-4"
         >
           <h4 className="text-2xs font-bold uppercase tracking-wider text-j-ink-muted">
             Job Details Summary

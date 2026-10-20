@@ -104,7 +104,7 @@ export function AdminTutorRatings({ tutorId }: { tutorId: string }) {
     onSuccess: () => { void utils.tutorReviews.forTutor.invalidate({ tutorId }); },
     onError: error => toast.error(error.message),
   });
-  return <section aria-labelledby="tutor-ratings-title" className="rounded-2xl border border-j-border bg-white p-5 shadow-sm">
+  return <section aria-labelledby="tutor-ratings-title" className="rounded-xl border border-j-border bg-white p-5 shadow-sm">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h3 id="tutor-ratings-title" className="font-bold tracking-[-0.02em] text-j-ink">Ratings</h3>
       <TutorRatingLine summary={query.data?.summary} />

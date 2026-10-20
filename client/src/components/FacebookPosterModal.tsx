@@ -382,7 +382,7 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
         <div className="flex flex-col">
           {/* A phone shows the poster first and keeps it in view while the settings below scroll. */}
           <div className="order-1 max-sm:sticky max-sm:top-0 max-sm:z-10 max-sm:-mx-4 max-sm:bg-background max-sm:px-4 max-sm:py-3 sm:order-2 sm:mt-4">
-            <div className="flex justify-center rounded-2xl border border-j-border bg-j-border-light/40 p-3">
+            <div className="flex justify-center rounded-xl border border-j-border bg-j-border-light/40 p-3">
               <canvas
                 ref={canvasRef}
                 role="img"

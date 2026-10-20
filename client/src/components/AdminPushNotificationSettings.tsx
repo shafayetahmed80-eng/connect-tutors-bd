@@ -199,7 +199,7 @@ export function AdminPushNotificationSettings() {
   return (
     <div className="space-y-6">
       {/* Master Toggle Card */}
-      <div className="rounded-2xl border border-j-border bg-white p-5 shadow-sm transition">
+      <div className="rounded-xl border border-j-border bg-white p-5 shadow-sm transition">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3.5">
             <div className={`mt-0.5 grid size-11 shrink-0 place-items-center rounded-xl ${subscribed ? "bg-emerald-50 text-emerald-600" : "bg-j-border-light text-j-ink-faint"}`}>
@@ -261,7 +261,7 @@ export function AdminPushNotificationSettings() {
       </div>
 
       {/* Category-based Preferences */}
-      <div className="rounded-2xl border border-j-border bg-white p-5 shadow-sm">
+      <div className="rounded-xl border border-j-border bg-white p-5 shadow-sm">
         <div className="border-b border-j-border pb-3">
           <h4 className="font-bold text-j-ink">নোটিফিকেশন ক্যাটাগরি</h4>
           <p className="mt-0.5 text-xs text-j-ink-soft">

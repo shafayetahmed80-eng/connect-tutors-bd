@@ -231,7 +231,7 @@ export default function GuardianProfileWorkspace() {
   return (
     <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
       {/* Identity rail */}
-      <section aria-label="Profile summary" className="nav-section-card h-max rounded-2xl border border-j-border bg-white p-5 text-center shadow-sm">
+      <section aria-label="Profile summary" className="nav-section-card h-max rounded-xl border border-j-border bg-white p-5 text-center shadow-sm">
         <div className="relative mx-auto w-28">
           <span className="grid aspect-square w-full place-items-center overflow-hidden rounded-full border border-dashed border-sky-200 bg-[#f4f9fd] text-2xl font-black text-[#1677c8]">
             {hasPhoto ? <img src={photoUrl ?? undefined} alt="Guardian profile photo" className="h-full w-full object-cover" /> : initials(profile.name || "Guardian")}
@@ -288,7 +288,7 @@ export default function GuardianProfileWorkspace() {
           ))}
         </div>
 
-        <section className="nav-section-card rounded-2xl border border-j-border bg-white p-5 shadow-sm">
+        <section className="nav-section-card rounded-xl border border-j-border bg-white p-5 shadow-sm">
           <div className="mb-2 flex items-center justify-between gap-3">
             <h3 className="font-bold tracking-[-0.02em] text-j-ink">{activeTab === "personal" ? "Personal Information" : "Emergency Contact"}</h3>
             <Button type="button" variant="outline" onClick={() => setEditingTab(activeTab)} className="h-8 rounded-lg border-[#c9ddeb] px-3 text-xs font-bold text-[#42657d]">

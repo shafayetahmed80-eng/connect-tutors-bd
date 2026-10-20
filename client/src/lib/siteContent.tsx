@@ -146,7 +146,7 @@ export function SiteBlocks({ anchorId, className }: { anchorId: string; classNam
   if (blocks.length === 0) return null;
 
   return <div className={cn("space-y-2", className)}>
-    {blocks.map(block => <section key={block.id} className={cn("rounded-2xl border p-3 text-sm leading-6", blockToneClasses[block.tone] ?? blockToneClasses.info)}>
+    {blocks.map(block => <section key={block.id} className={cn("rounded-xl border p-3 text-sm leading-6", blockToneClasses[block.tone] ?? blockToneClasses.info)}>
       {block.heading ? <p className="font-bold">{block.heading}</p> : null}
       {block.body ? <p className={block.heading ? "mt-1 whitespace-pre-line" : "whitespace-pre-line"}>{block.body}</p> : null}
     </section>)}

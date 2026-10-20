@@ -166,11 +166,11 @@ export function LogoStudioContent() {
   );
 
   return <div className="space-y-4">
-    <div className={`grid min-h-64 place-items-center rounded-2xl border border-j-border p-4 sm:p-8 ${darkBackdrop ? "bg-[#0f2742]" : "bg-j-surface-sunken"}`}>
+    <div className={`grid min-h-64 place-items-center rounded-xl border border-j-border p-4 sm:p-8 ${darkBackdrop ? "bg-[#0f2742]" : "bg-j-surface-sunken"}`}>
       {preview ? <img src={preview.url} alt={`${logoFormLabels[choice.form]} logo, ${colourway.label}`} data-testid="logo-preview" width={preview.width} height={preview.height} className="h-auto max-h-[50vh] w-auto max-w-full" /> : <p className="text-sm text-j-ink-soft">Drawing the logo…</p>}
     </div>
 
-    <div className="space-y-4 rounded-2xl border border-j-border bg-white p-4">
+    <div className="space-y-4 rounded-xl border border-j-border bg-white p-4">
       <fieldset>
         <legend className="mb-2 text-xs font-bold uppercase tracking-wide text-j-ink-soft">Form</legend>
         <div className="flex flex-wrap gap-2">

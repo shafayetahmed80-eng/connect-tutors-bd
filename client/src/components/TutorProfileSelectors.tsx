@@ -193,7 +193,7 @@ export function SearchableSingleSelect({
             side="bottom"
             sideOffset={8}
             collisionPadding={12}
-            className="z-[60] w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-2xl border border-tp-border bg-white p-2 shadow-[0_16px_35px_rgba(25,78,115,0.18)] focus:outline-none"
+            className="z-[60] w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-xl border border-tp-border bg-white p-2 shadow-[0_16px_35px_rgba(25,78,115,0.18)] focus:outline-none"
           >
             {optionList}
           </Popover.Content>

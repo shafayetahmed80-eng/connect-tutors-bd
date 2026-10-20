@@ -213,7 +213,7 @@ export function FacebookGroupHelperModal({
       aria-labelledby="group-helper-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/70 backdrop-blur-xs animate-in fade-in duration-200"
     >
-      <div className="relative flex flex-col w-full max-w-3xl max-h-[90vh] rounded-3xl border border-j-border bg-white shadow-2xl overflow-hidden">
+      <div className="relative flex flex-col w-full max-w-3xl max-h-[90vh] rounded-xl border border-j-border bg-white shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-j-border bg-slate-50/80">
           <div className="flex items-center gap-2.5">
@@ -357,7 +357,7 @@ export function FacebookGroupHelperModal({
               return (
                 <div
                   key={group.id}
-                  className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl border border-j-border bg-white hover:border-[#1877f2]/50 hover:bg-slate-50/50 transition group"
+                  className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-xl border border-j-border bg-white hover:border-[#1877f2]/50 hover:bg-slate-50/50 transition group"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
