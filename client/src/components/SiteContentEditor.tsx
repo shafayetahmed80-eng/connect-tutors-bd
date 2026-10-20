@@ -63,7 +63,13 @@ function overriddenPx(typed: string, shippedPx: number): number | null {
 export default function SiteContentEditor({ page }: { page: SiteContentPageId }) {
   const utils = trpc.useUtils();
   const overrides = trpc.siteContent.list.useQuery({ page });
-  const textSlots = useMemo(() => getSiteContentSlots(page), [page]);
+  const textSlots = useMemo(() => {
+    const all = getSiteContentSlots(page);
+    if (page === "home") {
+      return all.filter(slot => slot.group !== "Typography" && slot.group !== "Display");
+    }
+    return all;
+  }, [page]);
   const spacingSlots = useMemo(() => getSiteContentSpacingSlots(page), [page]);
   const sizeSlots = useMemo(() => getSiteContentSizeSlots(page), [page]);
   const colourSlots = useMemo(() => getSiteContentColourSlots(page), [page]);

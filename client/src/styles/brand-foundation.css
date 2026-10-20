@@ -225,7 +225,12 @@
   box-shadow: 0 0 0 4px rgba(217, 150, 36, 0.14);
 }
 
-.hero-copy h1,
+.hero-copy h1 {
+  font-family: var(--hero-font-family, "DM Sans", "Noto Sans Bengali", sans-serif);
+  letter-spacing: var(--hero-letter-spacing, -0.052em);
+  font-size: var(--hero-desktop-size, clamp(42px, 5.2vw, 68px));
+}
+
 .section-heading h2,
 .stories-copy h2,
 .faq-intro h2 {
@@ -400,8 +405,46 @@
     padding-left: 25px;
   }
 
+  .hero-copy h1 {
+    font-size: var(--hero-mobile-size, 18px) !important;
+    letter-spacing: var(--hero-mobile-letter-spacing, normal) !important;
+    white-space: var(--hero-mobile-white-space, nowrap) !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 1.25 !important;
+  }
+
   .hero-description {
+    display: var(--hero-mobile-desc-display, none) !important;
     font-size: 14px;
+  }
+
+  .hero-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+    margin-top: 14px !important;
+    width: 100% !important;
+  }
+
+  .hero-actions .button-primary,
+  .hero-actions .button-secondary {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    min-height: 40px !important;
+    height: 40px !important;
+    padding: 0 10px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    justify-content: center !important;
+    border-radius: 12px !important;
+  }
+
+  .hero-actions .button-primary svg {
+    width: 14px !important;
+    height: 14px !important;
   }
 
   .stories-images::before {

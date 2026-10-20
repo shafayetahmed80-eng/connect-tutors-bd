@@ -163,4 +163,29 @@ describe("the sidebars' colours", () => {
     expect(normalizeSiteContentColour("blue")).toBeNull();
     expect(normalizeSiteContentColour("#12345")).toBeNull();
   });
+
+  it("declares home hero typography and mobile display slots", () => {
+    const homeSlots = getSiteContentSlots("home");
+    const typographySlots = homeSlots.filter(s => s.group === "Typography");
+    const displaySlots = homeSlots.filter(s => s.group === "Display");
+
+    expect(typographySlots.map(s => s.id)).toEqual([
+      "home.hero.fontFamily",
+      "home.hero.letterSpacing",
+      "home.hero.desktopSizePx",
+      "home.hero.mobileSizePx",
+    ]);
+
+    expect(displaySlots.map(s => s.id)).toEqual([
+      "home.hero.hideMobileDesc",
+      "home.hero.singleLineMobile",
+    ]);
+
+    expect(findSiteContentSlot("home.hero.fontFamily")?.defaultText).toBe("default");
+    expect(findSiteContentSlot("home.hero.letterSpacing")?.defaultText).toBe("-0.052em");
+    expect(findSiteContentSlot("home.hero.mobileSizePx")?.defaultText).toBe("18");
+    expect(findSiteContentSlot("home.hero.desktopSizePx")?.defaultText).toBe("56");
+    expect(findSiteContentSlot("home.hero.hideMobileDesc")?.defaultText).toBe("true");
+    expect(findSiteContentSlot("home.hero.singleLineMobile")?.defaultText).toBe("true");
+  });
 });

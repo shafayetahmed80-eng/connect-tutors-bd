@@ -383,6 +383,12 @@ const homeSlots: SiteContentSlot[] = (() => {
   add("Hero", "Intro", "hero.kicker", "Kicker", hero.kicker, "text-xs");
   addHeading("Hero", "hero.title", hero.title);
   add("Hero", "Intro", "hero.description", "Description", hero.description);
+  add("Hero", "Typography", "hero.fontFamily", "Font Family", "default", "text-sm");
+  add("Hero", "Typography", "hero.letterSpacing", "Letter Spacing", "-0.052em", "text-sm");
+  add("Hero", "Typography", "hero.desktopSizePx", "Desktop Font Size (px)", "56", "text-sm");
+  add("Hero", "Typography", "hero.mobileSizePx", "Mobile Font Size (px)", "18", "text-sm");
+  add("Hero", "Display", "hero.hideMobileDesc", "Hide description on mobile", "true", "text-sm");
+  add("Hero", "Display", "hero.singleLineMobile", "Single line headline on mobile", "true", "text-sm");
   add("Hero", "Buttons", "hero.primaryAction", "Primary button", hero.primaryAction);
   add("Hero", "Buttons", "hero.secondaryAction", "Secondary button", hero.secondaryAction);
   add("Hero", "Intro", "hero.assurance", "Assurance line", hero.assurance, "text-xs");
