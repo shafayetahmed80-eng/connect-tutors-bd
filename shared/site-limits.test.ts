@@ -68,6 +68,12 @@ describe("site limits", () => {
     expect(documentByteLimit(resolveSiteLimits([{ limitId: "upload.documentMb", value: 8 }]))).toBe(8 * 1024 * 1024);
   });
 
+  it("ships 12px unified default corners for tutor profile and guardian journey inputs", () => {
+    const limits = defaultSiteLimits();
+    expect(limits["inputRadius.profile"]).toBe(12);
+    expect(limits["inputRadius.journey"]).toBe(12);
+  });
+
   it("gives every limit a group, a unit and help text, since the editor shows all three", () => {
     for (const limit of siteLimits) {
       expect(limit.group, limit.id).toBeTruthy();
