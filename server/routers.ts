@@ -2620,7 +2620,7 @@ export const appRouter = router({
     listAppliedTutors: adminProcedure
       .input(adminTutorDirectoryInputSchema.extend({
         requestId: z.number().int().positive(),
-        appliedTimeframe: z.enum(["all", "1h", "7h", "10h", "24h", "3d", "7d"]).default("all"),
+        appliedTimeframe: z.enum(["all", "1h", "3h", "7h", "10h", "24h", "3d", "7d"]).default("all"),
       }))
       .query(async ({ input }) => {
         const page = await db.listAppliedTutorsForRequest(input);
@@ -2704,6 +2704,7 @@ export const appRouter = router({
         stages: z.array(z.enum(["pending", "live", "appointed", "confirmed", "closed", "cancelled"])).min(1).max(6).optional(),
         filters: adminJobFiltersSchema.optional(),
         facebookPosted: z.enum(["all", "posted", "not_posted"]).optional(),
+        appliedTimeframe: z.enum(["all", "1h", "3h", "7h", "10h", "24h", "3d", "7d"]).optional(),
       }))
       .query(({ input }) => db.listAdminPostedJobsPage(input)),
     /** What the tuition filter panel may offer, from the tuitions in the list it sits on. */

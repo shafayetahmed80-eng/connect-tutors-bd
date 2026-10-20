@@ -51,6 +51,10 @@ describe("admin.listPostedJobs", () => {
 
     await createCaller().admin.listPostedJobs({ stage: "live", facebookPosted: "posted" });
     expect(dbMocks.listAdminPostedJobsPage).toHaveBeenLastCalledWith({ query: "", stage: "live", page: 1, pageSize: 20, postedBy: "all", facebookPosted: "posted" });
+
+    // Filters by applied timeframe
+    await createCaller().admin.listPostedJobs({ stage: "live", appliedTimeframe: "3h" });
+    expect(dbMocks.listAdminPostedJobsPage).toHaveBeenLastCalledWith({ query: "", stage: "live", page: 1, pageSize: 20, postedBy: "all", appliedTimeframe: "3h" });
   });
 
   it("refuses an unknown stage, a silly page size, and a non-admin caller", async () => {

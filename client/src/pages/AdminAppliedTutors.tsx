@@ -27,10 +27,11 @@ import RecentSearches from "@/components/RecentSearches";
 import SearchInput from "@/components/SearchInput";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Link, useRoute } from "wouter";
+import { Link, useRoute, useSearch } from "wouter";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { JobIdTag } from "@/components/JobIdTag";
 
-export type AppliedTutorTimeframe = "all" | "1h" | "7h" | "10h" | "24h" | "3d" | "7d";
+export type AppliedTutorTimeframe = "all" | "1h" | "3h" | "7h" | "10h" | "24h" | "3d" | "7d";
 export type AppliedTutorFilters = TutorFilters & { appliedTimeframe: AppliedTutorTimeframe };
 export const defaultAppliedTutorFilters: AppliedTutorFilters = {
   ...defaultTutorFilters,
@@ -40,10 +41,11 @@ export const defaultAppliedTutorFilters: AppliedTutorFilters = {
 export const timeframeOptions: Array<{
   key: AppliedTutorTimeframe;
   label: string;
-  countKey: "all" | "h1" | "h7" | "h10" | "h24" | "d3" | "d7";
+  countKey: "all" | "h1" | "h3" | "h7" | "h10" | "h24" | "d3" | "d7";
 }> = [
   { key: "all", label: "All Applicants", countKey: "all" },
   { key: "1h", label: "Last 1h", countKey: "h1" },
+  { key: "3h", label: "Last 3h", countKey: "h3" },
   { key: "7h", label: "Last 7h", countKey: "h7" },
   { key: "10h", label: "Last 10h", countKey: "h10" },
   { key: "24h", label: "Last 24h", countKey: "h24" },
@@ -62,7 +64,15 @@ export const timeframeOptions: Array<{
  * head while they scroll.
  */
 export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) {
-  const [filters, setFilters] = useState<AppliedTutorFilters>(defaultAppliedTutorFilters);
+  const search = useSearch();
+  const searchTimeframe = new URLSearchParams(search).get("timeframe") as AppliedTutorTimeframe | null;
+  const initialTimeframe = searchTimeframe && timeframeOptions.some(opt => opt.key === searchTimeframe)
+    ? searchTimeframe
+    : "all";
+  const [filters, setFilters] = useState<AppliedTutorFilters>(() => ({
+    ...defaultAppliedTutorFilters,
+    appliedTimeframe: initialTimeframe,
+  }));
   const [filtersOpen, setFiltersOpen] = useState(false);
   const activeFilterCount = countActiveFilters(filters, defaultAppliedTutorFilters, { ignore: ["page", "pageSize", "appliedTimeframe"] });
   const applied = trpc.admin.listAppliedTutors.useQuery({ ...filters, requestId }, { retry: false });
@@ -306,6 +316,118 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
   </div>;
 }
 
+export function TuitionAppliedBadge({
+  job,
+  basePath = "/admin/applied-tutors",
+  isCard = false,
+}: {
+  job: {
+    id: number;
+    appliedTutorCount: number;
+    appliedTimeCounts?: {
+      all: number;
+      h1: number;
+      h3: number;
+      h7: number;
+      h10: number;
+      h24: number;
+      d3: number;
+      d7: number;
+    };
+  };
+  basePath?: string;
+  isCard?: boolean;
+}) {
+  const count = job.appliedTutorCount;
+  const timeCounts = job.appliedTimeCounts;
+
+  let recentPill: { label: string; count: number; urgent: boolean } | null = null;
+  if (timeCounts?.h1 && timeCounts.h1 > 0) {
+    recentPill = { label: "1h", count: timeCounts.h1, urgent: true };
+  } else if (timeCounts?.h3 && timeCounts.h3 > 0) {
+    recentPill = { label: "3h", count: timeCounts.h3, urgent: true };
+  } else if (timeCounts?.h7 && timeCounts.h7 > 0) {
+    recentPill = { label: "7h", count: timeCounts.h7, urgent: false };
+  } else if (timeCounts?.h24 && timeCounts.h24 > 0) {
+    recentPill = { label: "24h", count: timeCounts.h24, urgent: false };
+  }
+
+  if (count === 0) {
+    return (
+      <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-2xs font-bold tabular-nums text-slate-500">
+        0
+      </span>
+    );
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          onClick={e => e.stopPropagation()}
+          aria-label={`View applied timeframe breakdown for Job ID ${jobIdForRequest(job.id)}`}
+          className="group inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-[#eaf4fd] px-2.5 py-1 text-2xs font-bold text-[#1267c8] transition-all hover:bg-sky-100 hover:border-sky-300 focus:outline-none focus:ring-2 focus:ring-sky-400 cursor-pointer"
+        >
+          <span className="tabular-nums">{count}</span>
+          {recentPill ? (
+            <span
+              className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.2 text-3xs font-extrabold ${
+                recentPill.urgent
+                  ? "bg-emerald-600 text-white shadow-xs animate-pulse"
+                  : "bg-sky-600 text-white"
+              }`}
+              title={`${recentPill.count} applied in last ${recentPill.label}`}
+            >
+              <span>+{recentPill.count}</span>
+              <span className="opacity-90">{recentPill.label}</span>
+            </span>
+          ) : (
+            <Clock className="size-3 opacity-60 group-hover:opacity-100 transition-opacity" />
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align={isCard ? "start" : "center"}
+        side="bottom"
+        sideOffset={6}
+        className="w-56 p-2 rounded-xl shadow-lg border border-j-border bg-white text-xs z-50"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-j-border px-2 text-2xs font-bold uppercase tracking-wider text-j-ink-muted">
+          <span className="flex items-center gap-1">
+            <Clock className="size-3 text-j-ink-soft" /> Applied Within
+          </span>
+          <span className="tabular-nums text-j-ink font-semibold">Total: {count}</span>
+        </div>
+        <div className="space-y-0.5">
+          {timeframeOptions.map(({ key, label, countKey }) => {
+            const timeCount = timeCounts ? timeCounts[countKey] : (key === "all" ? count : 0);
+            return (
+              <Link
+                key={key}
+                href={`${basePath}/${job.id}?timeframe=${key}`}
+                className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-[#eaf4fd] hover:text-[#1267c8] transition-colors group text-j-ink font-medium"
+              >
+                <span className="group-hover:translate-x-0.5 transition-transform">{label}</span>
+                <span
+                  className={`px-1.5 py-0.5 rounded-full text-3xs font-bold tabular-nums ${
+                    timeCount > 0
+                      ? "bg-[#eaf4fd] text-[#1267c8] group-hover:bg-[#1267c8] group-hover:text-white"
+                      : "bg-j-surface-muted text-j-ink-muted"
+                  }`}
+                >
+                  {timeCount}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /** A tuition's stage, named by the same rule as the Posted jobs cards. */
 export function TuitionStatus({ job }: { job: Parameters<typeof getGuardianRequestLifecycle>[0] & { paymentStatus?: string | null } }) {
   const lifecycle = getAdminTuitionStage(job);
@@ -334,10 +456,18 @@ export const appliedTuitionStages = ["live", "appointed", "confirmed"] as const;
 export function AdminAppliedTuitionsContent({ basePath = "/admin/applied-tutors", linkLabel = "applicants" }: { basePath?: string; linkLabel?: string } = {}) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [appliedTimeframe, setAppliedTimeframe] = useState<AppliedTutorTimeframe>("all");
   const filterPanel = useAdminJobFilters({ onChange: () => setPage(1) });
   const chosenStages = appliedTuitionStages.filter(stage => filterPanel.applied.listStages.includes(stage));
   const stages = chosenStages.length ? chosenStages : [...appliedTuitionStages];
-  const jobs = trpc.admin.listPostedJobs.useQuery({ stages, query, page, pageSize: APPLIED_PAGE_SIZE, filters: filterPanel.input });
+  const jobs = trpc.admin.listPostedJobs.useQuery({
+    stages,
+    query,
+    page,
+    pageSize: APPLIED_PAGE_SIZE,
+    filters: filterPanel.input,
+    appliedTimeframe: appliedTimeframe === "all" ? undefined : appliedTimeframe,
+  });
   const items = jobs.data?.items ?? [];
 
   type PostedTuition = (typeof items)[number];
@@ -351,7 +481,12 @@ export function AdminAppliedTuitionsContent({ basePath = "/admin/applied-tutors"
     { key: "salary", label: "Salary", cell: job => <span className="text-j-ink-strong">{formatSalaryAmount(job.budgetAmount)}</span> },
     { key: "days", label: "Days / Week", cell: job => <span className="text-j-ink-strong">{formatDaysPerWeek(job.daysPerWeek)}</span> },
     { key: "guardian", label: "Guardian", cell: job => <span className="text-j-ink-strong">{job.guardianName}</span> },
-    { key: "applied", label: "Applied", cell: job => <span className="inline-flex rounded-full bg-[#eaf4fd] px-2.5 py-1 text-2xs font-bold tabular-nums text-[#1267c8]">{job.appliedTutorCount}</span> },
+    {
+      key: "applied",
+      label: "Applied",
+      cell: job => <TuitionAppliedBadge job={job} basePath={basePath} />,
+      cardCell: job => <TuitionAppliedBadge job={job} basePath={basePath} isCard />,
+    },
     {
       key: "applicants", label: "Applicants", place: "action", headingHidden: true, cellClassName: "text-right",
       cell: job => <Link href={`${basePath}/${job.id}`} aria-label={`Open the ${linkLabel} of Job ID ${jobIdForRequest(job.id)}`} className="inline-grid size-8 place-items-center rounded-lg border border-j-border text-j-accent hover:bg-sky-50">
@@ -384,6 +519,34 @@ export function AdminAppliedTuitionsContent({ basePath = "/admin/applied-tutors"
       matchingCaption="matching tuitions"
       panelLabel="Tuition filters"
     />
+
+    {/* Global Applied Within Filter */}
+    <section className="flex flex-wrap items-center gap-2 rounded-2xl border border-j-border bg-white p-3 shadow-sm" aria-label="Filter tuitions by applied timeframe">
+      <div className="flex items-center gap-1.5 px-2 text-xs font-semibold text-j-ink-muted">
+        <Clock className="h-3.5 w-3.5 text-j-ink-soft" />
+        <span>Applied Within:</span>
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {timeframeOptions.map(({ key, label }) => {
+          const active = appliedTimeframe === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => { setAppliedTimeframe(key); setPage(1); }}
+              aria-pressed={active}
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors ${
+                active
+                  ? "bg-[#1267c8] text-white shadow-xs"
+                  : "border border-j-border bg-white text-j-ink-soft hover:bg-j-surface-sunken hover:text-j-ink"
+              }`}
+            >
+              <span>{label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
 
     {jobs.isLoading ? <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading tuitions…</div> : null}
     {jobs.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">Tuitions could not be loaded.</div> : null}
