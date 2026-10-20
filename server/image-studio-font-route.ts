@@ -39,7 +39,7 @@ export function registerImageStudioFontRoute(app: Express, overrides: Partial<Ro
     try {
       const user = await dependencies.authenticateRequest(request);
       if (!user) return response.status(401).json({ error: "Please log in to add a font." });
-      if (user.role !== "admin" || user.accountStatus !== "active" || user.openId !== ENV.ownerOpenId) {
+      if (user.role !== "admin" || user.accountStatus !== "active" || !ENV.ownerOpenId || user.openId !== ENV.ownerOpenId) {
         return response.status(403).json({ error: "Only the Project Owner can add fonts." });
       }
       if (await dependencies.twoFactorBlocked(request, user)) return response.status(403).json({ error: "Confirm your two-factor code first." });

@@ -262,6 +262,7 @@ function rethrowTutorInterestError(error: unknown): never {
   if (!(error instanceof Error)) throw error;
   const errors: Record<string, TRPCError> = {
     TUTOR_INTEREST_ALREADY_INTERESTED: new TRPCError({ code: "CONFLICT", message: "You have already expressed interest in this tuition." }),
+    TUTOR_INTEREST_PREVIOUSLY_DECLINED: new TRPCError({ code: "CONFLICT", message: "You were previously declined for this tuition and cannot re-apply." }),
     TUTOR_INTEREST_JOB_UNAVAILABLE: new TRPCError({ code: "CONFLICT", message: "This tuition is no longer available for interest." }),
     TUTOR_INTEREST_NOT_FOUND: new TRPCError({ code: "NOT_FOUND", message: "Your Job Board interest was not found." }),
     TUTOR_INTEREST_INVALID_TRANSITION: new TRPCError({ code: "CONFLICT", message: "This interest cannot be moved to that status." }),
@@ -467,6 +468,9 @@ const REGISTRATION_RATE_LIMITED_MESSAGE = "Too many attempts from this connectio
 /** Keyed by Admin id, not IP: the threat this guards is a stolen session cookie trying every code, not one address spraying many accounts. */
 const twoFactorChallengeRateLimiter = createAuthRateLimiter({ windowMs: AUTH_WINDOW_MS, maxAttempts: 8, blockMs: AUTH_WINDOW_MS });
 const TWO_FACTOR_RATE_LIMITED_MESSAGE = "Too many attempts. Please wait a few minutes and try again.";
+const GUARDIAN_REQUEST_WINDOW_MS = 60 * 60_000;
+export const GUARDIAN_REQUEST_RATE_LIMITED_MESSAGE = "আপনি প্রতি ঘণ্টায় সর্বোচ্চ ৫টি টিউশন রিকোয়েস্ট তৈরি করতে পারবেন। কিছুক্ষণ পর আবার চেষ্টা করুন।";
+const guardianRequestRateLimiter = createAuthRateLimiter({ windowMs: GUARDIAN_REQUEST_WINDOW_MS, maxAttempts: 5, blockMs: GUARDIAN_REQUEST_WINDOW_MS });
 const ADMIN_TOTP_ISSUER = "Connect Tutors Admin";
 
 /** What an authenticator app shows beside the issuer: the Admin's own User ID where one is set. */
@@ -486,6 +490,7 @@ export function __resetAuthRateLimitsForTests() {
   ipRegistrationRateLimiter.clear();
   twoFactorChallengeRateLimiter.clear();
   adminWrongPasswordStreak.clear();
+  guardianRequestRateLimiter.clear();
 }
 
 function passwordLoginRateLimitKeys(ip: string, role: string, identifier: string) {
@@ -564,8 +569,12 @@ function auditAuth(event: Exclude<AuthAuditEvent, "login_unblocked">, fields: Au
     .catch(() => {});
 }
 
+export function isProjectOwner(user: { openId?: string | null } | null | undefined): boolean {
+  return Boolean(ENV.ownerOpenId && user?.openId && user.openId === ENV.ownerOpenId);
+}
+
 const ownerAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
-  if (ctx.user.openId !== ENV.ownerOpenId) {
+  if (!isProjectOwner(ctx.user)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Only the Project Owner can manage Admin security." });
   }
   return next({ ctx });
@@ -1865,12 +1874,12 @@ export const appRouter = router({
       requestedTo: z.coerce.date().optional(),
       /** Declined tab only. */
       declineReason: z.string().trim().min(1).max(120).optional(),
-    })).query(({ ctx, input }) => db.listAccountChangeRequestsForAdmin({ ...input, includeAdminRequests: ctx.user.openId === ENV.ownerOpenId })),
-    pendingCount: adminProcedure.query(({ ctx }) => db.countPendingAccountChangeRequests({ includeAdminRequests: ctx.user.openId === ENV.ownerOpenId })),
+    })).query(({ ctx, input }) => db.listAccountChangeRequestsForAdmin({ ...input, includeAdminRequests: isProjectOwner(ctx.user) })),
+    pendingCount: adminProcedure.query(({ ctx }) => db.countPendingAccountChangeRequests({ includeAdminRequests: isProjectOwner(ctx.user) })),
     /** One account's requests, for its profile page. An Admin's are the Project Owner's to read. */
     history: adminProcedure.input(z.object({ userId: z.number().int().positive() })).query(async ({ ctx, input }) => {
       const role = await db.getUserRoleById(input.userId);
-      if (role === "admin" && ctx.user.openId !== ENV.ownerOpenId) throw new TRPCError({ code: "FORBIDDEN", message: "Only the Project Owner reads another Admin's requests." });
+      if (role === "admin" && !isProjectOwner(ctx.user)) throw new TRPCError({ code: "FORBIDDEN", message: "Only the Project Owner reads another Admin's requests." });
       return db.listAccountChangeHistoryForUser(input.userId);
     }),
     decide: adminProcedure.input(z.object({
@@ -1878,7 +1887,7 @@ export const appRouter = router({
       decision: z.enum(["approve", "decline"]),
       declineReason: z.string().trim().max(ACCOUNT_CHANGE_REASON_MAX).nullish(),
     })).mutation(async ({ ctx, input }) => {
-      const result = await db.decideAccountChangeRequest({ ...input, adminUserId: ctx.user.id, isOwner: ctx.user.openId === ENV.ownerOpenId });
+      const result = await db.decideAccountChangeRequest({ ...input, adminUserId: ctx.user.id, isOwner: isProjectOwner(ctx.user) });
       if (result.outcome === "refused") {
         throw new TRPCError({ code: result.reason === "not_found" ? "NOT_FOUND" : result.reason === "owner_only" ? "FORBIDDEN" : "CONFLICT", message: accountChangeDecisionRefusalMessages[result.reason] });
       }
@@ -2106,7 +2115,7 @@ export const appRouter = router({
         // the same session from one that belongs to a different Admin.
         userId: ctx.user.id,
         passwordChangeRequired: await db.getAdminPasswordChangeRequired(ctx.user.id),
-        isOwner: ctx.user.openId === ENV.ownerOpenId,
+        isOwner: isProjectOwner(ctx.user),
         name: ctx.user.name ?? "Admin",
         loginId: await db.getAdminLoginId(ctx.user.id),
         twoFactor: {
@@ -2314,7 +2323,7 @@ export const appRouter = router({
     revokeAdmin: ownerAdminProcedure.input(z.object({ userId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const target = await db.getUserById(input.userId);
       if (!target || target.role !== "admin") throw new TRPCError({ code: "NOT_FOUND", message: "Admin account not found." });
-      if (target.id === ctx.user.id || target.openId === ENV.ownerOpenId) throw new TRPCError({ code: "FORBIDDEN", message: "The Project Owner Admin account cannot be revoked." });
+      if (target.id === ctx.user.id || isProjectOwner(target)) throw new TRPCError({ code: "FORBIDDEN", message: "The Project Owner Admin account cannot be revoked." });
       const result = await db.updateUserRole(target.id, "user");
       await db.logAdminAuditEvent({ userId: target.id, email: target.email ?? undefined, event: "invitation_revoked", metadata: { action: "admin-role-revoked", revokedByUserId: ctx.user.id } });
       return result;
@@ -3116,7 +3125,7 @@ export const appRouter = router({
   imageStudio: router({
     marks: adminProcedure.query(async ({ ctx }) => ({
       marks: await listImageStudioMarks(),
-      canEdit: ctx.user.openId === ENV.ownerOpenId,
+      canEdit: isProjectOwner(ctx.user),
     })),
     setMark: ownerAdminProcedure
       .input(z.object({
@@ -3327,6 +3336,12 @@ export const appRouter = router({
         return result;
       }),
     create: guardianProcedure.input(tutorRequestCreateInputSchema).mutation(async ({ ctx, input }) => {
+      const guardianLimitKey = `guardian:${ctx.user.id}`;
+      if (guardianRequestRateLimiter.check(guardianLimitKey).blocked) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: GUARDIAN_REQUEST_RATE_LIMITED_MESSAGE });
+      }
+      guardianRequestRateLimiter.record(guardianLimitKey);
+
       const limits = await db.getSiteLimits();
       assertLearningNeedsWithinLimits(limits, input.learningNeeds);
       const needs = learningNeedsForWrite(input.learningNeeds);

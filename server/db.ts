@@ -576,7 +576,7 @@ export async function usePasswordResetLink(input: { tokenHash: string; passwordH
       .for("update"))[0];
     const state = passwordResetLinkState(row, now);
     if (state.status !== "valid") return state;
-    await tx.update(users).set({ passwordHash: input.passwordHash }).where(eq(users.id, state.userId));
+    await tx.update(users).set({ passwordHash: input.passwordHash, sessionsValidFrom: wholeSecondNow() }).where(eq(users.id, state.userId));
     await tx.update(passwordResetLinks).set({ usedAt: now }).where(eq(passwordResetLinks.id, state.linkId));
     await tx
       .update(tutorPortalSessions)
@@ -689,7 +689,7 @@ export async function setPasswordAfterPhoneReset(input: { userId: number; passwo
   if (!database) throw new Error("Database is not available");
   const now = input.now ?? new Date();
   await database.transaction(async tx => {
-    await tx.update(users).set({ passwordHash: input.passwordHash }).where(eq(users.id, input.userId));
+    await tx.update(users).set({ passwordHash: input.passwordHash, sessionsValidFrom: wholeSecondNow() }).where(eq(users.id, input.userId));
     await tx.update(tutorPortalSessions).set({ revokedAt: now }).where(and(eq(tutorPortalSessions.userId, input.userId), isNull(tutorPortalSessions.revokedAt)));
     await tx.update(passwordResetLinks).set({ revokedAt: now }).where(and(eq(passwordResetLinks.userId, input.userId), isNull(passwordResetLinks.usedAt), isNull(passwordResetLinks.revokedAt)));
   });
@@ -810,7 +810,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   if (user.role !== undefined) {
     values.role = user.role;
     updateSet.role = user.role;
-  } else if (user.openId === ENV.ownerOpenId) {
+  } else if (Boolean(ENV.ownerOpenId && user.openId === ENV.ownerOpenId)) {
     values.role = "admin";
     updateSet.role = "admin";
   }
@@ -4914,7 +4914,7 @@ export async function getAdminProfileByUserId(userId: number) {
   return {
     ...profile,
     lastSignIn,
-    isOwner: openId === ENV.ownerOpenId,
+    isOwner: Boolean(ENV.ownerOpenId && openId === ENV.ownerOpenId),
     photoUploaded: Boolean(photoKey),
     nidFrontUploaded: Boolean(nidFrontKey),
     nidBackUploaded: Boolean(nidBackKey),
@@ -5046,7 +5046,7 @@ export async function getAccountChangeContextByUserId(userId: number): Promise<A
   }
   const [adminProfile] = await database.select({ phone: adminProfiles.phone }).from(adminProfiles).where(eq(adminProfiles.userId, userId)).limit(1);
   return {
-    role, isOwner: account.openId === ENV.ownerOpenId, currentName: account.name, currentMobile: adminProfile?.phone ?? null,
+    role, isOwner: Boolean(ENV.ownerOpenId && account.openId === ENV.ownerOpenId), currentName: account.name, currentMobile: adminProfile?.phone ?? null,
     waitingTypes: waiting.map(row => row.type), liveTuition: false,
   };
 }

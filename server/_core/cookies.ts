@@ -51,10 +51,10 @@ export function getSessionCookieOptions(
   //       ? hostname
   //       : undefined;
 
-  // `SameSite=None` requires `Secure`, which browsers refuse over plain http
-  // (local development). Fall back to `Lax` there — it is same-origin on
-  // localhost so the session cookie still rides along. HTTPS requests keep
-  // `None; Secure` for the cross-site preview/iframe scenario.
+  // `SameSite=Lax` protects session cookies against Cross-Site Request Forgery (CSRF).
+  // Over plain HTTP (local development), secure is false.
+  // Both environments keep sameSite='lax' for safe cross-origin protection.
+
   if (!isSecureRequest(req)) {
     return { httpOnly: true, maxAge: SESSION_COOKIE_MAX_AGE_MS, path: "/", sameSite: "lax", secure: false };
   }
@@ -63,7 +63,7 @@ export function getSessionCookieOptions(
     httpOnly: true,
     maxAge: SESSION_COOKIE_MAX_AGE_MS,
     path: "/",
-    sameSite: "none",
+    sameSite: "lax",
     secure: true,
   };
 }

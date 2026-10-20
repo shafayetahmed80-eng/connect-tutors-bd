@@ -27,6 +27,10 @@ describe("Tutor Job Board interest contract", () => {
     ).toEqual({ allowed: false, reason: "already_interested" });
   });
 
+  it("denies re-applying when previously declined by an admin", () => {
+    expect(canSubmitTutorInterest({ tutorId: "T1503", jobStatus: "published", existingStatus: "declined" })).toEqual({ allowed: false, reason: "previously_declined" });
+  });
+
   it("does not accept interest for a job that is off the board", () => {
     for (const jobStatus of ["unpublished", "closed"] as const) {
       expect(

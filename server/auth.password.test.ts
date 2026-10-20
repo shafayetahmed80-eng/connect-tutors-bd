@@ -138,7 +138,7 @@ describe("Tutor password authentication", () => {
     expect(result.user).not.toHaveProperty("passwordHash");
     expect(result.tutorPortalToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(cookies[0]).toMatchObject({ name: COOKIE_NAME, value: "signed-password-session" });
-    expect(cookies[0]?.options).toMatchObject({ httpOnly: true, secure: true, sameSite: "none", path: "/" });
+    expect(cookies[0]?.options).toMatchObject({ httpOnly: true, secure: true, sameSite: "lax", path: "/" });
     // The cookie carries a year-long token; without maxAge the browser would
     // still drop it on exit and every panel would ask for a password again.
     expect(cookies[0]?.options).toMatchObject({ maxAge: ONE_YEAR_MS });
@@ -451,7 +451,7 @@ describe("Admin User ID and password authentication", () => {
     expect(result.user).not.toHaveProperty("passwordHash");
     expect(result.user).not.toHaveProperty("openId");
     expect(cookies[0]).toMatchObject({ name: COOKIE_NAME, value: "signed-admin-session" });
-    expect(cookies[0]?.options).toMatchObject({ httpOnly: true, secure: true, sameSite: "none", path: "/" });
+    expect(cookies[0]?.options).toMatchObject({ httpOnly: true, secure: true, sameSite: "lax", path: "/" });
     expect(logAdminAuditEvent).toHaveBeenCalledWith(expect.objectContaining({
       userId: adminUser.id,
       event: "login_success",

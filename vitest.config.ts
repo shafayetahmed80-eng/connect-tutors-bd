@@ -40,6 +40,7 @@ export default defineConfig({
       // happened when this one moved from UTC+6 to UTC-6.
       TZ: "Asia/Dhaka",
       JWT_SECRET: process.env.JWT_SECRET ?? "vitest-deterministic-secret",
+      OWNER_OPEN_ID: process.env.OWNER_OPEN_ID ?? "vitest-owner-open-id",
       VITE_APP_ID: process.env.VITE_APP_ID ?? "vitest",
       // Database-backed tests read process.env.DATABASE_URL directly. Fall back
       // to the value in .env so `npm test` works without a shell-exported one.

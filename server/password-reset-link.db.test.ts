@@ -33,9 +33,11 @@ describe("password reset links, against the real database", () => {
 
     await expect(usePasswordResetLink({ tokenHash: hash, passwordHash: await hashPassword("new-password-456") })).resolves.toMatchObject({ status: "valid" });
     const database = (await getDb())!;
-    const stored = (await database.select({ passwordHash: users.passwordHash }).from(users).where(eq(users.id, userId)))[0]!.passwordHash!;
-    expect(await verifyPassword("new-password-456", stored)).toBe(true);
-    expect(await verifyPassword("old-password-123", stored)).toBe(false);
+    const userRow = (await database.select({ passwordHash: users.passwordHash, sessionsValidFrom: users.sessionsValidFrom }).from(users).where(eq(users.id, userId)))[0]!;
+    expect(await verifyPassword("new-password-456", userRow.passwordHash!)).toBe(true);
+    expect(await verifyPassword("old-password-123", userRow.passwordHash!)).toBe(false);
+    expect(userRow.sessionsValidFrom).toBeInstanceOf(Date);
+
 
     await expect(usePasswordResetLink({ tokenHash: hash, passwordHash: await hashPassword("third-password-789") })).resolves.toEqual({ status: "used" });
     await expect(getPasswordResetLink(hash)).resolves.toEqual({ status: "used" });
@@ -57,8 +59,8 @@ describe("password reset links, against the real database", () => {
 
     await expect(usePasswordResetLink({ tokenHash: hash, passwordHash: await hashPassword("new-password-456") })).resolves.toEqual({ status: "expired" });
     const database = (await getDb())!;
-    const stored = (await database.select({ passwordHash: users.passwordHash }).from(users).where(eq(users.id, userId)))[0]!.passwordHash!;
-    expect(await verifyPassword("old-password-123", stored)).toBe(true);
+    const userRow = (await database.select({ passwordHash: users.passwordHash, sessionsValidFrom: users.sessionsValidFrom }).from(users).where(eq(users.id, userId)))[0]!;
+    expect(await verifyPassword("old-password-123", userRow.passwordHash!)).toBe(true);
   });
 
   it("will not issue a link for a suspended account", async () => {

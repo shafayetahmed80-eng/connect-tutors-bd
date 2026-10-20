@@ -141,6 +141,18 @@ describe("Admin role and Owner authorization", () => {
     expect(securityDbMocks.getOwnerAdminActivityReport).not.toHaveBeenCalled();
   });
 
+  it("rejects Owner-only actions if ENV.ownerOpenId is missing or matches empty openId", async () => {
+    const original = ENV.ownerOpenId;
+    try {
+      (ENV as any).ownerOpenId = "";
+      const { caller } = createCaller({ ...adminUser, id: 99, openId: "" });
+      const adminCaller = caller.admin as unknown as { getActivityReport: (input: { windowDays: 7 | 30 | 90 }) => Promise<unknown> };
+      await expect(adminCaller.getActivityReport({ windowDays: 7 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    } finally {
+      (ENV as any).ownerOpenId = original;
+    }
+  });
+
   it("returns the platform charge figures only to the Owner, over the window asked for", async () => {
     securityDbMocks.getOwnerMoneySummary.mockResolvedValue({ windowDays: 90, collected: { amount: 1200, payments: 2 } });
     const owner = createCaller().caller.admin as unknown as { getMoneySummary: (input?: { windowDays: 7 | 30 | 90 }) => Promise<unknown> };
