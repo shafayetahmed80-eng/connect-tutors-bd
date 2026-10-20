@@ -2,7 +2,7 @@
  * Connect Tutors visual direction: Neighbourhood Learning Blue — a bright, human, guided path
  * from a confident hero promise to understandable matching steps, using Connected Sky as the main signal.
  */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import {
   ArrowRight, BadgeCheck, BookOpen, BriefcaseBusiness, CalendarDays, Check,
@@ -15,6 +15,7 @@ import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import BackToTopButton from "@/components/BackToTopButton";
 import { useScrollReveal } from "@/lib/scrollReveal";
+import { loadStudioFont, studioFontFamily } from "@/lib/image-studio-fonts";
 
 export const homeEditorialImages = {
   hero: "/images/hero.webp",
@@ -61,6 +62,31 @@ function HomeContent() {
   const [faqFilter, setFaqFilter] = useState<"all" | "guardian" | "tutor">("all");
   const t = useSiteContentResolver();
   const { hero, proof, tuition, belief, journey, stories, faq, finalCta } = homeCopy;
+
+  const heroFontFamily = t("home.hero.fontFamily", "default");
+  const heroLetterSpacing = t("home.hero.letterSpacing", "-0.052em");
+  const heroDesktopSizePx = t("home.hero.desktopSizePx", "56");
+  const heroMobileSizePx = t("home.hero.mobileSizePx", "18");
+  const heroHideMobileDesc = t("home.hero.hideMobileDesc", "true") === "true";
+  const heroSingleLineMobile = t("home.hero.singleLineMobile", "true") === "true";
+
+  useEffect(() => {
+    if (heroFontFamily && heroFontFamily !== "default") {
+      void loadStudioFont(heroFontFamily);
+    }
+  }, [heroFontFamily]);
+
+  const heroStyle = {
+    "--hero-font-family": heroFontFamily && heroFontFamily !== "default"
+      ? `"${studioFontFamily(heroFontFamily)}", "DM Sans", "Noto Sans Bengali", sans-serif`
+      : undefined,
+    "--hero-letter-spacing": heroLetterSpacing || undefined,
+    "--hero-desktop-size": heroDesktopSizePx ? `${heroDesktopSizePx}px` : undefined,
+    "--hero-mobile-size": heroMobileSizePx ? `${heroMobileSizePx}px` : undefined,
+    "--hero-mobile-white-space": heroSingleLineMobile ? "nowrap" : "normal",
+    "--hero-mobile-desc-display": heroHideMobileDesc ? "none" : "block",
+  } as React.CSSProperties;
+
   // Everything below the hero settles in as it is scrolled to; the hero has its own entrance.
   const mainRef = useRef<HTMLElement>(null);
   useScrollReveal(mainRef);
@@ -71,7 +97,7 @@ function HomeContent() {
       <main ref={mainRef}>
         <section className="hero-section">
           <div className="shell hero-shell">
-            <div className="hero-copy">
+            <div className="hero-copy" style={heroStyle}>
               <p className="hero-kicker"><span className="pulse-dot" /> {t("home.hero.kicker", hero.kicker)}</p>
               {/* Split so the middle stays the accent colour while all three
                   parts remain plain, editable text. */}
