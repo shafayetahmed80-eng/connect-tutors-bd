@@ -40,8 +40,9 @@ describe("SMS-code password reset, against the real database", () => {
 
     await setPasswordAfterPhoneReset({ userId, passwordHash: await hashPassword("new-password-456") });
 
-    const stored = (await (await getDb())!.select({ passwordHash: users.passwordHash }).from(users).where(eq(users.id, userId)))[0]!.passwordHash!;
-    expect(await verifyPassword("new-password-456", stored)).toBe(true);
+    const userRow = (await (await getDb())!.select({ passwordHash: users.passwordHash, sessionsValidFrom: users.sessionsValidFrom }).from(users).where(eq(users.id, userId)))[0]!;
+    expect(await verifyPassword("new-password-456", userRow.passwordHash!)).toBe(true);
+    expect(userRow.sessionsValidFrom).toBeInstanceOf(Date);
     await expect(getPasswordResetLink(linkHash)).resolves.toEqual({ status: "invalid" });
   });
 });

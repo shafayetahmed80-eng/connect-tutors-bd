@@ -19,10 +19,13 @@ type SubmitTutorInterestInput = {
 
 export function canSubmitTutorInterest(input: SubmitTutorInterestInput):
   | { allowed: true }
-  | { allowed: false; reason: "already_interested" | "job_unavailable" | "tutor_required" } {
+  | { allowed: false; reason: "already_interested" | "job_unavailable" | "tutor_required" | "previously_declined" } {
   if (!input.tutorId) return { allowed: false, reason: "tutor_required" };
   if (input.jobStatus !== "published") {
     return { allowed: false, reason: "job_unavailable" };
+  }
+  if (input.existingStatus === "declined") {
+    return { allowed: false, reason: "previously_declined" };
   }
   if (["interested", "shortlisted", "matched"].includes(input.existingStatus ?? "")) {
     return { allowed: false, reason: "already_interested" };

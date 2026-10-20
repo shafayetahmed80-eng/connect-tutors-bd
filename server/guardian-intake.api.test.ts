@@ -141,7 +141,7 @@ describe("guardianIntake.verifyPhone", () => {
       options: {
         httpOnly: true,
         secure: true,
-        sameSite: "none",
+        sameSite: "lax",
         path: "/",
       },
     });

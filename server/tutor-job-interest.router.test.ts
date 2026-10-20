@@ -64,6 +64,14 @@ describe("Tutor Job Board interest procedures", () => {
     expect(interestDbMocks.submitTutorJobInterest).toHaveBeenCalledWith({ tutorId: "tutor-1503", tutorJobId: 44 });
   });
 
+  it("rejects re-applying if the tutor was previously declined", async () => {
+    interestDbMocks.submitTutorJobInterest.mockRejectedValue(new Error("TUTOR_INTEREST_PREVIOUSLY_DECLINED"));
+    await expect((createCaller().jobBoard as any).expressInterest({ tutorJobId: 44 })).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "You were previously declined for this tuition and cannot re-apply.",
+    });
+  });
+
   it.each(["draft", "pending", "changes_requested"])('does not let an active Tutor with a %s profile apply before Admin verification', async profileStatus => {
     interestDbMocks.getTutorProfileByUserId.mockResolvedValue({ tutorId: "tutor-1503", profileStatus });
 

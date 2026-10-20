@@ -12,7 +12,7 @@ vi.mock("./db", async importOriginal => {
   return { ...actual, ...dbMocks };
 });
 
-import { appRouter } from "./routers";
+import { appRouter, __resetAuthRateLimitsForTests } from "./routers";
 
 const baseContext = {
   req: {} as any,
@@ -33,7 +33,10 @@ const validPayload = {
 
 const guardian = () => appRouter.createCaller({ ...baseContext, user: { id: 23, openId: "guardian-test", role: "guardian" } as any });
 
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  vi.clearAllMocks();
+  __resetAuthRateLimitsForTests();
+});
 
 describe("tutor request procedure authorization", () => {
   it("rejects unauthenticated callers", async () => {
@@ -175,6 +178,18 @@ describe("tutorRequests.create with a Tutoring Time", () => {
     await guardian().tutorRequests.create({ ...online, tuitionType: "online", tutoringTime: "19:00" });
 
     expect(dbMocks.createTutorRequest.mock.calls[0][0]).toMatchObject({ tuitionType: "online", tutoringTime: "19:00" });
+  });
+
+  it("rate limits rapid tuition request creation to 5 per hour per guardian", async () => {
+    arrange();
+    dbMocks.createTutorRequest.mockResolvedValue({ id: 101 });
+    for (let i = 0; i < 5; i++) {
+      await expect(guardian().tutorRequests.create(validPayload)).resolves.toMatchObject({ success: true });
+    }
+    await expect(guardian().tutorRequests.create(validPayload)).rejects.toMatchObject({
+      code: "TOO_MANY_REQUESTS",
+      message: "আপনি প্রতি ঘণ্টায় সর্বোচ্চ ৫টি টিউশন রিকোয়েস্ট তৈরি করতে পারবেন। কিছুক্ষণ পর আবার চেষ্টা করুন।",
+    });
   });
 
   it("refuses a time that is not HH:mm without writing anything", async () => {
