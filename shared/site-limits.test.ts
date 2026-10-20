@@ -72,6 +72,12 @@ describe("site limits", () => {
     const limits = defaultSiteLimits();
     expect(limits["inputRadius.profile"]).toBe(12);
     expect(limits["inputRadius.journey"]).toBe(12);
+    expect(limits["nav.itemRadius"]).toBe(12);
+    expect(limits["nav.sectionRadius"]).toBe(12);
+    expect(limits["nav.itemRadius"]).toBe(12);
+    expect(limits["nav.sectionRadius"]).toBe(12);
+    expect(limits["nav.itemRadius"]).toBe(12);
+    expect(limits["nav.sectionRadius"]).toBe(12);
   });
 
   it("gives every limit a group, a unit and help text, since the editor shows all three", () => {

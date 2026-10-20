@@ -89,7 +89,7 @@ export default function EmptyState({
         {/* Floating icon orb */}
         <div
           data-testid="empty-state-icon-container"
-          className={`empty-float relative grid place-items-center rounded-2xl border border-[#cfe8f7]/80 bg-white shadow-[0_8px_20px_rgba(22,125,221,.10)] ${
+          className={`empty-float relative grid place-items-center rounded-xl border border-[#cfe8f7]/80 bg-white shadow-[0_8px_20px_rgba(22,125,221,.10)] ${
             compact ? "size-11" : "size-14"
           }`}
         >

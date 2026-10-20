@@ -896,7 +896,7 @@ function WorkspaceHeader({
               {identity.notificationsIndicator}
             </button>
           </PopoverTrigger>
-          <PopoverContent align="end" className={identity.customNotificationsContent ? "w-80 rounded-2xl p-4 shadow-xl border border-j-border bg-white" : "w-64 rounded-xl p-3"}>
+          <PopoverContent align="end" className={identity.customNotificationsContent ? "w-80 rounded-xl p-4 shadow-xl border border-j-border bg-white" : "w-64 rounded-xl p-3"}>
             {identity.customNotificationsContent ? (
               identity.customNotificationsContent
             ) : (

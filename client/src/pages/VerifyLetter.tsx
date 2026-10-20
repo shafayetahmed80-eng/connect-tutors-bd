@@ -62,18 +62,18 @@ function VerifyResult({ letterNumber, code }: { letterNumber: string; code: stri
     return <div role="status" className="mt-8 flex items-center justify-center text-sm font-semibold text-j-ink-soft"><LoadingCradle className="mr-2" /> Checking the letter…</div>;
   }
   if (verifyQuery.error || !result) {
-    return <p role="alert" className="mt-8 rounded-2xl border border-j-border bg-white p-5 text-left text-sm font-semibold text-j-ink-soft">
+    return <p role="alert" className="mt-8 rounded-xl border border-j-border bg-white p-5 text-left text-sm font-semibold text-j-ink-soft">
       Letters cannot be checked right now. Try again in a minute.
     </p>;
   }
   if (result.status === "unknown") {
-    return <div role="alert" className="mt-8 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-left sm:p-6">
+    return <div role="alert" className="mt-8 rounded-xl border border-rose-200 bg-rose-50 p-5 text-left sm:p-6">
       <p className="flex items-center gap-2 text-base font-bold text-rose-800"><CircleAlert className="size-5" aria-hidden="true" /> We could not confirm this letter</p>
       <p className="mt-2 text-sm leading-6 text-rose-900">Check the Letter ID and the code. If they match the letter, call us on {contact.display}.</p>
     </div>;
   }
   if (result.status === "replaced") {
-    return <div role="status" className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-left sm:p-6">
+    return <div role="status" className="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-5 text-left sm:p-6">
       <p className="flex items-center gap-2 text-base font-bold text-amber-900"><History className="size-5" aria-hidden="true" /> This letter has been replaced</p>
       <p className="mt-2 text-sm leading-6 text-amber-950">
         {result.letterNumber}, issued {result.issued}, is no longer current.
@@ -89,7 +89,7 @@ function VerifyResult({ letterNumber, code }: { letterNumber: string; code: stri
     ...result.tuitionRows,
     ["Agreed monthly fee", result.fee],
   ];
-  return <div role="status" className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5 text-left sm:p-6">
+  return <div role="status" className="mt-8 rounded-xl border border-emerald-200 bg-emerald-50/70 p-5 text-left sm:p-6">
     <p className="flex items-center gap-2 text-base font-bold text-emerald-800"><BadgeCheck className="size-5" aria-hidden="true" /> Genuine letter</p>
     <p className="mt-2 text-sm leading-6 text-emerald-950">Connect Tutors issued this letter on {result.issued}, and it is the current version.</p>
     <dl className="mt-5 divide-y divide-emerald-100 rounded-xl border border-emerald-100 bg-white">

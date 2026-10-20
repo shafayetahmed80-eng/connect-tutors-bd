@@ -69,7 +69,7 @@ export default function HowItWorksPlayer({ panel }: { panel: HowItWorksPanel }) 
     </div>
 
     <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-center">
-      <div className="order-1 aspect-[4/3] w-full overflow-hidden rounded-2xl bg-[linear-gradient(145deg,#e6f2fc,#f7fbff_60%,#eaf6ef)] ring-1 ring-[rgba(16,49,77,.06)] lg:order-2">
+      <div className="order-1 aspect-[4/3] w-full overflow-hidden rounded-xl bg-[linear-gradient(145deg,#e6f2fc,#f7fbff_60%,#eaf6ef)] ring-1 ring-[rgba(16,49,77,.06)] lg:order-2">
         <HowItWorksScene key={`${active.id}-${round}`} scene={active.scene} />
       </div>
 

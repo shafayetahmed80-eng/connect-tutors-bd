@@ -1117,7 +1117,7 @@ export function RequestStage(props: RequestStageProps) {
     </div> : null}
     {props.step === 2 && props.isPreviewMode ? (
       <div className="mt-7 space-y-6 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:duration-300">
-        <div className="rounded-2xl border border-[#bce0fd] bg-gradient-to-r from-[#f0f8ff] via-[#f7fbff] to-[#e8f4fd] p-4.5 sm:p-5 shadow-sm">
+        <div className="rounded-xl border border-[#bce0fd] bg-gradient-to-r from-[#f0f8ff] via-[#f7fbff] to-[#e8f4fd] p-4.5 sm:p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-j-accent text-white shadow-sm">

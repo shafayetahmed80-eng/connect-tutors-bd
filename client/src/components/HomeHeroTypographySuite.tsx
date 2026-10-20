@@ -222,7 +222,7 @@ export default function HomeHeroTypographySuite() {
       : '"DM Sans", "Noto Sans Bengali", sans-serif';
 
   return (
-    <div className="rounded-2xl border border-j-border bg-white p-5 shadow-sm space-y-6">
+    <div className="rounded-xl border border-j-border bg-white p-5 shadow-sm space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-j-border pb-4">
         <div>
@@ -537,7 +537,7 @@ export default function HomeHeroTypographySuite() {
 
           {/* Desktop Preview Card */}
           {previewTab === "desktop" ? (
-            <div className="overflow-hidden rounded-2xl border border-j-border bg-gradient-to-b from-[#f8fcff] to-[#fffefa] p-5 shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-j-border bg-gradient-to-b from-[#f8fcff] to-[#fffefa] p-5 shadow-sm">
               <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-white/80 px-2.5 py-1 text-2xs font-bold text-sky-700">
                 <span className="size-1.5 rounded-full bg-emerald-500" /> Kicker preview
               </div>
@@ -572,7 +572,7 @@ export default function HomeHeroTypographySuite() {
             /* Mobile Simulated Frame (340px width) */
             <div className="mx-auto max-w-[340px] rounded-3xl border-4 border-slate-700 bg-slate-900 p-2 shadow-xl">
               <div className="mx-auto mb-2 h-3.5 w-20 rounded-full bg-slate-800" />
-              <div className="overflow-hidden rounded-2xl border border-j-border bg-gradient-to-b from-[#f8fcff] to-[#fffefa] p-4 text-left">
+              <div className="overflow-hidden rounded-xl border border-j-border bg-gradient-to-b from-[#f8fcff] to-[#fffefa] p-4 text-left">
                 {/* Mobile Kicker */}
                 <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-white/80 px-2 py-0.5 text-[10px] font-bold text-sky-700">
                   <span className="size-1.5 rounded-full bg-emerald-500" /> Kicker

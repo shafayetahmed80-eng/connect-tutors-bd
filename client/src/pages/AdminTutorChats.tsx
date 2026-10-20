@@ -140,7 +140,7 @@ function QuickRepliesMenu({ onInsert, currentDraft }: { onInsert: (body: string)
         onClick={() => { setOpen(false); setManaging(false); }}
         aria-hidden="true"
       />
-      <div className="fixed inset-x-2 bottom-3 z-50 flex max-h-[85vh] flex-col rounded-2xl border border-j-border bg-white p-3 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200 sm:absolute sm:inset-auto sm:bottom-12 sm:left-0 sm:z-10 sm:max-h-none sm:w-80 sm:rounded-xl sm:p-2 sm:shadow-lg">
+      <div className="fixed inset-x-2 bottom-3 z-50 flex max-h-[85vh] flex-col rounded-xl border border-j-border bg-white p-3 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200 sm:absolute sm:inset-auto sm:bottom-12 sm:left-0 sm:z-10 sm:max-h-none sm:w-80 sm:rounded-xl sm:p-2 sm:shadow-lg">
         <div className="flex items-center justify-between px-1 pb-2 sm:pb-1.5">
           <div className="flex items-center gap-1.5">
             <BookmarkPlus className="size-3.5 text-j-accent sm:hidden" />

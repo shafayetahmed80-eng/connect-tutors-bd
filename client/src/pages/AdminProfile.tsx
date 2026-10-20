@@ -158,7 +158,7 @@ export function AdminProfileView({ profile, images, locations, own }: {
 
   return (
     <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
-      <section aria-label="Profile summary" className="nav-section-card h-max rounded-2xl border border-j-border bg-white p-5 text-center shadow-sm">
+      <section aria-label="Profile summary" className="nav-section-card h-max rounded-xl border border-j-border bg-white p-5 text-center shadow-sm">
         <div className="relative mx-auto w-28">
           <span className="grid aspect-square w-full place-items-center overflow-hidden rounded-full border border-dashed border-sky-200 bg-[#f4f9fd] text-2xl font-black text-[#1677c8]">
             {hasPhoto ? <img src={images.photo ?? undefined} alt="Admin profile photo" className="h-full w-full object-cover" /> : initials(profile.name || "Admin")}
@@ -214,7 +214,7 @@ export function AdminProfileView({ profile, images, locations, own }: {
           ))}
         </div>
 
-        <section className="nav-section-card rounded-2xl border border-j-border bg-white p-5 shadow-sm">
+        <section className="nav-section-card rounded-xl border border-j-border bg-white p-5 shadow-sm">
           <div className="mb-2 flex items-center justify-between gap-3">
             <h3 className="font-bold tracking-[-0.02em] text-j-ink">{activeTab === "personal" ? "Personal Information" : "Emergency Contact"}</h3>
             {own ? <Button type="button" variant="outline" onClick={() => own.onEdit(activeTab)} className="h-8 rounded-lg border-[#c9ddeb] px-3 text-xs font-bold text-[#42657d]">
@@ -303,7 +303,7 @@ function TwoFactorSmsBackupCard() {
   };
 
   return (
-    <section className="nav-section-card mt-5 rounded-2xl border border-j-border bg-white p-5 shadow-sm">
+    <section className="nav-section-card mt-5 rounded-xl border border-j-border bg-white p-5 shadow-sm">
       <h3 className="flex items-center gap-1.5 font-bold tracking-[-0.02em] text-j-ink"><MessageSquareText size={16} className="text-[#8fb4d0]" aria-hidden={true} /> Backup SMS code</h3>
       <p className="mt-1 text-xs text-j-ink-muted">Get a sign-in code by SMS when your authenticator app is not to hand.</p>
 

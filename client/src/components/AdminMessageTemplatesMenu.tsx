@@ -155,7 +155,7 @@ export function AdminMessageTemplatesMenu({
             aria-hidden="true"
           />
           <div
-            className={`fixed inset-x-2 bottom-3 z-50 flex max-h-[85vh] flex-col rounded-2xl border border-j-border bg-white p-3 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200 sm:absolute sm:inset-auto sm:z-30 sm:max-h-none sm:w-80 sm:rounded-2xl sm:p-3 sm:shadow-xl ${
+            className={`fixed inset-x-2 bottom-3 z-50 flex max-h-[85vh] flex-col rounded-xl border border-j-border bg-white p-3 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200 sm:absolute sm:inset-auto sm:z-30 sm:max-h-none sm:w-80 sm:rounded-xl sm:p-3 sm:shadow-xl ${
               dropUp ? "sm:bottom-12" : "sm:top-full sm:mt-1.5"
             } ${align === "right" ? "sm:right-0" : "sm:left-0"}`}
           >

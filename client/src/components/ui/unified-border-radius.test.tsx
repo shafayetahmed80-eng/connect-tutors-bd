@@ -7,6 +7,9 @@ import { Input } from "./input";
 import { Textarea } from "./textarea";
 import { Select, SelectTrigger, SelectValue } from "./select";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "./input-otp";
+import { Card } from "./card";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "./dialog";
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "./alert-dialog";
 
 afterEach(() => {
   cleanup();
@@ -64,5 +67,57 @@ describe("Unified 12px Border Radius (rounded-xl)", () => {
     expect(slots.length).toBe(2);
     expect(slots[0].className).toContain("first:rounded-l-xl");
     expect(slots[1].className).toContain("last:rounded-r-xl");
+  });
+
+  it("renders shared Card with unified 12px corners (rounded-xl)", () => {
+    const { getByTestId } = render(<Card data-testid="test-card">Content</Card>);
+    const card = getByTestId("test-card");
+    expect(card.className).toContain("rounded-xl");
+  });
+
+  it("renders shared DialogContent with unified 12px corners (rounded-xl)", () => {
+    const { getByRole } = render(
+      <Dialog open>
+        <DialogContent aria-describedby={undefined}><DialogTitle>Title</DialogTitle></DialogContent>
+      </Dialog>
+    );
+    const dialog = getByRole("dialog");
+    expect(dialog.className).toContain("rounded-xl");
+  });
+
+  it("renders shared AlertDialogContent with unified 12px corners (rounded-xl)", () => {
+    const { getByRole } = render(
+      <AlertDialog open>
+        <AlertDialogContent aria-describedby={undefined}><AlertDialogTitle>Title</AlertDialogTitle></AlertDialogContent>
+      </AlertDialog>
+    );
+    const alertDialog = getByRole("alertdialog");
+    expect(alertDialog.className).toContain("rounded-xl");
+  });
+
+  it("renders shared Card with unified 12px corners (rounded-xl)", () => {
+    const { getByTestId } = render(<Card data-testid="test-card">Content</Card>);
+    const card = getByTestId("test-card");
+    expect(card.className).toContain("rounded-xl");
+  });
+
+  it("renders shared DialogContent with unified 12px corners (rounded-xl)", () => {
+    const { getByRole } = render(
+      <Dialog open>
+        <DialogContent>Modal Body</DialogContent>
+      </Dialog>
+    );
+    const dialog = getByRole("dialog");
+    expect(dialog.className).toContain("rounded-xl");
+  });
+
+  it("renders shared AlertDialogContent with unified 12px corners (rounded-xl)", () => {
+    const { getByRole } = render(
+      <AlertDialog open>
+        <AlertDialogContent>Alert Body</AlertDialogContent>
+      </AlertDialog>
+    );
+    const alertDialog = getByRole("alertdialog");
+    expect(alertDialog.className).toContain("rounded-xl");
   });
 });

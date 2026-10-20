@@ -62,7 +62,7 @@ export function GuardianAppliedTutorsContent({ requestId }: { requestId: number 
     <BackLink href="/guardian/dashboard/posted-jobs">Back to Posted jobs</BackLink>
 
     {/* A tuition that cannot be opened has no count - "Applied: 0" beside the error would be untrue. */}
-    {!applied.isError ? <section className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl border border-j-border bg-white p-4 shadow-sm">
+    {!applied.isError ? <section className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl border border-j-border bg-white p-4 shadow-sm">
       <span className="inline-flex h-9 shrink-0 items-center gap-2 rounded-xl bg-[#eaf4fd] px-3.5 text-sm font-bold text-[#1267c8]">
         Applied: <span className="tabular-nums">{applied.data?.total ?? 0}</span>
       </span>

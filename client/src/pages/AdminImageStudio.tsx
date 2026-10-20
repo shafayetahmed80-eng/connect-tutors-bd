@@ -200,7 +200,7 @@ export function ImageStudioContent({ section }: { section: ImageStudioSection })
   };
 
   return <div className="space-y-4">
-    <div className="grid place-items-center rounded-2xl border border-j-border bg-j-surface-sunken p-3 sm:p-5">
+    <div className="grid place-items-center rounded-xl border border-j-border bg-j-surface-sunken p-3 sm:p-5">
       <canvas
         ref={preview}
         data-testid="image-studio-preview"
@@ -209,7 +209,7 @@ export function ImageStudioContent({ section }: { section: ImageStudioSection })
       />
     </div>
 
-    <div className="space-y-4 rounded-2xl border border-j-border bg-white p-4">
+    <div className="space-y-4 rounded-xl border border-j-border bg-white p-4">
       <fieldset className="space-y-3">
         <legend className="mb-2 text-xs font-bold uppercase tracking-wide text-j-ink-soft">Text</legend>
         <div className="flex flex-wrap gap-2">
