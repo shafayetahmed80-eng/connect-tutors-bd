@@ -129,6 +129,12 @@ describe("Admin Tutor profile detail", () => {
     expect(row.className).toContain("flex-nowrap");
     expect(screen.queryByRole("list", { name: "Confirmed Jobs" })).toBeNull();
 
+    // When no specific stage filter is picked, all applied tuitions are listed by default
+    const allList = screen.getByRole("list", { name: "All Applications" });
+    expect(within(allList).getAllByRole("listitem")).toHaveLength(2);
+    expect(within(allList).getByText("Class 9 · Bangla Medium")).toBeTruthy();
+    expect(within(allList).getByText("Class 8 · English Version")).toBeTruthy();
+
     fireEvent.click(within(row).getByRole("button", { name: /Confirmed Jobs/ }));
     const list = screen.getByRole("list", { name: "Confirmed Jobs" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(1);

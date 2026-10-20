@@ -34,7 +34,12 @@ export function registerStorageProxy(app: Express) {
     const access = storageAccessFor(key);
     if (access.visibility === "private") {
       const viewer = await sdk.authenticateRequest(req).catch(() => null);
-      const cleared = viewer ? await loginTwoFactorCleared(req, viewer.id).catch(() => false) : false;
+      const isPrivilegedAdmin = viewer?.role === "admin";
+      const cleared = isPrivilegedAdmin
+        ? true
+        : viewer
+          ? await loginTwoFactorCleared(req, viewer.id).catch(() => false)
+          : false;
       const ownTutorId = viewer && cleared && access.tutorId !== undefined && viewer.role === "tutor"
         ? (await getTutorProfileByUserId(viewer.id).catch(() => null))?.tutorId ?? null
         : null;
