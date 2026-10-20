@@ -32,7 +32,7 @@ describe("BackToTopButton", () => {
     fireEvent.scroll(window);
 
     const container = screen.getByTestId("back-to-top-container");
-    expect(container.className).toContain("opacity-100");
+    expect(container.className).toContain("opacity-50"); // initial scroll from 0 to 600 is down
     expect(container.className).toContain("pointer-events-auto");
 
     // The signature 3-pulse halo indicator must be present
@@ -62,6 +62,26 @@ describe("BackToTopButton", () => {
     expect(Number(offsetAttr)).toBeCloseTo(expectedOffset, 1);
   });
 
+  it("dims to translucent on downward scroll and restores full opacity on upward scroll", () => {
+    render(<BackToTopButton threshold={400} />);
+
+    // Scroll down to 500
+    window.scrollY = 500;
+    fireEvent.scroll(window);
+
+    const container = screen.getByTestId("back-to-top-container");
+    expect(container.getAttribute("data-direction")).toBe("down");
+    expect(container.className).toContain("opacity-50");
+    expect(container.className).toContain("hover:opacity-100");
+
+    // Scroll up to 450
+    window.scrollY = 450;
+    fireEvent.scroll(window);
+
+    expect(container.getAttribute("data-direction")).toBe("up");
+    expect(container.className).toContain("opacity-100");
+  });
+
   it("invokes smooth scrollTo top and triggers launch motion on click", () => {
     render(<BackToTopButton threshold={400} />);
 
@@ -73,5 +93,20 @@ describe("BackToTopButton", () => {
 
     expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
     expect(button.getAttribute("data-launching")).toBe("true");
+  });
+
+  it("triggers mobile haptic feedback if navigator.vibrate is available", () => {
+    const vibrateMock = vi.fn();
+    Object.defineProperty(navigator, "vibrate", { value: vibrateMock, writable: true, configurable: true });
+
+    render(<BackToTopButton threshold={400} />);
+
+    window.scrollY = 600;
+    fireEvent.scroll(window);
+
+    const button = screen.getByRole("button", { name: "Back to top" });
+    fireEvent.click(button);
+
+    expect(vibrateMock).toHaveBeenCalledWith(10);
   });
 });

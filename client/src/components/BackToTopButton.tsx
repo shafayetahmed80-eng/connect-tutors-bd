@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowUp } from "lucide-react";
 
 export interface BackToTopButtonProps {
@@ -15,8 +15,12 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 /**
  * Floating Action Button (FAB) that provides a smooth return to the top of the page.
- * Features a circular SVG scroll progress ring, our signature 3-pulse halo micro-interaction
- * on initial entrance, and interactive arrow lift motion.
+ * Features:
+ * 1. Circular SVG scroll progress ring (0-100%).
+ * 2. Signature 3-pulse halo micro-interaction on initial entrance.
+ * 3. Smart direction awareness: auto-dims to 50% opacity during continuous downward scroll,
+ *    and restores full 100% opacity when scrolling up or on hover/focus.
+ * 4. Interactive launch motion & optional haptic vibration on mobile.
  */
 export default function BackToTopButton({
   threshold = 400,
@@ -27,6 +31,8 @@ export default function BackToTopButton({
   const [progress, setProgress] = useState(0);
   const [isLaunching, setIsLaunching] = useState(false);
   const [hasEntered, setHasEntered] = useState(false);
+  const [isScrollingDown, setIsScrollingDown] = useState(false);
+  const lastScrollY = useRef(0);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -42,6 +48,15 @@ export default function BackToTopButton({
       if (isOver && !hasEntered) {
         setHasEntered(true);
       }
+
+      // Smart direction awareness: detect downward vs upward scroll
+      const diff = currentScroll - lastScrollY.current;
+      if (diff > 8) {
+        setIsScrollingDown(true);
+      } else if (diff < -8) {
+        setIsScrollingDown(false);
+      }
+      lastScrollY.current = currentScroll;
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -51,6 +66,17 @@ export default function BackToTopButton({
 
   const scrollToTop = useCallback(() => {
     setIsLaunching(true);
+    setIsScrollingDown(false);
+
+    // Tactile haptic feedback on supported mobile devices
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+      try {
+        navigator.vibrate(10);
+      } catch {
+        // Silently ignore if blocked by browser policy
+      }
+    }
+
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -63,9 +89,12 @@ export default function BackToTopButton({
   return (
     <div
       data-testid="back-to-top-container"
+      data-direction={isScrollingDown ? "down" : "up"}
       className={`fixed bottom-6 right-5 sm:right-8 z-40 transition-all duration-300 ease-out motion-reduce:transition-none ${
         visible
-          ? "opacity-100 translate-y-0 scale-100 pointer-events-auto"
+          ? isScrollingDown
+            ? "opacity-50 hover:opacity-100 focus-within:opacity-100 translate-y-0 scale-100 pointer-events-auto"
+            : "opacity-100 translate-y-0 scale-100 pointer-events-auto"
           : "opacity-0 translate-y-3 scale-90 pointer-events-none"
       } ${className}`}
     >
