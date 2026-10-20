@@ -136,13 +136,16 @@ function ModerationHistory({ tutorId }: { tutorId: string }) {
 }
 
 function DocumentTile({ label, url }: { label: string; url: string | null }) {
+  const [loadFailed, setLoadFailed] = useState(false);
   return <div className="rounded-xl border border-j-border bg-j-surface-sunken p-3">
     <p className="flex items-center gap-1.5 text-2xs font-bold text-j-ink-strong"><FileText size={12} className="text-[#8fb4d0]" aria-hidden={true} />{label}</p>
-    {url
-      ? <a href={url} target="_blank" rel="noreferrer" className="mt-2 block overflow-hidden rounded-lg border border-j-border">
-          <img src={url} alt={label} className="h-32 w-full object-cover" />
+    {url && !loadFailed
+      ? <a href={url} target="_blank" rel="noreferrer noopener" className="mt-2 block overflow-hidden rounded-lg border border-j-border group relative">
+          <img src={url} alt={label} className="h-32 w-full object-cover transition group-hover:scale-105" onError={() => setLoadFailed(true)} />
         </a>
-      : <div className="mt-2 grid h-32 place-items-center rounded-lg border border-dashed border-j-field-border text-2xs text-j-ink-faint">Not uploaded</div>}
+      : <div className="mt-2 grid h-32 place-items-center rounded-lg border border-dashed border-j-field-border text-2xs text-j-ink-faint">
+          {url && loadFailed ? "Image unavailable" : "Not uploaded"}
+        </div>}
   </div>;
 }
 
