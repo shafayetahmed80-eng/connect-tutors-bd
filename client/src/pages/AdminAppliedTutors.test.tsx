@@ -39,6 +39,7 @@ const mocks = vi.hoisted(() => ({
       id: 13, classCourse: "Class 8", subjects: JSON.stringify(["History"]),
       tuitionLocationLabel: "Banasree, Dhaka", locationText: "Banasree", budgetAmount: 5000,
       daysPerWeek: 3, guardianName: "Sojib Rahman", appliedTutorCount: 7, postedByAdmin: 1,
+      appliedTimeCounts: { all: 7, h1: 1, h3: 3, h7: 4, h10: 5, h24: 6, d3: 7, d7: 7 },
       status: "reviewing", publicationState: "published", tutorId: null, appointmentConfirmedAt: null, cancellationReason: null,
     }, {
       id: 21, classCourse: "Class 9", subjects: JSON.stringify(["Physics"]),
@@ -69,7 +70,7 @@ const mocks = vi.hoisted(() => ({
       cancellationReason: null,
     },
     appliedTotal: 26,
-    timeCounts: { all: 26, h1: 2, h7: 5, h10: 8, h24: 12, d3: 18, d7: 22 },
+    timeCounts: { all: 26, h1: 2, h3: 4, h7: 5, h10: 8, h24: 12, d3: 18, d7: 22 },
     guardianRequest: null as null | { id: number; type: "confirm" | "remove_tutor" | "cancel_tuition"; tutorId: string | null; reason: string | null; createdAt: Date },
     items: [] as ReturnType<typeof tutor>[],
     total: 2,
@@ -195,11 +196,15 @@ describe("Admin Applied Tutors page", () => {
     expect(screen.getByText("Applied Within:")).toBeTruthy();
     expect(screen.getByRole("button", { name: /All Applicants.*26/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Last 1h.*2/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Last 3h.*4/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Last 7h.*5/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Last 10h.*8/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Last 24h.*12/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Last 3 days.*18/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Last 7 days.*22/i })).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: /Last 3h.*4/i }));
+    expect(mocks.lastInput).toMatchObject({ requestId: 13, appliedTimeframe: "3h" });
 
     await user.click(screen.getByRole("button", { name: /Last 7h.*5/i }));
     expect(mocks.lastInput).toMatchObject({ requestId: 13, appliedTimeframe: "7h" });
@@ -606,5 +611,45 @@ describe("the card and filter panel over the tuitions", () => {
 
     await user.click(within(panel).getByRole("button", { name: "Clear" }));
     expect(mocks.liveInput).toMatchObject({ stages: ["live", "appointed", "confirmed"] });
+  });
+
+  it("filters tuitions by global applied timeframe bar on the primary view", async () => {
+    const user = userEvent.setup();
+    render(<AdminAppliedTuitionsContent />);
+
+    const globalBar = screen.getByRole("region", { name: "Filter tuitions by applied timeframe" });
+    expect(within(globalBar).getByText("Applied Within:")).toBeTruthy();
+    expect(within(globalBar).getByRole("button", { name: "All Applicants" })).toBeTruthy();
+    expect(within(globalBar).getByRole("button", { name: "Last 1h" })).toBeTruthy();
+    expect(within(globalBar).getByRole("button", { name: "Last 3h" })).toBeTruthy();
+    expect(within(globalBar).getByRole("button", { name: "Last 7h" })).toBeTruthy();
+
+    await user.click(within(globalBar).getByRole("button", { name: "Last 3h" }));
+    expect(mocks.liveInput).toMatchObject({ appliedTimeframe: "3h", page: 1 });
+
+    await user.click(within(globalBar).getByRole("button", { name: "All Applicants" }));
+    expect((mocks.liveInput as { appliedTimeframe?: string }).appliedTimeframe).toBeUndefined();
+  });
+
+  it("renders applied popover on the tuitions table with timeframe breakdown and direct links", async () => {
+    const user = userEvent.setup();
+    render(<AdminAppliedTuitionsContent />);
+
+    const trigger = screen.getByRole("button", { name: /View applied timeframe breakdown for Job ID 6812/i });
+    expect(trigger).toBeTruthy();
+    expect(within(trigger).getByText("7")).toBeTruthy();
+    expect(within(trigger).getByText("+1")).toBeTruthy();
+    expect(within(trigger).getByText("1h")).toBeTruthy();
+
+    await user.click(trigger);
+
+    expect(screen.getByText("Total: 7")).toBeTruthy();
+    const link3h = screen.getByRole("link", { name: /Last 3h.*3/i });
+    expect(link3h).toBeTruthy();
+    expect(link3h.getAttribute("href")).toBe("/admin/applied-tutors/13?timeframe=3h");
+
+    const linkAll = screen.getByRole("link", { name: /All Applicants.*7/i });
+    expect(linkAll).toBeTruthy();
+    expect(linkAll.getAttribute("href")).toBe("/admin/applied-tutors/13?timeframe=all");
   });
 });

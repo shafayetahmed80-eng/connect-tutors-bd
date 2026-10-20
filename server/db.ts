@@ -7487,7 +7487,7 @@ export async function sendPushToTutor(tutorId: string, payload: { title: string;
 
 export type AdminAppliedTutorFilters = AdminTutorDirectoryFilters & {
   requestId: number;
-  appliedTimeframe?: "all" | "1h" | "7h" | "10h" | "24h" | "3d" | "7d" | null;
+  appliedTimeframe?: "all" | "1h" | "3h" | "7h" | "10h" | "24h" | "3d" | "7d" | null;
 };
 
 /**
@@ -7551,6 +7551,7 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
 
   const now = new Date();
   const h1Ago = new Date(now.getTime() - 1 * 60 * 60 * 1000);
+  const h3Ago = new Date(now.getTime() - 3 * 60 * 60 * 1000);
   const h7Ago = new Date(now.getTime() - 7 * 60 * 60 * 1000);
   const h10Ago = new Date(now.getTime() - 10 * 60 * 60 * 1000);
   const h24Ago = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -7559,6 +7560,7 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
 
   let timeframeCutoff: Date | null = null;
   if (filters.appliedTimeframe === "1h") timeframeCutoff = h1Ago;
+  else if (filters.appliedTimeframe === "3h") timeframeCutoff = h3Ago;
   else if (filters.appliedTimeframe === "7h") timeframeCutoff = h7Ago;
   else if (filters.appliedTimeframe === "10h") timeframeCutoff = h10Ago;
   else if (filters.appliedTimeframe === "24h") timeframeCutoff = h24Ago;
@@ -7609,7 +7611,7 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
   // A Tutor appointed by an Admin from Tutor Matching may never have applied. They
   // still hold the tuition, and Applied Tutors is where it is confirmed or
   // handed back, so they lead the first page as an appointed row of their own.
-  if (job.appointedTutorId) {
+  if (job.appointedTutorId && (filters.appliedTimeframe === "all" || !filters.appliedTimeframe)) {
     const [application] = await database
       .select({ id: tutorJobInterests.id })
       .from(tutorJobInterests)
@@ -7653,6 +7655,7 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
     .select({
       total: count(),
       h1: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h1Ago} then 1 end) as unsigned)`,
+      h3: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h3Ago} then 1 end) as unsigned)`,
       h7: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h7Ago} then 1 end) as unsigned)`,
       h10: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h10Ago} then 1 end) as unsigned)`,
       h24: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h24Ago} then 1 end) as unsigned)`,
@@ -7666,6 +7669,7 @@ export async function listAppliedTutorsForRequest(filters: AdminAppliedTutorFilt
   const timeCounts = {
     all: Number(timeCountRows?.total ?? appliedTotal),
     h1: Number(timeCountRows?.h1 ?? 0),
+    h3: Number(timeCountRows?.h3 ?? 0),
     h7: Number(timeCountRows?.h7 ?? 0),
     h10: Number(timeCountRows?.h10 ?? 0),
     h24: Number(timeCountRows?.h24 ?? 0),
@@ -7961,6 +7965,7 @@ export type AdminPostedJobFilters = {
   filters?: AdminJobFilters;
   /** Filter live tuition posts by Facebook posted status */
   facebookPosted?: "all" | "posted" | "not_posted";
+  appliedTimeframe?: "all" | "1h" | "3h" | "7h" | "10h" | "24h" | "3d" | "7d" | null;
 };
 
 /**
@@ -8196,13 +8201,43 @@ const adminPostedJobFields = {
  * One page-sized query rather than a correlated subquery per row: the same
  * shape the Admin Tutor directory uses for its own per-page lookups.
  */
-export async function countAppliedTutorsByRequest(
+export type AppliedTimeCounts = {
+  all: number;
+  h1: number;
+  h3: number;
+  h7: number;
+  h10: number;
+  h24: number;
+  d3: number;
+  d7: number;
+};
+
+export async function countAppliedTutorsWithTimeframesByRequest(
   database: NonNullable<Awaited<ReturnType<typeof getDb>>>,
   requestIds: number[],
-): Promise<Map<number, number>> {
+): Promise<Map<number, { applied: number; timeCounts: AppliedTimeCounts }>> {
   if (requestIds.length === 0) return new Map();
+  const now = new Date();
+  const h1Ago = new Date(now.getTime() - 1 * 60 * 60 * 1000);
+  const h3Ago = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+  const h7Ago = new Date(now.getTime() - 7 * 60 * 60 * 1000);
+  const h10Ago = new Date(now.getTime() - 10 * 60 * 60 * 1000);
+  const h24Ago = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const d3Ago = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+  const d7Ago = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
   const rows = await database
-    .select({ requestId: tutorJobs.tutorRequestId, applied: count(tutorJobInterests.id) })
+    .select({
+      requestId: tutorJobs.tutorRequestId,
+      applied: count(tutorJobInterests.id),
+      h1: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h1Ago} then 1 end) as unsigned)`,
+      h3: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h3Ago} then 1 end) as unsigned)`,
+      h7: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h7Ago} then 1 end) as unsigned)`,
+      h10: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h10Ago} then 1 end) as unsigned)`,
+      h24: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${h24Ago} then 1 end) as unsigned)`,
+      d3: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${d3Ago} then 1 end) as unsigned)`,
+      d7: sql<number>`cast(count(case when ${tutorJobInterests.createdAt} >= ${d7Ago} then 1 end) as unsigned)`,
+    })
     .from(tutorJobs)
     .leftJoin(
       tutorJobInterests,
@@ -8210,7 +8245,36 @@ export async function countAppliedTutorsByRequest(
     )
     .where(inArray(tutorJobs.tutorRequestId, requestIds))
     .groupBy(tutorJobs.tutorRequestId);
-  return new Map(rows.map(row => [row.requestId, Number(row.applied)] as const));
+
+  return new Map(
+    rows.map(row => {
+      const total = Number(row.applied);
+      return [
+        row.requestId,
+        {
+          applied: total,
+          timeCounts: {
+            all: total,
+            h1: Number(row.h1 ?? 0),
+            h3: Number(row.h3 ?? 0),
+            h7: Number(row.h7 ?? 0),
+            h10: Number(row.h10 ?? 0),
+            h24: Number(row.h24 ?? 0),
+            d3: Number(row.d3 ?? 0),
+            d7: Number(row.d7 ?? 0),
+          },
+        },
+      ] as const;
+    }),
+  );
+}
+
+export async function countAppliedTutorsByRequest(
+  database: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  requestIds: number[],
+): Promise<Map<number, number>> {
+  const map = await countAppliedTutorsWithTimeframesByRequest(database, requestIds);
+  return new Map(Array.from(map.entries()).map(([k, v]) => [k, v.applied]));
 }
 /**
  * Which applications a Guardian's applicant table lists, and so which Tutors
@@ -10309,6 +10373,23 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
       )
     : undefined;
 
+  const now = new Date();
+  const timeCutoffs: Record<string, Date> = {
+    "1h": new Date(now.getTime() - 1 * 60 * 60 * 1000),
+    "3h": new Date(now.getTime() - 3 * 60 * 60 * 1000),
+    "7h": new Date(now.getTime() - 7 * 60 * 60 * 1000),
+    "10h": new Date(now.getTime() - 10 * 60 * 60 * 1000),
+    "24h": new Date(now.getTime() - 24 * 60 * 60 * 1000),
+    "3d": new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000),
+    "7d": new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+  };
+  const appliedCutoff = filters.appliedTimeframe && filters.appliedTimeframe !== "all"
+    ? timeCutoffs[filters.appliedTimeframe]
+    : undefined;
+  const appliedTimeframeCondition = appliedCutoff
+    ? sql`exists (select 1 from ${tutorJobInterests} inner join ${tutorJobs} on ${tutorJobs.id} = ${tutorJobInterests.tutorJobId} where ${tutorJobs.tutorRequestId} = ${tutorRequests.id} and ${tutorJobInterests.status} <> 'withdrawn' and ${tutorJobInterests.createdAt} >= ${appliedCutoff})`
+    : undefined;
+
   // Admin Posted Jobs is this same board narrowed to the tuitions an Admin
   // added, so the narrowing applies to the tab counts as well as the cards.
   // So do the Admin's filters: a tab that said nine and opened on two would be
@@ -10317,6 +10398,7 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
     ...(searchCondition ? [searchCondition] : []),
     ...(filters.postedBy === "admin" ? [eq(tutorRequests.postedByAdmin, 1)] : []),
     ...adminJobFilterConditions(filters.filters),
+    ...(appliedTimeframeCondition ? [appliedTimeframeCondition] : []),
     // Applied Tutors lists Live, Appointed and Confirmed together, and each of them keeps its applicants.
     ...(filters.stages?.length ? adminJobApplicantConditions(filters.filters) : []),
   );
@@ -10402,7 +10484,7 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
     .leftJoin(tutorRequestFacebookPosts, eq(tutorRequestFacebookPosts.requestId, tutorRequests.id))
     .where(where);
   const total = Number(totals[0]?.value ?? 0);
-  const appliedByRequest = await countAppliedTutorsByRequest(database, items.map(item => item.id));
+  const appliedWithTimeframes = await countAppliedTutorsWithTimeframesByRequest(database, items.map(item => item.id));
   // A request waiting on the Admin is marked on the card, so it is found without opening every tuition.
   const waitingRows = items.length
     ? await database
@@ -10420,17 +10502,30 @@ export async function listAdminPostedJobsPage(filters: AdminPostedJobFilters) {
     // `guardianOpenId` is a server-side identifier and does not leave: what
     // the Edit form needs from it is the one fact of whether the Admin wrote
     // this Guardian's name and number, and so may correct them.
-    items: (await attachLearningNeeds(database, items)).map(({ guardianOpenId, ...item }) => ({
-      ...item,
-      appliedTutorCount: appliedByRequest.get(item.id) ?? 0,
-      appointmentRequested: appointmentRequestedIds.has(item.id),
-      guardianRequest: guardianRequests.get(item.id) ?? null,
-      guardianIsAdminPosted: guardianOpenId.startsWith(ADMIN_POSTED_GUARDIAN_OPEN_ID_PREFIX),
-      isFacebookPosted: Boolean(item.facebookPostedAt),
-      facebookPostedAt: item.facebookPostedAt ?? null,
-      facebookPostedByAdminId: item.facebookPostedByAdminId ?? null,
-      facebookPostedByAdminName: item.facebookPostedByAdminName ?? null,
-    })),
+    items: (await attachLearningNeeds(database, items)).map(({ guardianOpenId, ...item }) => {
+      const appliedInfo = appliedWithTimeframes.get(item.id);
+      return {
+        ...item,
+        appliedTutorCount: appliedInfo?.applied ?? 0,
+        appliedTimeCounts: appliedInfo?.timeCounts ?? {
+          all: 0,
+          h1: 0,
+          h3: 0,
+          h7: 0,
+          h10: 0,
+          h24: 0,
+          d3: 0,
+          d7: 0,
+        },
+        appointmentRequested: appointmentRequestedIds.has(item.id),
+        guardianRequest: guardianRequests.get(item.id) ?? null,
+        guardianIsAdminPosted: guardianOpenId.startsWith(ADMIN_POSTED_GUARDIAN_OPEN_ID_PREFIX),
+        isFacebookPosted: Boolean(item.facebookPostedAt),
+        facebookPostedAt: item.facebookPostedAt ?? null,
+        facebookPostedByAdminId: item.facebookPostedByAdminId ?? null,
+        facebookPostedByAdminName: item.facebookPostedByAdminName ?? null,
+      };
+    }),
     counts,
     livePostedCount: Number(countRow?.livePosted ?? 0),
     liveUnpostedCount: Number(countRow?.liveUnposted ?? 0),
