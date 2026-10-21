@@ -77,7 +77,7 @@ describe("the size an Owner sets for buttons", () => {
       const meta = findSiteLimit(id)!;
       expect(css, id).toContain(`${meta.value}${meta.unit}`);
     }
-    expect(buttonLimitIds).toHaveLength(6);
+    expect(buttonLimitIds).toHaveLength(8);
   });
 
   it("targets only the ordinary shared button, by its data-size attribute", () => {
@@ -97,6 +97,12 @@ describe("the size an Owner sets for buttons", () => {
     const css = buildSiteDimensionCss({ ...defaultSiteLimits(), "button.textSize": 13, "journeyButton.textSize": 16, "button.paddingX": 12, "journeyButton.paddingX": 24 });
     expect(css).toContain(`[data-slot="button"][data-size="default"] { font-size: 13px; height: var(--control-height); padding-left: 12px; padding-right: 12px; }`);
     expect(css).toContain(`.journey-button { font-size: 16px; height: var(--control-height); padding-left: 24px; padding-right: 24px; }`);
+  });
+
+  it("ships 12px dynamic border radius for both shared and journey buttons", () => {
+    const css = buildSiteDimensionCss(defaultSiteLimits());
+    expect(css).toContain('[data-slot="button"] { border-radius: 12px; }');
+    expect(css).toContain('.journey-button { border-radius: 12px; }');
   });
 });
 describe("the one height of a field and a button", () => {

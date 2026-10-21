@@ -107,9 +107,11 @@ export function buildSiteDimensionCss(limits: SiteLimitValues): string {
     // Tailwind class (text-sm) still sitting in the component's shared base
     // string, which is what lets this win without editing that string.
     `[data-slot="button"][data-size="default"] { font-size: ${limits["button.textSize"]}px; height: var(--control-height); padding-left: ${limits["button.paddingX"]}px; padding-right: ${limits["button.paddingX"]}px; }`,
+    `[data-slot="button"] { border-radius: ${limits["button.radius"]}px; }`,
     // The Guardian journey's own primary/ghost buttons - a separate
     // vocabulary from the shared Button above, not built on it.
     `.journey-button { font-size: ${limits["journeyButton.textSize"]}px; height: var(--control-height); padding-left: ${limits["journeyButton.paddingX"]}px; padding-right: ${limits["journeyButton.paddingX"]}px; }`,
+    `.journey-button { border-radius: ${limits["journeyButton.radius"]}px; }`,
     // The lettering on a job card. One number, the ordinary text; the title and
     // the New badge keep their distance from it - 2px above, 1px below - so the
     // card reads the same at any size. The foot holds buttons and links passed

@@ -68,16 +68,17 @@ describe("site limits", () => {
     expect(documentByteLimit(resolveSiteLimits([{ limitId: "upload.documentMb", value: 8 }]))).toBe(8 * 1024 * 1024);
   });
 
-  it("ships 12px unified default corners for tutor profile and guardian journey inputs", () => {
+  it("ships 12px unified default corners for all inputs, buttons, navigation, and modals", () => {
     const limits = defaultSiteLimits();
     expect(limits["inputRadius.profile"]).toBe(12);
     expect(limits["inputRadius.journey"]).toBe(12);
+    expect(limits["button.radius"]).toBe(12);
+    expect(limits["journeyButton.radius"]).toBe(12);
     expect(limits["nav.itemRadius"]).toBe(12);
+    expect(limits["nav.tabRadius"]).toBe(12);
+    expect(limits["nav.pillTabRadius"]).toBe(12);
     expect(limits["nav.sectionRadius"]).toBe(12);
-    expect(limits["nav.itemRadius"]).toBe(12);
-    expect(limits["nav.sectionRadius"]).toBe(12);
-    expect(limits["nav.itemRadius"]).toBe(12);
-    expect(limits["nav.sectionRadius"]).toBe(12);
+    expect(limits["modal.radius"]).toBe(12);
   });
 
   it("gives every limit a group, a unit and help text, since the editor shows all three", () => {
