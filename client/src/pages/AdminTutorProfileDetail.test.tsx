@@ -171,6 +171,22 @@ describe("Admin Tutor profile detail", () => {
     expect(within(documents).getAllByText("Not uploaded")).toHaveLength(3);
   });
 
+  it("opens the document lightbox with rotation and zoom controls when a document tile is clicked", () => {
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+
+    const inspectBtn = screen.getByRole("button", { name: "Inspect University ID" });
+    fireEvent.click(inspectBtn);
+
+    // Lightbox modal is open
+    expect(screen.getByRole("dialog", { name: "University ID document preview" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Rotate 90 degrees clockwise" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Zoom in" })).toBeTruthy();
+
+    // Close lightbox
+    fireEvent.click(screen.getByRole("button", { name: "Close document preview" }));
+    expect(screen.queryByRole("dialog", { name: "University ID document preview" })).toBeNull();
+  });
+
   it("offers only the decisions the lifecycle allows from the current status", () => {
     render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
 
