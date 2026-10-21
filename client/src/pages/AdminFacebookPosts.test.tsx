@@ -636,6 +636,36 @@ describe("AdminFacebookPostsContent", () => {
 
     expect(screen.getByRole("heading", { name: /Facebook Group Helper/i })).toBeDefined();
   });
+
+  it("supports 'Select 4' and 'Select 12' quick selection helpers with dynamic slide count indicator", () => {
+    const originalItems = mocks.liveData.items;
+    const dummyItems = Array.from({ length: 15 }, (_, i) => ({
+      ...originalItems[0],
+      id: 200 + i,
+      jobId: String(7000 + i),
+    }));
+    mocks.liveData = { ...mocks.liveData, items: dummyItems, total: 15 };
+
+    try {
+      render(<AdminFacebookPostsContent />);
+
+      // Click 'Select 4'
+      const select4Btn = screen.getByRole("button", { name: "Select 4" });
+      fireEvent.click(select4Btn);
+
+      // Verify 4 items selected and Bulk Poster button indicates 4 picked
+      expect(screen.getByRole("button", { name: /Bulk Poster \(4 picked · 1 slide\)/i })).toBeDefined();
+
+      // Click 'Select 12'
+      const select12Btn = screen.getByRole("button", { name: "Select 12" });
+      fireEvent.click(select12Btn);
+
+      // Verify 12 items selected and Bulk Poster button indicates 12 picked and 3 slides
+      expect(screen.getByRole("button", { name: /Bulk Poster \(12 picked · 3 slides\)/i })).toBeDefined();
+    } finally {
+      mocks.liveData = { ...mocks.liveData, items: originalItems, total: 1 };
+    }
+  });
 });
 
 

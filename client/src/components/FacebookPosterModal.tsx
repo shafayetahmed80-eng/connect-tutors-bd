@@ -1,4 +1,4 @@
-import { ChevronDown, Copy, Download, FileText } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Copy, Download, FileText } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { JobIdTag } from "@/components/JobIdTag";
@@ -258,7 +258,7 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
    * holds (one for a single tuition; four in a square or landscape, up to twelve in
    * the tall list). Where the page gives none, the window has no caption button.
    */
-  caption?: (shown: number) => string;
+  caption?: (shown: number, range?: { start: number; end: number }) => string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [prefs, setPrefs] = useState<PosterPrefs>(readPrefs);
@@ -269,13 +269,27 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const isCombined = Boolean(jobs && jobs.length > 0);
-  // One tuition has no tall list; a tall list is Mist's alone.
   const size: PosterSize = !isCombined && prefs.size === "tall" ? "square" : prefs.size;
   const theme: SinglePosterTheme | CombinedPosterTheme = isCombined ? prefs.combinedTheme : prefs.singleTheme;
-  const shown = isCombined ? Math.min(jobs!.length, size === "tall" ? MAX_TALL_TUITIONS : MAX_COMBINED_TUITIONS) : 0;
+  const isCarousel = isCombined && size !== "tall" && (jobs?.length ?? 0) > 4;
+  const totalSlides = isCarousel ? Math.ceil(jobs!.length / 4) : 1;
+  const [activeSlide, setActiveSlide] = useState(0);
+
+  useEffect(() => {
+    if (activeSlide >= totalSlides) {
+      setActiveSlide(0);
+    }
+  }, [totalSlides, activeSlide]);
+
+  const slideStart = isCarousel ? activeSlide * 4 : 0;
+  const slideEnd = isCarousel ? Math.min(slideStart + 4, jobs!.length) : (size === "tall" ? MAX_TALL_TUITIONS : MAX_COMBINED_TUITIONS);
+  const currentSlideJobs = isCombined
+    ? (size === "tall" ? jobs!.slice(0, MAX_TALL_TUITIONS) : jobs!.slice(slideStart, slideEnd))
+    : [];
+  const shown = isCombined ? currentSlideJobs.length : 0;
   const needsSerif = theme === "mist";
   // The tuitions this window draws, which Auto reads the curriculum from.
-  const drawn = isCombined ? jobs!.slice(0, shown) : job ? [job] : [];
+  const drawn = isCombined ? currentSlideJobs : job ? [job] : [];
   const resolvedAuto = autoPosterGround(drawn);
   const ground = prefs.ground === AUTO ? resolvedAuto : prefs.ground;
 
@@ -312,18 +326,20 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
     const canvas = canvasRef.current;
     if (!isOpen || !canvas) return;
     try {
-      if (isCombined) renderCombinedTuitionsPoster(canvas, jobs!, { theme: theme as CombinedPosterTheme, size, locale: prefs.locale, ground });
+      if (isCombined) renderCombinedTuitionsPoster(canvas, currentSlideJobs, { theme: theme as CombinedPosterTheme, size, locale: prefs.locale, ground });
       else if (job) renderSingleTuitionPoster(canvas, job, { theme: theme as SinglePosterTheme, size, locale: prefs.locale, ground });
     } catch (error) {
       console.error("Poster render failed", error);
       toast.error("পোস্টার তৈরি করতে সমস্যা হয়েছে।");
     }
-  }, [isOpen, fonts, prefs, job, jobs, isCombined, theme, size, ground]);
+  }, [isOpen, fonts, prefs, job, jobs, isCombined, theme, size, ground, currentSlideJobs]);
 
   if (!isOpen || (!job && !isCombined)) return null;
 
   const fileName = isCombined
-    ? posterFileName({ count: shown }, theme, prefs.locale, size)
+    ? (isCarousel
+        ? `connect-tutors-slide-${activeSlide + 1}-of-${totalSlides}-${theme}-${prefs.locale}-${size}.png`
+        : posterFileName({ count: shown }, theme, prefs.locale, size))
     : posterFileName({ jobId: job!.jobId }, theme, prefs.locale, size);
 
   const handleDownload = async () => {
@@ -332,13 +348,45 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
     setIsSaving(true);
     const saved = await downloadCanvasImage(canvas, fileName);
     setIsSaving(false);
-    if (saved) toast.success("পোস্টার ডাউনলোড হয়েছে।");
+    if (saved) toast.success(isCarousel ? `স্লাইড ${activeSlide + 1} ডাউনলোড হয়েছে।` : "পোস্টার ডাউনলোড হয়েছে।");
     else toast.error("পোস্টারের ছবি তৈরি করা যায়নি।");
   };
 
-  const handleCopyCaption = async () => {
+  const handleDownloadAll = async () => {
+    if (!isCombined || !jobs || isSaving) return;
+    setIsSaving(true);
+    try {
+      const offscreen = document.createElement("canvas");
+      for (let i = 0; i < totalSlides; i++) {
+        const start = i * 4;
+        const end = Math.min(start + 4, jobs.length);
+        const slideJobs = jobs.slice(start, end);
+        renderCombinedTuitionsPoster(offscreen, slideJobs, {
+          theme: theme as CombinedPosterTheme,
+          size,
+          locale: prefs.locale,
+          ground,
+        });
+        const name = `connect-tutors-slide-${i + 1}-of-${totalSlides}-${theme}-${prefs.locale}-${size}.png`;
+        await downloadCanvasImage(offscreen, name);
+        if (i < totalSlides - 1) {
+          await new Promise(r => setTimeout(r, 250));
+        }
+      }
+      toast.success(`${totalSlides}টি স্লাইড সফলভাবে ডাউনলোড হয়েছে।`);
+    } catch (err) {
+      console.error("Download all failed", err);
+      toast.error("সবগুলো স্লাইড ডাউনলোড করতে সমস্যা হয়েছে।");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCopyCaption = async (range?: { start: number; end: number }) => {
     if (!caption) return;
-    const copied = await copyToClipboard(caption(isCombined ? shown : 1));
+    const count = range ? range.end - range.start : (isCombined ? (isCarousel ? slideEnd - slideStart : shown) : 1);
+    const text = range !== undefined ? caption(count, range) : caption(count);
+    const copied = await copyToClipboard(text);
     if (copied) toast.success("ক্যাপশন কপি হয়েছে। ছবির সাথে পেস্ট করুন।");
     else toast.error("ক্যাপশন কপি করা যায়নি।");
   };
@@ -376,12 +424,76 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
     <Modal onClose={onClose} kind="facebook-poster">
       <ModalHeader
         title={isCombined ? "Facebook Multi-Tuition Banner" : "Facebook Poster"}
-        meta={isCombined ? `${shown} ${shown === 1 ? "tuition" : "tuitions"}` : <JobIdTag jobId={job!.jobId} colon={false} copyable={false} />}
+        meta={
+          isCombined ? (
+            isCarousel ? (
+              <span className="flex items-center gap-1.5 font-medium">
+                <span className="rounded-md bg-j-border-light px-2 py-0.5 text-xs font-bold text-j-ink">
+                  Slide {activeSlide + 1} of {totalSlides}
+                </span>
+                <span className="text-j-ink-soft">({jobs!.length} total)</span>
+              </span>
+            ) : (
+              `${shown} ${shown === 1 ? "tuition" : "tuitions"}`
+            )
+          ) : (
+            <JobIdTag jobId={job!.jobId} colon={false} copyable={false} />
+          )
+        }
       />
       <ModalBody className="max-sm:pt-0">
         <div className="flex flex-col">
           {/* A phone shows the poster first and keeps it in view while the settings below scroll. */}
           <div className="order-1 max-sm:sticky max-sm:top-0 max-sm:z-10 max-sm:-mx-4 max-sm:bg-background max-sm:px-4 max-sm:py-3 sm:order-2 sm:mt-4">
+            {isCarousel ? (
+              <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-j-border bg-white p-2 shadow-2xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-j-ink">Slides:</span>
+                  <div className="flex flex-wrap items-center gap-1">
+                    {Array.from({ length: totalSlides }, (_, i) => {
+                      const from = i * 4 + 1;
+                      const to = Math.min((i + 1) * 4, jobs!.length);
+                      const isActive = activeSlide === i;
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setActiveSlide(i)}
+                          className={cn(
+                            "inline-flex h-7 items-center justify-center rounded-lg px-2.5 text-xs font-bold transition",
+                            isActive
+                              ? "bg-[#1877f2] text-white shadow-xs"
+                              : "border border-j-border bg-white text-j-ink hover:bg-j-border-light/70",
+                          )}
+                        >
+                          Slide {i + 1} <span className="ml-1 text-[11px] opacity-80">({from}–{to})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={activeSlide === 0}
+                    onClick={() => setActiveSlide(s => Math.max(0, s - 1))}
+                    className="inline-flex size-7 items-center justify-center rounded-lg border border-j-border bg-white text-j-ink transition hover:bg-j-border-light disabled:opacity-40"
+                    aria-label="Previous slide"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={activeSlide >= totalSlides - 1}
+                    onClick={() => setActiveSlide(s => Math.min(totalSlides - 1, s + 1))}
+                    className="inline-flex size-7 items-center justify-center rounded-lg border border-j-border bg-white text-j-ink transition hover:bg-j-border-light disabled:opacity-40"
+                    aria-label="Next slide"
+                  >
+                    <ChevronRight className="size-4" />
+                  </button>
+                </div>
+              </div>
+            ) : null}
             <div className="flex justify-center rounded-xl border border-j-border bg-j-border-light/40 p-3">
               <canvas
                 ref={canvasRef}
@@ -426,14 +538,37 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
         {/* On a phone the copy buttons share one line and Download PNG has the next to itself; from `sm` up they sit in a row. */}
         <div className="grid flex-1 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end">
           {caption ? (
-            <button
-              type="button"
-              onClick={handleCopyCaption}
-              className="inline-flex h-control items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-4 text-xs font-bold text-j-ink transition hover:bg-j-border-light/60"
-            >
-              <FileText className="size-3.5" strokeWidth={1.5} />
-              Copy caption
-            </button>
+            isCarousel ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => handleCopyCaption({ start: slideStart, end: slideEnd })}
+                  className="inline-flex h-control items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-3 text-xs font-bold text-j-ink transition hover:bg-j-border-light/60"
+                  title="Copy caption for only this slide"
+                >
+                  <FileText className="size-3.5" strokeWidth={1.5} />
+                  Copy Slide ({slideEnd - slideStart})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCopyCaption({ start: 0, end: jobs!.length })}
+                  className="inline-flex h-control items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-3 text-xs font-bold text-j-ink transition hover:bg-j-border-light/60"
+                  title="Copy caption for all tuitions"
+                >
+                  <FileText className="size-3.5" strokeWidth={1.5} />
+                  Copy All ({jobs!.length})
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleCopyCaption()}
+                className="inline-flex h-control items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-4 text-xs font-bold text-j-ink transition hover:bg-j-border-light/60"
+              >
+                <FileText className="size-3.5" strokeWidth={1.5} />
+                Copy caption
+              </button>
+            )
           ) : null}
           <button
             type="button"
@@ -454,8 +589,20 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
             )}
           >
             <Download className="size-3.5" strokeWidth={1.5} />
-            Download PNG
+            {isCarousel ? `Download Slide ${activeSlide + 1} PNG` : "Download PNG"}
           </button>
+          {isCarousel ? (
+            <button
+              type="button"
+              onClick={handleDownloadAll}
+              disabled={isSaving}
+              className="inline-flex h-control items-center justify-center gap-1.5 rounded-xl border border-emerald-600 bg-emerald-600 px-4 text-xs font-bold text-white shadow-2xs transition hover:bg-emerald-700 disabled:opacity-60 col-span-2 sm:col-span-1"
+              title="Download all slides as individual PNG files"
+            >
+              <Download className="size-3.5" strokeWidth={1.5} />
+              Download All ({totalSlides} Slides)
+            </button>
+          ) : null}
         </div>
       </ModalFooter>
     </Modal>

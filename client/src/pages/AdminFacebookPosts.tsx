@@ -488,6 +488,20 @@ export function AdminFacebookPostsContent() {
     setPicked(next);
   };
 
+  const handleSelectCount = (count: number) => {
+    const next = new Map<number, LiveJob>();
+    const toPick = items.slice(0, Math.min(count, MAX_TALL_TUITIONS));
+    if (toPick.length === 0) {
+      toast.info("বাছাই করার মতো কোনো টিউশন নেই।");
+      return;
+    }
+    for (const job of toPick) {
+      next.set(job.id, job);
+    }
+    setPicked(next);
+    toast.info(`${next.size}টি টিউশন বাছাই করা হয়েছে (${next.size <= 4 ? "১টি স্লাইড" : `${Math.ceil(next.size / 4)}টি স্লাইড`})।`);
+  };
+
   const handleGenerateBulkPoster = async () => {
     if (isBulkCopying) return;
     // Ticked tuitions are the poster, in the order they were ticked: nothing to fetch.
@@ -1123,6 +1137,28 @@ export function AdminFacebookPostsContent() {
             <span>Group Helper</span>
           </button>
 
+          <div className="inline-flex items-center rounded-xl border border-j-border bg-white p-0.5 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => handleSelectCount(4)}
+              disabled={items.length === 0}
+              className="rounded-lg px-2.5 py-1 text-xs font-semibold text-j-ink hover:bg-j-border-light/70 transition disabled:opacity-40"
+              title="Select top 4 tuitions for a single poster"
+            >
+              Select 4
+            </button>
+            <div className="h-4 w-px bg-j-border" />
+            <button
+              type="button"
+              onClick={() => handleSelectCount(12)}
+              disabled={items.length === 0}
+              className="rounded-lg px-2.5 py-1 text-xs font-semibold text-j-ink hover:bg-j-border-light/70 transition disabled:opacity-40"
+              title="Select top 12 tuitions for Tall List or 3-Slide Carousel"
+            >
+              Select 12
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={handlePreviewBulk}
@@ -1140,7 +1176,11 @@ export function AdminFacebookPostsContent() {
             title="Facebook poster for the tuitions you ticked, or for the filtered ones: four in a square or landscape image, up to twelve in the tall list"
           >
             <ImageIcon className="size-3.5 text-[#1877f2]" />
-            <span>{picked.size > 0 ? `Bulk Poster (${picked.size} picked)` : `Bulk Poster (${Math.min(totalMatching, MAX_TALL_TUITIONS)})`}</span>
+            <span>
+              {picked.size > 0
+                ? `Bulk Poster (${picked.size} picked · ${picked.size <= 4 ? "1 slide" : `${Math.ceil(picked.size / 4)} slides`})`
+                : `Bulk Poster (${Math.min(totalMatching, MAX_TALL_TUITIONS)})`}
+            </span>
           </button>
           <button
             type="button"
@@ -1643,14 +1683,19 @@ export function AdminFacebookPostsContent() {
         isOpen={Boolean(bulkPosterJobs && bulkPosterJobs.length > 0)}
         onClose={() => setBulkPosterJobs(null)}
         jobs={bulkPosterJobs}
-        caption={shown => buildEnglishBulkFacebookPostText((bulkPosterJobs ?? []).slice(0, shown), {
-          origin: window.location.origin,
-          template: templates,
-          format: selectedBulkFormat,
-          // Ticked tuitions are not what the filters describe, so the headline does not borrow them.
-          filterOptions: bulkPosterPicked ? undefined : getActiveBulkFilterOptions(),
-          includeHashtags,
-        })}
+        caption={(shown, range) => {
+          const list = range
+            ? (bulkPosterJobs ?? []).slice(range.start, range.end)
+            : (bulkPosterJobs ?? []).slice(0, shown);
+          return buildEnglishBulkFacebookPostText(list, {
+            origin: window.location.origin,
+            template: templates,
+            format: selectedBulkFormat,
+            // Ticked tuitions are not what the filters describe, so the headline does not borrow them.
+            filterOptions: bulkPosterPicked ? undefined : getActiveBulkFilterOptions(),
+            includeHashtags,
+          });
+        }}
       />
 
       {videoJobs && videoJobs.length > 0 ? (

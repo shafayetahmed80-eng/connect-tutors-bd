@@ -158,10 +158,47 @@ describe("the poster window's sizes and themes", () => {
   it("counts four tuitions in a square and every one it holds in the tall list", () => {
     const eight = Array.from({ length: 8 }, (_, index) => job(index + 1));
     render(<FacebookPosterModal isOpen onClose={() => {}} jobs={eight} />);
-    expect(screen.getByText("4 tuitions")).toBeTruthy();
+    expect(screen.getByText(/Slide 1 of 2/)).toBeTruthy();
+    expect(screen.getByText(/8 total/)).toBeTruthy();
 
     fireEvent.click(group("Size").getByRole("radio", { name: "Tall list" }));
     expect(screen.getByText("8 tuitions")).toBeTruthy();
+  });
+
+  it("paginates 8 or 12 tuitions into carousel slides in square/landscape with slide switching and captions", async () => {
+    const twelve = Array.from({ length: 12 }, (_, index) => job(index + 1));
+    const captionSpy = vi.fn((count: number, range?: { start: number; end: number }) => `Caption for ${count} (from ${range?.start ?? 0} to ${range?.end ?? count})`);
+    render(<FacebookPosterModal isOpen onClose={() => {}} jobs={twelve} caption={captionSpy} />);
+
+    expect(screen.getByText(/Slide 1 of 3/)).toBeTruthy();
+    expect(screen.getByText(/12 total/)).toBeTruthy();
+
+    // 3 slide buttons are present
+    expect(screen.getByRole("button", { name: /^Slide 1\s*\(/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Slide 2\s*\(/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Slide 3\s*\(/i })).toBeTruthy();
+
+    // Verify first slide renders jobs 1-4
+    expect(renderers.combined.mock.calls.at(-1)![1].map((j: any) => j.id)).toEqual([1, 2, 3, 4]);
+
+    // Click Slide 2
+    fireEvent.click(screen.getByRole("button", { name: /^Slide 2\s*\(/i }));
+    expect(screen.getByText(/Slide 2 of 3/)).toBeTruthy();
+    expect(renderers.combined.mock.calls.at(-1)![1].map((j: any) => j.id)).toEqual([5, 6, 7, 8]);
+
+    // Click Next slide button
+    fireEvent.click(screen.getByRole("button", { name: "Next slide" }));
+    expect(screen.getByText(/Slide 3 of 3/)).toBeTruthy();
+    expect(renderers.combined.mock.calls.at(-1)![1].map((j: any) => j.id)).toEqual([9, 10, 11, 12]);
+
+    // Click Previous slide button
+    fireEvent.click(screen.getByRole("button", { name: "Previous slide" }));
+    expect(screen.getByText(/Slide 2 of 3/)).toBeTruthy();
+
+    // Both Copy Slide and Copy All buttons are available
+    expect(screen.getByRole("button", { name: /Copy Slide \(4\)/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Copy All \(12\)/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Download All \(3 Slides\)/i })).toBeTruthy();
   });
 
   it("passes the colour to a combined poster too", () => {
@@ -252,13 +289,24 @@ describe("the caption that goes with a poster", () => {
     const caption = vi.fn((shown: number) => `post of ${shown}`);
     render(<FacebookPosterModal isOpen onClose={() => {}} jobs={jobs} caption={caption} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Copy caption/ }));
+    // In a multi-job square carousel, copying current slide caption requests 4
+    fireEvent.click(screen.getByRole("button", { name: /Copy Slide \(4\)/i }));
     await vi.waitFor(() => expect(writeText).toHaveBeenLastCalledWith("post of 4"));
 
+    // In tall list (which shows all), copying caption requests all 6
     fireEvent.click(group("Size").getByRole("radio", { name: "Tall list" }));
     fireEvent.click(screen.getByRole("button", { name: /Copy caption/ }));
     await vi.waitFor(() => expect(writeText).toHaveBeenLastCalledWith("post of 6"));
     expect(caption.mock.calls.map(call => call[0])).toEqual([4, 6]);
+  });
+
+  it("shows single Copy caption button when 4 or fewer tuitions are rendered in square", async () => {
+    const caption = vi.fn((shown: number) => `single post of ${shown}`);
+    render(<FacebookPosterModal isOpen onClose={() => {}} jobs={jobs.slice(0, 4)} caption={caption} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Copy caption/ }));
+    await vi.waitFor(() => expect(writeText).toHaveBeenLastCalledWith("single post of 4"));
+    expect(caption).toHaveBeenCalledWith(4);
   });
 
   it("says so when nothing could be copied", async () => {
