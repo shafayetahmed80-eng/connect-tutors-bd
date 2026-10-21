@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronLeft, ChevronRight, Copy, Download, FileText } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Copy, Download, FileText, Image as ImageIcon, SlidersHorizontal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { JobIdTag } from "@/components/JobIdTag";
@@ -265,8 +265,8 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
   const [fonts, setFonts] = useState({ sans: false, serif: false });
   const [isCopying, setIsCopying] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  // Only a phone folds the settings away (from `sm` up they are always shown): the poster comes first there.
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // On a phone, tabs cleanly switch between the poster preview and settings so neither overlaps or covers the other.
+  const [mobileTab, setMobileTab] = useState<"preview" | "settings">("preview");
 
   const isCombined = Boolean(jobs && jobs.length > 0);
   const size: PosterSize = !isCombined && prefs.size === "tall" ? "square" : prefs.size;
@@ -300,6 +300,7 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
   useEffect(() => {
     const stored = isOpen ? readStoredPrefs() : null;
     if (stored) setPrefs(stored);
+    if (isOpen) setMobileTab("preview");
   }, [isOpen]);
 
   const update = (patch: Partial<PosterPrefs>) => {
@@ -332,7 +333,7 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
       console.error("Poster render failed", error);
       toast.error("পোস্টার তৈরি করতে সমস্যা হয়েছে।");
     }
-  }, [isOpen, fonts, prefs, job, jobs, isCombined, theme, size, ground, currentSlideJobs]);
+  }, [isOpen, fonts, prefs, job, jobs, isCombined, theme, size, ground, currentSlideJobs, mobileTab]);
 
   if (!isOpen || (!job && !isCombined)) return null;
 
@@ -441,10 +442,89 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
           )
         }
       />
-      <ModalBody className="max-sm:pt-0">
+      <ModalBody className="max-sm:pt-2">
+        {/* Mobile Tab Switcher: Preview ↔ Settings */}
+        <div
+          role="tablist"
+          aria-label="Poster view"
+          className="mb-3 grid grid-cols-2 gap-1 rounded-xl border border-j-border bg-j-border-light/60 p-1 sm:hidden"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobileTab === "preview"}
+            aria-controls="poster-preview-panel"
+            onClick={() => setMobileTab("preview")}
+            className={cn(
+              "flex h-8 items-center justify-center gap-1.5 rounded-lg text-xs font-bold transition",
+              mobileTab === "preview"
+                ? "bg-white text-j-ink shadow-2xs"
+                : "text-j-ink-soft hover:text-j-ink",
+            )}
+          >
+            <ImageIcon className="size-3.5" />
+            <span>Preview</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobileTab === "settings"}
+            aria-expanded={mobileTab === "settings"}
+            aria-controls="poster-settings"
+            onClick={() => setMobileTab(tab => (tab === "settings" ? "preview" : "settings"))}
+            className={cn(
+              "flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-bold transition",
+              mobileTab === "settings"
+                ? "bg-white text-j-ink shadow-2xs"
+                : "text-j-ink-soft hover:text-j-ink",
+            )}
+          >
+            <SlidersHorizontal className="size-3.5 shrink-0" />
+            <span className="shrink-0">Settings</span>
+            <span className="truncate text-3xs font-medium text-j-ink-muted">({settingsSummary})</span>
+          </button>
+        </div>
+
         <div className="flex flex-col">
-          {/* A phone shows the poster first and keeps it in view while the settings below scroll. */}
-          <div className="order-1 max-sm:sticky max-sm:top-0 max-sm:z-10 max-sm:-mx-4 max-sm:bg-background max-sm:px-4 max-sm:py-3 sm:order-2 sm:mt-4">
+          {/* Settings Section (desktop: sm:order-1 sm:block; mobile: mobileTab === 'settings' ? 'block' : 'max-sm:hidden') */}
+          <div
+            id="poster-settings"
+            className={cn(
+              "space-y-3 sm:order-1 sm:mb-4 sm:space-y-2.5",
+              mobileTab === "settings" ? "block" : "max-sm:hidden sm:block",
+            )}
+          >
+            <ChoiceRow label="Language" value={prefs.locale} options={[{ value: "bn", label: "বাংলা" }, { value: "en", label: "English" }]} onChange={locale => update({ locale })} />
+            <ChoiceRow label="Size" value={size} options={sizeOptions} onChange={next => update({ size: next })} />
+            <ChoiceRow
+              label="Theme"
+              value={theme}
+              options={themeOptions}
+              onChange={next => (isCombined ? update({ combinedTheme: next as CombinedPosterTheme }) : update({ singleTheme: next as SinglePosterTheme }))}
+            />
+            <PosterColourRow ground={prefs.ground} defaultGround={THEME_LABELS[theme].swatch} resolvedAuto={resolvedAuto} onChange={next => update({ ground: next })} />
+
+            {/* Mobile button to return to Preview */}
+            <div className="pt-2 sm:hidden">
+              <button
+                type="button"
+                onClick={() => setMobileTab("preview")}
+                className="flex h-control w-full items-center justify-center gap-2 rounded-xl bg-[#1877f2] text-xs font-bold text-white shadow-2xs transition hover:bg-[#166fe5]"
+              >
+                <ImageIcon className="size-3.5" />
+                <span>View Updated Poster</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Preview Section (desktop: sm:order-2 sm:block; mobile: mobileTab === 'preview' ? 'block' : 'max-sm:hidden') */}
+          <div
+            id="poster-preview-panel"
+            className={cn(
+              "sm:order-2",
+              mobileTab === "preview" ? "block" : "max-sm:hidden sm:block",
+            )}
+          >
             {isCarousel ? (
               <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-j-border bg-white p-2 shadow-2xs">
                 <div className="flex items-center gap-1.5">
@@ -494,6 +574,7 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
                 </div>
               </div>
             ) : null}
+
             <div className="flex justify-center rounded-xl border border-j-border bg-j-border-light/40 p-3">
               <canvas
                 ref={canvasRef}
@@ -501,36 +582,27 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
                 aria-label={isCombined ? "Multi-tuition poster preview" : `Poster preview for job ${job!.jobId}`}
                 className={cn(
                   "h-auto w-auto max-w-full rounded-lg shadow-sm",
-                  settingsOpen ? "max-sm:max-h-[30dvh]" : "max-sm:max-h-[46dvh]",
-                  size === "tall" ? "sm:max-h-[60vh]" : "sm:max-h-[52vh]",
+                  size === "tall" ? "max-sm:max-h-[55dvh] sm:max-h-[60vh]" : "max-sm:max-h-[46dvh] sm:max-h-[52vh]",
                 )}
                 style={{ aspectRatio: `${width} / ${height}` }}
               />
             </div>
-          </div>
-          <button
-            type="button"
-            aria-expanded={settingsOpen}
-            aria-controls="poster-settings"
-            onClick={() => setSettingsOpen(open => !open)}
-            className="order-2 flex h-control w-full items-center justify-between gap-3 rounded-xl border border-j-border bg-white px-3.5 text-xs font-semibold text-j-ink transition hover:bg-j-border-light/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1877f2]/40 sm:hidden"
-          >
-            <span>Settings</span>
-            <span className="flex min-w-0 items-center gap-2 font-medium text-j-ink-soft">
-              <span className="truncate">{settingsSummary}</span>
-              <ChevronDown className={cn("size-4 shrink-0 transition-transform motion-reduce:transition-none", settingsOpen && "rotate-180")} strokeWidth={1.5} />
-            </span>
-          </button>
-          <div id="poster-settings" className={cn("order-3 mt-3 space-y-3 sm:order-1 sm:mt-0 sm:space-y-2.5", !settingsOpen && "max-sm:hidden")}>
-            <ChoiceRow label="Language" value={prefs.locale} options={[{ value: "bn", label: "বাংলা" }, { value: "en", label: "English" }]} onChange={locale => update({ locale })} />
-            <ChoiceRow label="Size" value={size} options={sizeOptions} onChange={next => update({ size: next })} />
-            <ChoiceRow
-              label="Theme"
-              value={theme}
-              options={themeOptions}
-              onChange={next => (isCombined ? update({ combinedTheme: next as CombinedPosterTheme }) : update({ singleTheme: next as SinglePosterTheme }))}
-            />
-            <PosterColourRow ground={prefs.ground} defaultGround={THEME_LABELS[theme].swatch} resolvedAuto={resolvedAuto} onChange={next => update({ ground: next })} />
+
+            {/* Quick action button on mobile to jump directly to Settings */}
+            <button
+              type="button"
+              onClick={() => setMobileTab("settings")}
+              className="mt-3 flex w-full items-center justify-between rounded-xl border border-j-border bg-white px-3.5 py-2.5 text-xs font-semibold text-j-ink shadow-2xs transition hover:bg-j-border-light/60 sm:hidden"
+            >
+              <span className="flex items-center gap-2">
+                <SlidersHorizontal className="size-3.5 text-[#1877f2]" />
+                <span>Customize Settings</span>
+              </span>
+              <span className="flex min-w-0 items-center gap-1.5 text-j-ink-soft">
+                <span className="truncate max-w-[150px]">{settingsSummary}</span>
+                <ChevronRight className="size-3.5" />
+              </span>
+            </button>
           </div>
         </div>
       </ModalBody>

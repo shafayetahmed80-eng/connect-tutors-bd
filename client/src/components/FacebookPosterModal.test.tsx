@@ -373,35 +373,51 @@ describe("the poster window on a phone", () => {
     expect(code.parentElement).toBe(screen.getByLabelText("Custom colour").closest("label")!.parentElement);
   });
 
-  it("folds the settings away behind a bar that names the choices made, and opens them on a tap", () => {
+  it("switches cleanly between Preview and Settings tabs on a phone so settings never get covered", () => {
     render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} />);
-    const bar = screen.getByRole("button", { name: /^Settings/ });
+    const settingsTab = screen.getByRole("tab", { name: /^Settings/ });
+    const previewTab = screen.getByRole("tab", { name: "Preview" });
+    const preview = document.getElementById("poster-preview-panel")!;
     const settings = document.getElementById("poster-settings")!;
 
-    expect(bar.getAttribute("aria-expanded")).toBe("false");
-    expect(bar.getAttribute("aria-controls")).toBe("poster-settings");
+    // Starts in Preview mode
+    expect(settingsTab.getAttribute("aria-expanded")).toBe("false");
+    expect(settingsTab.getAttribute("aria-controls")).toBe("poster-settings");
     expect(settings.className).toContain("max-sm:hidden");
-    expect(bar.textContent).toContain("বাংলা · Square · Navy");
+    expect(preview.className).not.toContain("max-sm:hidden");
+    expect(settingsTab.textContent).toContain("বাংলা · Square · Navy");
 
-    fireEvent.click(bar);
-    expect(bar.getAttribute("aria-expanded")).toBe("true");
+    // Tap Settings tab -> settings become visible, preview hides on mobile (prevents overlapping)
+    fireEvent.click(settingsTab);
+    expect(settingsTab.getAttribute("aria-expanded")).toBe("true");
     expect(settings.className).not.toContain("max-sm:hidden");
+    expect(preview.className).toContain("max-sm:hidden");
 
+    // Change settings
     fireEvent.click(group("Language").getByRole("radio", { name: "English" }));
     fireEvent.click(group("Theme").getByRole("radio", { name: "Cream" }));
-    expect(bar.textContent).toContain("English · Square · Cream");
+    expect(settingsTab.textContent).toContain("English · Square · Cream");
 
-    fireEvent.click(bar);
-    expect(bar.getAttribute("aria-expanded")).toBe("false");
+    // Tap Preview tab -> preview becomes visible again
+    fireEvent.click(previewTab);
+    expect(settingsTab.getAttribute("aria-expanded")).toBe("false");
     expect(settings.className).toContain("max-sm:hidden");
+    expect(preview.className).not.toContain("max-sm:hidden");
   });
 
-  it("holds the poster first and in view above the settings", () => {
+  it("supports jumping back to Preview via the View Updated Poster action button in Settings", () => {
     render(<FacebookPosterModal isOpen onClose={() => {}} job={job(113)} />);
-    const preview = screen.getByRole("img", { name: /Poster preview/ }).parentElement!.parentElement!;
-    expect(preview.className).toContain("order-1");
-    expect(preview.className).toContain("max-sm:sticky");
-    expect(document.getElementById("poster-settings")!.className).toContain("order-3");
+    const settingsTab = screen.getByRole("tab", { name: /^Settings/ });
+    const preview = document.getElementById("poster-preview-panel")!;
+    const settings = document.getElementById("poster-settings")!;
+
+    fireEvent.click(settingsTab);
+    expect(settings.className).not.toContain("max-sm:hidden");
+
+    const returnBtn = screen.getByRole("button", { name: "View Updated Poster" });
+    fireEvent.click(returnBtn);
+    expect(settings.className).toContain("max-sm:hidden");
+    expect(preview.className).not.toContain("max-sm:hidden");
   });
 });
 
