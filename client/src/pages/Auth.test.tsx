@@ -475,12 +475,15 @@ describe("post-login destinations", () => {
     expect(getPostLoginPath("tutor")).toBe("/tutor/dashboard");
   });
 
-  it("sends Tutor Apply Now sign-ins to profile review or the protected selected Job Board based on approval", async () => {
+  it("sends Tutor Apply Now sign-ins to profile review or the protected selected Job Board based on eligibility", async () => {
     const { getPostLoginPath } = await import("./Auth");
     const returnPath = "/job-board?job=6945";
 
-    expect(getPostLoginPath("tutor", returnPath, "pending")).toBe(
+    expect(getPostLoginPath("tutor", returnPath, "draft")).toBe(
       "/tutor/dashboard/profile?returnTo=%2Fjob-board%3Fjob%3D6945",
+    );
+    expect(getPostLoginPath("tutor", returnPath, "pending")).toBe(
+      "/tutor/dashboard/jobs?returnTo=%2Fjob-board%3Fjob%3D6945",
     );
     expect(getPostLoginPath("tutor", returnPath, "approved")).toBe(
       "/tutor/dashboard/jobs?returnTo=%2Fjob-board%3Fjob%3D6945",
