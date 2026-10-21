@@ -178,6 +178,7 @@ import { normalizeBangladeshMobile } from "./guardian-intake.validation";
 import { buildConfirmationLetterContent, renderConfirmationLetterPdf, type ConfirmationLetterDocument } from "./confirmation-letter-pdf";
 import { closedReceiptNumber, paymentReceiptNumber, receiptFileName, renderClosedTuitionReceiptPdf, renderPaymentReceiptPdf } from "./payment-receipt-pdf";
 import { isTutorCvDraft } from "@shared/tutor-cv-status";
+import { isTutorSupportingDocumentType, tutorSupportingDocumentLabels, type TutorDocumentVerificationStatus } from "@shared/tutor-documents";
 import { renderTutorCvPdf, tutorCvFileName, type TutorCvDocument, type TutorCvEducationRecord } from "./tutor-cv-pdf";
 import { storageDelete, storageGetSignedUrl, storagePut, storageRead } from "./storage";
 import { TUTOR_ADMIN_CHAT_RETENTION_DAYS, TUTOR_ADMIN_CHAT_RETENTION_MS } from "@shared/const";
@@ -1688,7 +1689,7 @@ async function loadTutorProfileOwner(database: any, userId: number) {
     database.select().from(tutorPreferredTimeSlots).where(eq(tutorPreferredTimeSlots.tutorId, tutorId)),
     database.select().from(tutorEducationRecords).where(eq(tutorEducationRecords.tutorId, tutorId)),
     // Types only — the storage keys stay out of every profile DTO.
-    database.select({ documentType: tutorSupportingDocuments.documentType }).from(tutorSupportingDocuments).where(eq(tutorSupportingDocuments.tutorId, tutorId)),
+    database.select({ documentType: tutorSupportingDocuments.documentType, documentStatus: tutorSupportingDocuments.documentStatus, rejectionReason: tutorSupportingDocuments.rejectionReason, verifiedAt: tutorSupportingDocuments.verifiedAt }).from(tutorSupportingDocuments).where(eq(tutorSupportingDocuments.tutorId, tutorId)),
     database.select({ value: count() }).from(tutorRequests).where(eq(tutorRequests.tutorId, tutorId)),
     // The newest Admin decision. A Tutor asked to make changes could not see
     // which changes: the reason was written here and read only by an Admin.
@@ -1775,8 +1776,23 @@ async function loadTutorProfileOwner(database: any, userId: number) {
       emergencyContactAddress: row.privateProfile.emergencyContactAddress ?? undefined,
     } : undefined,
     educationRecords: educationRecordRows.map(educationRecordFromRow),
-    universityIdDocumentStatus: row.universityIdDocument?.documentStatus === "uploaded" ? "uploaded" as const : "not_uploaded" as const,
+    universityIdDocumentStatus: row.universityIdDocument?.documentStatus === "uploaded" || row.universityIdDocument?.documentStatus === "pending" || row.universityIdDocument?.documentStatus === "approved" || row.universityIdDocument?.documentStatus === "changes_requested" ? "uploaded" as const : "not_uploaded" as const,
+    universityIdDocumentVerification: row.universityIdDocument ? {
+      status: row.universityIdDocument.documentStatus,
+      rejectionReason: row.universityIdDocument.rejectionReason ?? null,
+      verifiedAt: row.universityIdDocument.verifiedAt ?? null,
+    } : null,
     uploadedSupportingDocuments: supportingDocumentRows.map((document: { documentType: string }) => document.documentType),
+    supportingDocumentStatuses: Object.fromEntries(
+      supportingDocumentRows.map((doc: any) => [
+        doc.documentType,
+        {
+          status: doc.documentStatus ?? "uploaded",
+          rejectionReason: doc.rejectionReason ?? null,
+          verifiedAt: doc.verifiedAt ?? null,
+        },
+      ]),
+    ),
     profileStatus: row.tutor.profileStatus,
     accountStatus: row.user.accountStatus,
     assignedRequestCount: Number(assignedCountRows[0]?.value ?? 0),
@@ -2088,12 +2104,25 @@ export async function getTutorProfileForAdmin(input: { tutorId: string }) {
   });
 
   const [universityIdRow] = await database
-    .select({ storageKey: tutorUniversityIdDocuments.storageKey })
+    .select({
+      storageKey: tutorUniversityIdDocuments.storageKey,
+      documentStatus: tutorUniversityIdDocuments.documentStatus,
+      rejectionReason: tutorUniversityIdDocuments.rejectionReason,
+      verifiedAt: tutorUniversityIdDocuments.verifiedAt,
+      verifiedBy: tutorUniversityIdDocuments.verifiedBy,
+    })
     .from(tutorUniversityIdDocuments)
     .where(eq(tutorUniversityIdDocuments.tutorId, input.tutorId))
     .limit(1);
   const supportingRows = await database
-    .select({ documentType: tutorSupportingDocuments.documentType, storageKey: tutorSupportingDocuments.storageKey })
+    .select({
+      documentType: tutorSupportingDocuments.documentType,
+      storageKey: tutorSupportingDocuments.storageKey,
+      documentStatus: tutorSupportingDocuments.documentStatus,
+      rejectionReason: tutorSupportingDocuments.rejectionReason,
+      verifiedAt: tutorSupportingDocuments.verifiedAt,
+      verifiedBy: tutorSupportingDocuments.verifiedBy,
+    })
     .from(tutorSupportingDocuments)
     .where(eq(tutorSupportingDocuments.tutorId, input.tutorId));
 
@@ -2107,6 +2136,25 @@ export async function getTutorProfileForAdmin(input: { tutorId: string }) {
       supporting: Object.fromEntries(
         await Promise.all(supportingRows.map(async row => [row.documentType, await storageGetSignedUrl(row.storageKey)] as const)),
       ) as Record<string, string>,
+      details: {
+        universityId: {
+          status: (universityIdRow?.documentStatus ?? "not_uploaded") as TutorDocumentVerificationStatus,
+          rejectionReason: universityIdRow?.rejectionReason ?? null,
+          verifiedAt: universityIdRow?.verifiedAt ?? null,
+          verifiedBy: universityIdRow?.verifiedBy ?? null,
+        },
+        supporting: Object.fromEntries(
+          supportingRows.map(row => [
+            row.documentType,
+            {
+              status: row.documentStatus,
+              rejectionReason: row.rejectionReason ?? null,
+              verifiedAt: row.verifiedAt ?? null,
+              verifiedBy: row.verifiedBy ?? null,
+            },
+          ]),
+        ),
+      },
     },
     // The flat list, matching `tutorProfileFieldConfig.resolved`: the lookups
     // built from it repeat every field three times, and `indexResolvedFields`
@@ -2163,8 +2211,9 @@ export async function saveTutorSupportingDocument(userId: number, documentType: 
     tutorId: tutor.id,
     documentType,
     storageKey,
+    documentStatus: "uploaded",
     uploadedAt,
-  }).onDuplicateKeyUpdate({ set: { storageKey, uploadedAt } });
+  }).onDuplicateKeyUpdate({ set: { storageKey, documentStatus: "uploaded", rejectionReason: null, uploadedAt } });
 }
 
 /** Stores only a private object-storage key and upload status; never return this key to public or Guardian DTOs. */
@@ -2179,7 +2228,7 @@ export async function saveTutorUniversityIdDocument(userId: number, storageKey: 
     storageKey,
     documentStatus: "uploaded",
     uploadedAt,
-  }).onDuplicateKeyUpdate({ set: { storageKey, documentStatus: "uploaded", uploadedAt } });
+  }).onDuplicateKeyUpdate({ set: { storageKey, documentStatus: "uploaded", rejectionReason: null, uploadedAt } });
 }
 
 async function getTutorProfileCatalogReferences(database: any): Promise<TutorProfileCatalogReferences> {
@@ -6176,6 +6225,117 @@ export async function moderateTutorProfile(input: {
 }
 
 /** Returned to authorized Admin review screens without Tutor contact or document fields. */
+
+/**
+ * Verifies or requests re-upload for an individual tutor document (University ID or Supporting Document).
+ * Independent of overall profile status: rejecting one document notifies the tutor to re-upload without
+ * downgrading the whole profile.
+ */
+export async function verifyTutorDocument(input: {
+  tutorId: string;
+  adminUserId: number;
+  documentType: string;
+  status: "approved" | "changes_requested";
+  reason?: string;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+
+  return database.transaction(async tx => {
+    const [tutor] = await tx
+      .select({ id: tutors.id, name: tutors.name, userId: tutors.userId })
+      .from(tutors)
+      .where(eq(tutors.id, input.tutorId))
+      .limit(1)
+      .for("update");
+
+    if (!tutor) return { updated: false as const, reason: "TUTOR_NOT_FOUND" as const };
+
+    const [adminUser] = await tx
+      .select({ name: users.name })
+      .from(users)
+      .where(eq(users.id, input.adminUserId))
+      .limit(1);
+    const adminName = adminUser?.name || "Admin";
+
+    const verifiedAt = new Date();
+    const rejectionReason = input.status === "changes_requested" ? (input.reason?.trim() || "Information unclear or re-upload required") : null;
+
+    let docLabel = "Document";
+
+    if (input.documentType === "universityId") {
+      docLabel = "University ID Card";
+      const [existing] = await tx
+        .select({ tutorId: tutorUniversityIdDocuments.tutorId, storageKey: tutorUniversityIdDocuments.storageKey })
+        .from(tutorUniversityIdDocuments)
+        .where(eq(tutorUniversityIdDocuments.tutorId, tutor.id))
+        .limit(1)
+        .for("update");
+
+      if (!existing || !existing.storageKey) {
+        return { updated: false as const, reason: "DOCUMENT_NOT_UPLOADED" as const };
+      }
+      await tx
+        .update(tutorUniversityIdDocuments)
+        .set({
+          documentStatus: input.status,
+          rejectionReason,
+          verifiedAt,
+          verifiedBy: adminName,
+        })
+        .where(eq(tutorUniversityIdDocuments.tutorId, tutor.id));
+    } else {
+      if (isTutorSupportingDocumentType(input.documentType)) {
+        docLabel = tutorSupportingDocumentLabels[input.documentType];
+      }
+      const [existing] = await tx
+        .select({ tutorId: tutorSupportingDocuments.tutorId, storageKey: tutorSupportingDocuments.storageKey })
+        .from(tutorSupportingDocuments)
+        .where(and(eq(tutorSupportingDocuments.tutorId, tutor.id), eq(tutorSupportingDocuments.documentType, input.documentType)))
+        .limit(1)
+        .for("update");
+
+      if (!existing || !existing.storageKey) {
+        return { updated: false as const, reason: "DOCUMENT_NOT_UPLOADED" as const };
+      }
+      await tx
+        .update(tutorSupportingDocuments)
+        .set({
+          documentStatus: input.status,
+          rejectionReason,
+          verifiedAt,
+          verifiedBy: adminName,
+        })
+        .where(and(eq(tutorSupportingDocuments.tutorId, tutor.id), eq(tutorSupportingDocuments.documentType, input.documentType)));
+    }
+
+    if (input.status === "changes_requested") {
+      const title = `Document re-upload requested: ${docLabel}`;
+      const message = rejectionReason
+        ? `Please re-upload your ${docLabel}. Reason: ${rejectionReason}`
+        : `Please re-upload a clear copy of your ${docLabel}.`;
+      await createTutorNotification(tx, {
+        tutorId: tutor.id,
+        type: "profile_moderation",
+        title,
+        message,
+        actionPath: "/tutor/dashboard/profile",
+        deduplicationKey: `document-reupload:${tutor.id}:${input.documentType}`,
+      });
+      void sendPushToTutor(tutor.id, { title, body: message, url: "/tutor/dashboard/profile" }).catch(() => {});
+    }
+
+    return {
+      updated: true as const,
+      documentType: input.documentType,
+      status: input.status,
+      rejectionReason,
+      verifiedAt,
+      verifiedBy: adminName,
+    };
+  });
+}
+
 export async function listTutorModerationEvents(tutorId: string) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");

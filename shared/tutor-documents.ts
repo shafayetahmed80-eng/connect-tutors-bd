@@ -31,3 +31,40 @@ export function isTutorSupportingDocumentType(value: unknown): value is TutorSup
 /** Matches the University ID card limits so every upload behaves the same. */
 export const MAX_TUTOR_DOCUMENT_BYTES = 5 * 1024 * 1024;
 export const TUTOR_DOCUMENT_ACCEPT_ATTRIBUTE = "image/jpeg,image/jpg,image/pjpeg,image/png,image/webp";
+
+/** Per-document verification statuses supported across Admin and Tutor portal */
+export const tutorDocumentVerificationStatuses = [
+  "not_uploaded",
+  "uploaded",
+  "pending",
+  "approved",
+  "changes_requested",
+] as const;
+
+export type TutorDocumentVerificationStatus = (typeof tutorDocumentVerificationStatuses)[number];
+
+export const tutorDocumentVerificationStatusLabels: Record<TutorDocumentVerificationStatus, string> = {
+  not_uploaded: "Not Uploaded",
+  uploaded: "Uploaded",
+  pending: "Pending Review",
+  approved: "Approved",
+  changes_requested: "Changes Requested",
+};
+
+/** Quick reason presets for requesting document re-upload in Bengali */
+export const TUTOR_DOCUMENT_REUPLOAD_REASONS = [
+  "ছবিটি ঝাপসা বা স্পষ্ট নয়",
+  "ভুল ডকুমেন্ট আপলোড করা হয়েছে",
+  "উভয় পিঠ প্রয়োজন / সম্পূর্ণ ডকুমেন্ট দেখা যাচ্ছে না",
+  "মেয়াদোত্তীর্ণ আইডি / তথ্যে অসামঞ্জস্য রয়েছে",
+] as const;
+
+export function buildTutorDocumentReuploadWhatsAppMessage(input: {
+  tutorName: string;
+  documentLabel: string;
+  reason: string;
+  dashboardUrl?: string;
+}): string {
+  const url = input.dashboardUrl || "https://connecttutorsbd.com/tutor/dashboard/profile";
+  return `আসসালামু আলাইকুম ${input.tutorName}, কানেক্ট টিউটরস (Connect Tutors BD) থেকে আপনার "${input.documentLabel}" পর্যালোচনায় কিছু সংশোধনের প্রয়োজন হয়েছে।\n\nকারণ: ${input.reason}\n\nঅনুগ্রহ করে প্রোফাইল ড্যাশবোর্ডে গিয়ে নতুন করে স্পষ্ট ডকুমেন্টটি আপলোড করুন:\n${url}`;
+}

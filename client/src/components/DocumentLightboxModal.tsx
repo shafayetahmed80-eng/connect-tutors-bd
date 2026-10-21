@@ -299,6 +299,17 @@ export function DocumentLightboxModal({
         </div>
       </header>
 
+      {/* Re-upload Reason Alert Strip */}
+      {currentItem?.status === "changes_requested" && currentItem.reason ? (
+        <div className="relative z-10 flex shrink-0 items-center gap-2 border-b border-rose-500/20 bg-rose-950/80 px-4 py-2 text-xs text-rose-200 backdrop-blur sm:px-6">
+          <AlertCircle size={15} className="shrink-0 text-rose-400" />
+          <span className="truncate">
+            <strong className="font-semibold text-rose-100">Re-upload requested:</strong>{" "}
+            {currentItem.reason}
+          </span>
+        </div>
+      ) : null}
+
       {/* Main Viewport Stage */}
       <main
         ref={containerRef}

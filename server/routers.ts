@@ -2684,6 +2684,24 @@ export const appRouter = router({
         }
         throw new TRPCError({ code: "CONFLICT", message: result.reason });
       }),
+    verifyTutorDocument: adminProcedure
+      .input(z.object({
+        tutorId: z.string().trim().min(1).max(32),
+        documentType: z.string().trim().min(1).max(40),
+        status: z.enum(["approved", "changes_requested"]),
+        reason: z.string().trim().max(500).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.verifyTutorDocument({ ...input, adminUserId: ctx.user.id });
+        if (result.updated) return result;
+        if (result.reason === "TUTOR_NOT_FOUND") {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Tutor profile is unavailable." });
+        }
+        if (result.reason === "DOCUMENT_NOT_UPLOADED") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "This document has not been uploaded yet." });
+        }
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Unable to verify document." });
+      }),
     listGuardianRequests: adminProcedure
       .input(adminGuardianRequestInputSchema)
       .query(({ input }) => db.listAdminGuardianRequestPage(input)),

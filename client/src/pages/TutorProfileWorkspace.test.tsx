@@ -551,6 +551,32 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(within(dialog).queryByText(/tutors\/|university-id\./)).toBeNull();
   });
 
+  it("renders re-upload requested alert and replacement CTA when a document has changes_requested status", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(
+      <TutorProfileWorkspace
+        profile={{
+          ...completeProfile,
+          universityIdDocumentStatus: "uploaded",
+          universityIdDocumentVerification: {
+            status: "changes_requested",
+            rejectionReason: "ছবিটি স্পষ্ট নয়, উভয় পিঠ প্রয়োজন",
+          },
+        } as never}
+        onboardingFallback={null}
+      />
+    );
+
+    await user.click(screen.getByRole("tab", { name: /Credential/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Documents" }));
+    const dialog = screen.getByRole("dialog");
+
+    expect(within(dialog).getByText("Re-upload Requested")).toBeTruthy();
+    expect(within(dialog).getByText("এডমিন থেকে ডকুমেন্ট পুনরায় আপলোডের অনুরোধ")).toBeTruthy();
+    expect(within(dialog).getByText(/ছবিটি স্পষ্ট নয়, উভয় পিঠ প্রয়োজন/)).toBeTruthy();
+    expect(within(dialog).getByRole("button", { name: "Upload Replacement" })).toBeTruthy();
+  });
+
   it("offers the four optional certificates and uploads each to its own endpoint", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ documentType: "hsc_certificate", status: "uploaded" }) }));
     const user = userEvent.setup({ document: window.document });
