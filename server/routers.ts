@@ -2717,7 +2717,7 @@ export const appRouter = router({
         query: z.string().trim().max(100).default(""),
         stage: z.enum(["all", "pending", "live", "appointed", "confirmed", "closed", "cancelled"]).default("all"),
         page: z.number().int().positive().default(1),
-        pageSize: z.number().int().min(1).max(100).default(20),
+        pageSize: z.number().int().min(1).max(150).default(20),
         postedBy: z.enum(["all", "admin"]).default("all"),
         stages: z.array(z.enum(["pending", "live", "appointed", "confirmed", "closed", "cancelled"])).min(1).max(6).optional(),
         filters: adminJobFiltersSchema.optional(),

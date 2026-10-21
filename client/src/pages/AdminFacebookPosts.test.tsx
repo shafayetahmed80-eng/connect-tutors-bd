@@ -637,14 +637,14 @@ describe("AdminFacebookPostsContent", () => {
     expect(screen.getByRole("heading", { name: /Facebook Group Helper/i })).toBeDefined();
   });
 
-  it("supports 'Select 4' and 'Select 12' quick selection helpers with dynamic slide count indicator", () => {
+  it("supports 'Select 4' and 12-tuition batch part selection (Part 1 to Part 10) with 'Next Part ❯'", async () => {
     const originalItems = mocks.liveData.items;
-    const dummyItems = Array.from({ length: 15 }, (_, i) => ({
+    const dummyItems = Array.from({ length: 28 }, (_, i) => ({
       ...originalItems[0],
       id: 200 + i,
       jobId: String(7000 + i),
     }));
-    mocks.liveData = { ...mocks.liveData, items: dummyItems, total: 15 };
+    mocks.liveData = { ...mocks.liveData, items: dummyItems, total: 28 };
 
     try {
       render(<AdminFacebookPostsContent />);
@@ -656,12 +656,52 @@ describe("AdminFacebookPostsContent", () => {
       // Verify 4 items selected and Bulk Poster button indicates 4 picked
       expect(screen.getByRole("button", { name: "Bulk Poster (4 picked)" })).toBeDefined();
 
-      // Click 'Select 12'
-      const select12Btn = screen.getByRole("button", { name: "Select 12" });
-      fireEvent.click(select12Btn);
+      // Check Part dropdown options (total 28 => Part 1 (1–12), Part 2 (13–24), Part 3 (25–28))
+      const partSelect = screen.getByRole("combobox", { name: "Select batch part" });
+      expect(partSelect).toBeDefined();
 
-      // Verify 12 items selected and Bulk Poster button indicates 12 picked and 3 slides
-      expect(screen.getByRole("button", { name: "Bulk Poster (12 picked)" })).toBeDefined();
+      // Select Part 1
+      fireEvent.change(partSelect, { target: { value: "1" } });
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Bulk Poster (12 picked)" })).toBeDefined();
+      });
+
+      // Click 'Next Part ❯' to jump to Part 2 (13–24)
+      const nextPartBtn = screen.getByRole("button", { name: "Next Part ❯" });
+      fireEvent.click(nextPartBtn);
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Bulk Poster (12 picked)" })).toBeDefined();
+      });
+
+      // Click 'Next Part ❯' again to jump to Part 3 (25–28, which has remaining 4 items)
+      fireEvent.click(nextPartBtn);
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Bulk Poster (4 picked)" })).toBeDefined();
+      });
+      // Now at last part (Part 3 of 3), Next Part button should be disabled
+      expect((nextPartBtn as HTMLButtonElement).disabled).toBe(true);
+    } finally {
+      mocks.liveData = { ...mocks.liveData, items: originalItems, total: 1 };
+    }
+  });
+
+  it("dynamically supports up to Part 10 when 120 or more tuitions are available", () => {
+    const originalItems = mocks.liveData.items;
+    const dummyItems = Array.from({ length: 130 }, (_, i) => ({
+      ...originalItems[0],
+      id: 300 + i,
+      jobId: String(8000 + i),
+    }));
+    mocks.liveData = { ...mocks.liveData, items: dummyItems, total: 130 };
+
+    try {
+      render(<AdminFacebookPostsContent />);
+      const partSelect = screen.getByRole("combobox", { name: "Select batch part" }) as HTMLSelectElement;
+      // Should have 1 hidden default option + 10 part options (11 total)
+      const options = Array.from(partSelect.options);
+      expect(options.some(opt => opt.text.includes("Part 10 (109–120)"))).toBe(true);
+      // Capped at 10 parts, so Part 11 should not exist
+      expect(options.some(opt => opt.text.includes("Part 11"))).toBe(false);
     } finally {
       mocks.liveData = { ...mocks.liveData, items: originalItems, total: 1 };
     }
