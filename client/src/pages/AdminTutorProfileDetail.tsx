@@ -39,6 +39,8 @@ export const adminTutorDetailTabs: { key: AdminTutorDetailTabKey; label: string;
   { key: "history", label: "Moderation & Logs", icon: History },
 ];
 
+const supporting = Object.keys(tutorSupportingDocumentLabels) as TutorSupportingDocumentType[];
+
 const statusStyles: Record<string, string> = {
   draft: "bg-j-surface-muted text-j-ink-soft",
   pending: "bg-amber-50 text-amber-800",
@@ -356,6 +358,27 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
     return getTutorProfileReadoutSections(hydrateTeachingProfile(profile as never, null), resolvers, config);
   }, [profile]);
 
+  const documentItems = useMemo<LightboxDocumentItem[]>(() => {
+    if (!profile) return [];
+    const details = profile.documents?.details;
+    return [
+      {
+        id: "universityId",
+        label: "University ID",
+        url: profile.documents?.universityId ?? null,
+        status: details?.universityId?.status ?? (profile.documents?.universityId ? "uploaded" : "not_uploaded"),
+        reason: details?.universityId?.rejectionReason ?? null,
+      },
+      ...supporting.map(type => ({
+        id: type,
+        label: tutorSupportingDocumentLabels[type],
+        url: profile.documents?.supporting?.[type] ?? null,
+        status: details?.supporting?.[type]?.status ?? (profile.documents?.supporting?.[type] ? "uploaded" : "not_uploaded"),
+        reason: details?.supporting?.[type]?.rejectionReason ?? null,
+      })),
+    ];
+  }, [profile]);
+
   if (profileQuery.isLoading) {
     return <div className="flex min-h-48 items-center justify-center rounded-xl border border-j-border bg-white text-j-ink-soft"><LoadingCradle className="mr-2" /> Loading Tutor profile…</div>;
   }
@@ -363,27 +386,6 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
     return <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">{profileQuery.error?.message ?? "This Tutor profile is unavailable."}</div>;
   }
 
-  const supporting = Object.keys(tutorSupportingDocumentLabels) as TutorSupportingDocumentType[];
-  const documentItems = useMemo<LightboxDocumentItem[]>(() => {
-    if (!profile) return [];
-    const details = profile.documents.details;
-    return [
-      {
-        id: "universityId",
-        label: "University ID",
-        url: profile.documents.universityId,
-        status: details?.universityId?.status ?? (profile.documents.universityId ? "uploaded" : "not_uploaded"),
-        reason: details?.universityId?.rejectionReason ?? null,
-      },
-      ...supporting.map(type => ({
-        id: type,
-        label: tutorSupportingDocumentLabels[type],
-        url: profile.documents.supporting[type] ?? null,
-        status: details?.supporting?.[type]?.status ?? (profile.documents.supporting[type] ? "uploaded" : "not_uploaded"),
-        reason: details?.supporting?.[type]?.rejectionReason ?? null,
-      })),
-    ];
-  }, [profile, supporting]);
   const decisions = moderationOptions[profile.profileStatus] ?? [];
 
   return <div className="mx-auto w-full max-w-5xl space-y-4 pb-20 sm:pb-10">
