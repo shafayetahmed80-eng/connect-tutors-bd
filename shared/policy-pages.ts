@@ -53,11 +53,77 @@ We help Guardians and Tutors find each other: a Guardian posts a tuition request
 
 ## Platform charge for Tutors
 
-There is no fee to create a Tutor account or to apply for tuition. Once a tuition is **confirmed**, the Tutor pays Connect Tutors a share of the agreed monthly salary as a platform charge. The rate depends on the tuition type (Home, Online, Package, or Group Tutoring) and is shown to the Tutor before or at the time of confirmation, along with the payment schedule. Accepted payment methods include bKash, Nagad, Rocket, and bank transfer. Guardians do not pay Connect Tutors any platform charge.
+There is no fee to create a Tutor account, complete a profile, or apply for tuition. Guardians do not pay Connect Tutors any platform charge.
 
-## Cancelling a confirmed tuition
+Once a tuition is **confirmed** by our Admin team, the Tutor pays Connect Tutors a platform charge based on a percentage of the agreed monthly salary:
 
-Either side may ask Connect Tutors to cancel a confirmed tuition, stating the reason. Where the Tutor has already paid part or all of the platform charge, a refund is worked out under our cancellation rules, which vary by tuition type and by how much of the platform charge was paid before the cancellation. Contact us for the figures that apply to a specific tuition.
+### Payment schedule and early payment discount
+
+- **Two instalments:** The charge is split into two instalments to help tutors manage their cash flow:
+  - **First instalment:** Due within **7 days** of confirmation (the initial payment window).
+  - **Second instalment:** Due after the Tutor receives their first month's salary from the Guardian (on or before **30 days** from confirmation).
+- **Early payment discount:** If a Tutor pays the entire platform charge in full within the first **7 days**, they receive a discounted early payment rate.
+
+### Platform charge rates by tuition type
+
+- **Home Tutoring:**
+  - Standard rate: **30%** (1st instalment) + **30%** (2nd instalment) = **60% total**.
+  - Early payment discounted rate: **50% total** (10% discount when paid in full within 7 days).
+- **Online Tutoring:**
+  - Standard rate: **25%** (1st instalment) + **25%** (2nd instalment) = **50% total**.
+  - Early payment discounted rate: **45% total** (5% discount when paid in full within 7 days).
+- **Package Tutoring:**
+  - Standard rate: **20%** (1st instalment) + **15%** (2nd instalment) = **35% total**.
+  - Early payment discounted rate: **30% total** (5% discount when paid in full within 7 days).
+- **Group Tutoring:**
+  - Standard rate: **20%** (1st instalment) + **20%** (2nd instalment) = **40% total**.
+  - Early payment discounted rate: **35% total** (5% discount when paid in full within 7 days).
+
+### Accepted payment methods
+
+Tutors can pay through verified digital channels: **bKash**, **Nagad**, **Rocket**, or **Bank transfer**. Payment receipts and transaction IDs are submitted directly in the Tutor Workspace and verified by our Admin team.
+
+## Cancelling a confirmed tuition and refund policy
+
+Either party may request cancellation of a confirmed tuition by contacting Connect Tutors with the reason for cancellation.
+
+### Reporting notice requirement
+
+- **24-hour notice:** Any tuition cancellation or issue must be reported to Connect Tutors within **24 hours**. Delays in reporting without valid cause may affect refund eligibility.
+
+### Refund eligibility and rates
+
+When a confirmed tuition is cancelled due to a valid Guardian reason (e.g., student relocated, family emergency, scheduling conflict from the Guardian side):
+
+- **Home Tutoring:**
+  - Cancelled in the **first month**: The Tutor is refunded **30%** of the monthly salary.
+  - Cancelled in the **second month**: The Tutor is refunded **15%** of the monthly salary.
+- **Online Tutoring:**
+  - Cancelled in the **first month**: The Tutor is refunded **25%** of the monthly salary (0% in the second month).
+- **Group Tutoring:**
+  - Cancelled in the **first month**: The Tutor is refunded **20%** of the monthly salary (0% in the second month).
+- **Package Tutoring:**
+  - Fixed-term package courses carry **0%** refund once confirmed.
+
+### Unpaid first month and partial teaching
+
+- If a confirmed tuition cancels before classes begin or before the Tutor receives any salary, the platform charge is fully waived.
+- If classes were held for only part of the month and the Tutor was paid a partial amount, our Admin team calculates the charge proportionally on the actual salary received rather than the full month's rate.
+
+### Refund settlement options
+
+When an eligible refund is due, the Tutor may choose between:
+
+- **Direct refund:** Sent back to the Tutor's bKash, Nagad, or Bank account.
+- **Account credit:** Retained as credit balance on Connect Tutors, automatically applied towards the platform charge on future confirmed tuitions.
+
+### Non-refundable circumstances
+
+No refund or credit will be granted in the following situations:
+
+- When the cancellation is due to the Tutor's own fault (unprofessional conduct, unexcused absence, repeated tardiness, or failure to follow agreed curriculum).
+- When the cancellation is reported later than 24 hours after the tuition ended without an acceptable justification.
+- Where false or deceptive information was submitted to Connect Tutors or the Guardian.
 
 ## Acceptable use
 
