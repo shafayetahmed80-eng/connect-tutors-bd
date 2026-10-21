@@ -64,7 +64,7 @@ export function getTutorApplyReturnFromLocation(location: string) {
 export function getTutorApplyPostLoginPath(profileStatus?: string | null, returnTo?: string | null) {
   const safeReturnPath = getSafeTutorApplyReturnPath(returnTo);
   if (!safeReturnPath) return "/tutor/dashboard";
-  return profileStatus === "approved" ? buildTutorApplyJobBoardPath(safeReturnPath) : buildTutorApplyProfilePath(safeReturnPath);
+  return profileStatus === "approved" || profileStatus === "pending" ? buildTutorApplyJobBoardPath(safeReturnPath) : buildTutorApplyProfilePath(safeReturnPath);
 }
 
 export function storeTutorApplyReturnPath(storage: Storage, returnTo?: string | null) {

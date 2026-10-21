@@ -204,7 +204,10 @@ export function jobBoardGenderMismatchNote(preferredTutorGender: TutorGender, tu
  * for as long as it is still true. Once the Guardian has acted (shortlisted,
  * declined, matched), the statement is no longer the honest one.
  */
-export function jobBoardAppliedNote(status?: TutorInterestStatus) {
+export function jobBoardAppliedNote(status?: TutorInterestStatus, options?: { isPendingReview?: boolean }) {
+  if (options?.isPendingReview && status === "interested") {
+    return "Application submitted. Note: Your tutor profile is currently under review by our admin team.";
+  }
   return status === "interested" ? "Guardian will review your profile & shortlist you if your profile strongly matches with their requirements." : null;
 }
 
@@ -240,17 +243,34 @@ export function getJobBoardDetailFacts(input: JobBoardStudentFacts) {
  * A withdrawn application is not one any more, so that card offers the button
  * back, saying "Apply again" as the dialog does.
  */
-export function getJobBoardAppliedState(interest?: { status: TutorInterestStatus; appliedAt: Date | string }) {
+export function getJobBoardAppliedState(
+  interest?: { status: TutorInterestStatus; appliedAt: Date | string },
+  options?: { isPendingReview?: boolean },
+) {
   if (!interest || interest.status === "withdrawn") return null;
+  const isPendingReview = Boolean(options?.isPendingReview);
   // `formatPostedDate`, not this page's own formatter: the chip sits on the
   // card beside "Posted : 09 Sep 2026" and the two dates are read together.
-  return { label: "Applied", appliedOn: formatPostedDate(interest.appliedAt) };
+  return {
+    label: isPendingReview ? "Applied (Profile Pending Review)" : "Applied",
+    appliedOn: formatPostedDate(interest.appliedAt),
+    ...(isPendingReview ? { isPendingReview: true } : {}),
+  };
 }
 
-export function getJobBoardApplicationCopy({ isTutor, isApprovedTutor }: { isTutor: boolean; isApprovedTutor: boolean }) {
-  if (isTutor && isApprovedTutor) return { label: "Apply Now", description: null };
+export function getJobBoardApplicationCopy({
+  isTutor,
+  isApprovedTutor,
+  isEligibleTutor,
+}: {
+  isTutor: boolean;
+  isApprovedTutor?: boolean;
+  isEligibleTutor?: boolean;
+}) {
+  const isEligible = isEligibleTutor !== undefined ? isEligibleTutor : Boolean(isApprovedTutor);
+  if (isTutor && isEligible) return { label: "Apply Now", description: null };
   return isTutor
-    ? { label: "Apply Now", description: "Profile approval is required before applying." }
+    ? { label: "Apply Now", description: "Profile submission is required before applying." }
     : { label: "Apply Now", description: "Sign in as a Tutor to continue." };
 }
 
@@ -431,7 +451,10 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
    */
   const [savingJobId, setSavingJobId] = useState<number | null>(null);
   const isInterestSaving = expressInterest.isPending || withdrawInterest.isPending;
-  const isApprovedTutor = isTutor && tutorProfileQuery.data?.profileStatus === "approved";
+  const profileStatus = tutorProfileQuery.data?.profileStatus;
+  const isProfilePending = isTutor && profileStatus === "pending";
+  const isEligibleTutor = isTutor && (profileStatus === "approved" || profileStatus === "pending");
+  const isApprovedTutor = isEligibleTutor;
   const isMobile = useIsMobile();
   const [extraMobileJobs, setExtraMobileJobs] = useState<JobBoardJob[]>([]);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -553,7 +576,7 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
       return;
     }
 
-    if (!isApprovedTutor) {
+    if (!isEligibleTutor) {
       const returnPath = buildTutorApplyReturnPath(job.jobId);
       if (typeof window !== "undefined") storeTutorApplyReturnPath(window.sessionStorage, returnPath);
       navigate(buildTutorApplyProfilePath(returnPath));
@@ -600,7 +623,7 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
         {interestError ? <div role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"><p className="font-bold">Your Job Board application was not updated.</p><p className="mt-1">{interestError}</p></div> : null}
         {!jobsQuery.isLoading && !jobsQuery.isError && jobs.length === 0 ? <EmptyBoard onClear={appliedFilterCount ? clearFilters : undefined} /> : null}
         {jobsQuery.isLoading ? <div className="grid gap-4 md:grid-cols-2" aria-label="Loading available tuition" aria-busy="true">{Array.from({ length: 4 }, (_, index) => <div key={index} className="rounded-xl border border-[#e4eef4] bg-white p-5" aria-hidden="true"><Skeleton className="h-6 w-28" /><Skeleton className="mt-5 h-6 w-11/12" /><Skeleton className="mt-2 h-4 w-2/3" /><div className="mt-5 grid grid-cols-2 gap-4 border-y border-[#e7eef3] py-4"><Skeleton className="h-9" /><Skeleton className="h-9" /><Skeleton className="h-9" /><Skeleton className="h-9" /></div><Skeleton className="mt-5 h-10 w-full" /></div>)}</div> : null}
-      {displayedJobs.length ? <div className="grid gap-4 md:grid-cols-2">{displayedJobs.map((job, index) => <div key={job.id} className="job-board-card-enter" style={{ "--stagger": index % (JOB_CARD_STAGGER_CAP + 1) } as React.CSSProperties}><JobCard job={job} onDetails={() => setActiveJob(job)} interest={isTutor ? tutorInterestByJobId.get(job.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={savingJobId === job.id} onInterestAction={() => startApplication(job)} /></div>)}</div> : null}
+      {displayedJobs.length ? <div className="grid gap-4 md:grid-cols-2">{displayedJobs.map((job, index) => <div key={job.id} className="job-board-card-enter" style={{ "--stagger": index % (JOB_CARD_STAGGER_CAP + 1) } as React.CSSProperties}><JobCard job={job} onDetails={() => setActiveJob(job)} interest={isTutor ? tutorInterestByJobId.get(job.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isEligibleTutor={isEligibleTutor} isProfilePending={isProfilePending} isInterestSaving={savingJobId === job.id} onInterestAction={() => startApplication(job)} /></div>)}</div> : null}
       {isMobile ? (
         <div ref={mobileSentinelRef} className="py-2 flex justify-center items-center">
           {isLoadingMore ? (
@@ -624,7 +647,7 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
         /></div>
       ) : null}
     </div>
-    {activeJob ? <JobDetails job={activeJob} onClose={closeActiveJob} interest={isTutor ? tutorInterestByJobId.get(activeJob.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isInterestSaving={savingJobId === activeJob.id} onInterestAction={() => startApplication(activeJob)} /> : null}
+    {activeJob ? <JobDetails job={activeJob} onClose={closeActiveJob} interest={isTutor ? tutorInterestByJobId.get(activeJob.jobId) : undefined} isTutor={isTutor} isApprovedTutor={isApprovedTutor} isEligibleTutor={isEligibleTutor} isProfilePending={isProfilePending} isInterestSaving={savingJobId === activeJob.id} onInterestAction={() => startApplication(activeJob)} /> : null}
 
     {confirmJob ? <JobBoardApplyConfirm
       mismatchNote={jobBoardGenderMismatchNote(confirmJob.preferredTutorGender, tutorProfileQuery.data?.gender)}
@@ -656,9 +679,10 @@ export function TutorInterestControl({ interest, isInterestSaving, onAction }: {
   return <div className="mt-3 rounded-xl border border-[#cfe8f7] bg-[#f4fbff] p-3">{presentation.statusLabel || presentation.description ? <div className="flex items-start gap-2"><HeartHandshake className="mt-0.5 h-4 w-4 shrink-0 text-j-accent" /><div>{presentation.statusLabel ? <p className="text-sm font-extrabold text-[#245676]">{presentation.statusLabel}</p> : null}{presentation.description ? <p className="mt-0.5 text-xs leading-5 text-[#55738a]">{presentation.description}</p> : null}</div></div> : null}{presentation.action ? <button type="button" onClick={onAction} disabled={isInterestSaving} data-motion={isInterestSaving ? "pending" : undefined} data-ripple="true" aria-busy={isInterestSaving} className="motion-interactive inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-j-accent px-3 text-sm font-bold text-white hover:bg-j-accent-hover disabled:cursor-progress disabled:opacity-60">{isInterestSaving ? "Saving application…" : presentation.actionLabel}</button> : null}</div>;
 }
 
-function ApplicationControl({ interest, isTutor, isApprovedTutor, isInterestSaving, onAction }: { interest?: TutorJobInterest; isTutor: boolean; isApprovedTutor: boolean; isInterestSaving: boolean; onAction: () => void }) {
-  if (isTutor && isApprovedTutor) return <TutorInterestControl interest={interest} isInterestSaving={isInterestSaving} onAction={onAction} />;
-  const copy = getJobBoardApplicationCopy({ isTutor, isApprovedTutor });
+function ApplicationControl({ interest, isTutor, isApprovedTutor, isEligibleTutor, isInterestSaving, onAction }: { interest?: TutorJobInterest; isTutor: boolean; isApprovedTutor?: boolean; isEligibleTutor?: boolean; isInterestSaving: boolean; onAction: () => void }) {
+  const isEligible = isEligibleTutor !== undefined ? isEligibleTutor : Boolean(isApprovedTutor);
+  if (isTutor && isEligible) return <TutorInterestControl interest={interest} isInterestSaving={isInterestSaving} onAction={onAction} />;
+  const copy = getJobBoardApplicationCopy({ isTutor, isEligibleTutor: isEligible });
   return <div className="mt-3 rounded-xl border border-[#cfe8f7] bg-[#f4fbff] p-3"><div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-j-accent" /><p className="text-xs leading-5 text-[#55738a]">{copy.description}</p></div><button type="button" onClick={onAction} data-ripple="true" className="motion-interactive mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-j-accent px-3 text-sm font-bold text-white hover:bg-j-accent-hover">{copy.label}</button></div>;
 }
 
@@ -667,9 +691,10 @@ function ApplicationControl({ interest, isTutor, isApprovedTutor, isInterestSavi
  * Apply Now where a Guardian sees Details - so the same component draws both
  * and neither can drift.
  */
-function JobCard({ job, onDetails, interest, isTutor, isApprovedTutor, isInterestSaving, onInterestAction }: { job: JobBoardJob; onDetails: () => void; interest?: TutorJobInterest; isTutor: boolean; isApprovedTutor: boolean; isInterestSaving: boolean; onInterestAction: () => void }) {
-  const applyCopy = getJobBoardApplicationCopy({ isTutor, isApprovedTutor });
-  const applied = getJobBoardAppliedState(interest);
+function JobCard({ job, onDetails, interest, isTutor, isApprovedTutor, isEligibleTutor, isProfilePending, isInterestSaving, onInterestAction }: { job: JobBoardJob; onDetails: () => void; interest?: TutorJobInterest; isTutor: boolean; isApprovedTutor?: boolean; isEligibleTutor?: boolean; isProfilePending?: boolean; isInterestSaving: boolean; onInterestAction: () => void }) {
+  const isEligible = isEligibleTutor !== undefined ? isEligibleTutor : Boolean(isApprovedTutor);
+  const applyCopy = getJobBoardApplicationCopy({ isTutor, isEligibleTutor: isEligible });
+  const applied = getJobBoardAppliedState(interest, { isPendingReview: isProfilePending });
   const interestCopy = getTutorInterestPresentation(interest?.status);
   return <SharedJobCard
     isNew={isNewJob(job.publishedAt)}
@@ -687,8 +712,8 @@ function JobCard({ job, onDetails, interest, isTutor, isApprovedTutor, isInteres
     }}
     onOpen={onDetails}
     action={applied
-      ? <span className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-[#e7f5ee] px-3.5 text-xs font-bold text-[#0f7048]">
-          <Check size={13} aria-hidden={true} />{applied.label} <span className="font-semibold text-[#3f8468]">{applied.appliedOn}</span>
+      ? <span className={`inline-flex h-8 items-center gap-1.5 rounded-xl px-3.5 text-xs font-bold ${applied.isPendingReview ? "border border-amber-200 bg-amber-50 text-amber-800" : "bg-[#e7f5ee] text-[#0f7048]"}`}>
+          <Check size={13} aria-hidden={true} />{applied.label} <span className={`font-semibold ${applied.isPendingReview ? "text-amber-700" : "text-[#3f8468]"}`}>{applied.appliedOn}</span>
         </span>
       : <button
           type="button"
@@ -732,13 +757,14 @@ function EmptyBoard({ onClear }: { onClear?: () => void }) {
  * sits here rather than under every card in the grid, where it would repeat
  * identically on each one.
  */
-function JobDetails({ job, onClose, interest, isTutor, isApprovedTutor, isInterestSaving, onInterestAction }: { job: JobBoardJob; onClose: () => void; interest?: TutorJobInterest; isTutor: boolean; isApprovedTutor: boolean; isInterestSaving: boolean; onInterestAction: () => void }) {
-  const applyCopy = getJobBoardApplicationCopy({ isTutor, isApprovedTutor });
+function JobDetails({ job, onClose, interest, isTutor, isApprovedTutor, isEligibleTutor, isProfilePending, isInterestSaving, onInterestAction }: { job: JobBoardJob; onClose: () => void; interest?: TutorJobInterest; isTutor: boolean; isApprovedTutor?: boolean; isEligibleTutor?: boolean; isProfilePending?: boolean; isInterestSaving: boolean; onInterestAction: () => void }) {
+  const isEligible = isEligibleTutor !== undefined ? isEligibleTutor : Boolean(isApprovedTutor);
+  const applyCopy = getJobBoardApplicationCopy({ isTutor, isEligibleTutor: isEligible });
   const interestCopy = getTutorInterestPresentation(interest?.status);
-  const applied = getJobBoardAppliedState(interest);
+  const applied = getJobBoardAppliedState(interest, { isPendingReview: isProfilePending });
   const label = interestCopy.actionLabel ?? applyCopy.label;
   const reason = interestCopy.description ?? applyCopy.description;
-  const appliedNote = jobBoardAppliedNote(interest?.status);
+  const appliedNote = jobBoardAppliedNote(interest?.status, { isPendingReview: isProfilePending });
 
   return <SharedJobDetailsModal
     job={{

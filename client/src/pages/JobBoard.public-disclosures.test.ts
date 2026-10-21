@@ -42,7 +42,7 @@ describe("public Job Board disclosures", () => {
     });
     expect(getJobBoardApplicationCopy({ isTutor: true, isApprovedTutor: false })).toEqual({
       label: "Apply Now",
-      description: "Profile approval is required before applying.",
+      description: "Profile submission is required before applying.",
     });
   });
 

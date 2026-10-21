@@ -247,10 +247,10 @@ async function getAuthenticatedTutorProfileId(userId: number) {
   return profile.tutorId;
 }
 
-async function getApprovedTutorProfileId(userId: number) {
+async function getEligibleTutorProfileId(userId: number) {
   const profile = await db.getTutorProfileByUserId(userId);
-  if (!profile?.tutorId || profile.profileStatus !== "approved") {
-    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Complete and verify your Tutor profile before applying to Job Board listings." });
+  if (!profile?.tutorId || (profile.profileStatus !== "approved" && profile.profileStatus !== "pending")) {
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Complete and submit your Tutor profile before applying to Job Board listings." });
   }
   return profile.tutorId;
 }
@@ -1358,7 +1358,7 @@ export const appRouter = router({
     expressInterest: activeTutorProcedure
       .input(z.object({ tutorJobId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
-        const tutorId = await getApprovedTutorProfileId(ctx.user.id);
+        const tutorId = await getEligibleTutorProfileId(ctx.user.id);
         try {
           const outcome = await db.submitTutorJobInterest({ tutorId, tutorJobId: input.tutorJobId });
           void db.notifyTutorAppliedToAdmins({ tutorId, tutorJobId: input.tutorJobId }).catch(() => {});
