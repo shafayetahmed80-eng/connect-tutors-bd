@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
+  profileLoading: false,
   moderate: vi.fn(),
   verifyDocument: vi.fn(),
   history: [] as unknown[],
@@ -64,7 +65,12 @@ vi.mock("@/lib/trpc", () => ({
       getTutorProfile: {
         useQuery: (input: unknown) => {
           mocks.lastInput = input;
-          return { data: mocks.profile, isLoading: false, isError: false, error: null };
+          return {
+            data: mocks.profileLoading ? undefined : mocks.profile,
+            isLoading: mocks.profileLoading,
+            isError: false,
+            error: null,
+          };
         },
       },
       moderateTutorProfile: {
@@ -105,7 +111,7 @@ vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), err
 
 import { AdminTutorProfileDetailContent } from "./AdminTutorProfileDetail";
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); mocks.profile.profileStatus = "approved"; mocks.history = []; });
+afterEach(() => { cleanup(); vi.clearAllMocks(); mocks.profileLoading = false; mocks.profile.profileStatus = "approved"; mocks.history = []; });
 
 describe("Admin Tutor profile detail", () => {
   it("asks for that Tutor and heads the page with the Admin's own identity strip", () => {
@@ -436,5 +442,17 @@ describe("Admin Tutor profile detail", () => {
       status: "changes_requested",
       reason: "ভুল ডকুমেন্ট আপলোড করা হয়েছে",
     });
+  });
+
+  it("renders cleanly through the isLoading transition without violating React rules of hooks (Error #310)", () => {
+    mocks.profileLoading = true;
+    const { rerender } = render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+    expect(screen.getByText(/Loading Tutor profile/i)).toBeTruthy();
+
+    mocks.profileLoading = false;
+    expect(() => {
+      rerender(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+    }).not.toThrow();
+    expect(screen.getByRole("heading", { name: "Tania Sultana" })).toBeTruthy();
   });
 });

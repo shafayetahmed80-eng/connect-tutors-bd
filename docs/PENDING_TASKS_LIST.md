@@ -498,3 +498,10 @@
 - **স্ট্যাটাস:** ✅ সম্পন্ন (PR #475) — `server/routers.ts` (pageSize: 150), `AdminFacebookPosts.tsx` (পার্ট ড্রপডাউন ও নেক্সট পার্ট অ্যাকশন), `AdminFacebookPosts.test.tsx` ও `admin-posted-jobs.router.test.ts` (১১৪টি টেস্ট পাস ও ০ TypeScript এরর নিশ্চিত)।
 - **প্রম্পট:**
 > ফেসবুক বাল্ক পোস্টারে ১২টির বেশি টিউশন পরিচালনার জন্য Part 1 (1–12) থেকে Part 10 (109–120) পর্যন্ত ব্যাচ পার্ট ড্রপডাউন ও Next Part সিলেকশন হেল্পার কার্যকর করুন。
+
+
+### ৮১. এডমিন টিউটর প্রোফাইল: লোডিং ট্রানজিশনে রিঅ্যাক্ট হুক মিসম্যাচ (Error #310) সমাধান [✅ সম্পন্ন - PR #476]
+- **বিবরণ:** এডমিন প্যানেলে টিউটর প্রোফাইল বিস্তারিত স্ক্রিন (`AdminTutorProfileDetail`) ওপেন করার সময় `if (profileQuery.isLoading)` আর্লি রিটার্নের নিচে `const documentItems = useMemo(...)` হুক থাকায় লাইভ সাইটে ১ম রেন্ডার (ডাটা লোডিং) এবং ২য় রেন্ডারের (ডাটা লোডেড) মধ্যে হুকের সংখ্যা ও ক্রম অমিল হয়ে রিঅ্যাক্ট ক্র্যাশ (`Minified React error #310: Rendered more hooks than during the previous render`) করার সমস্যা স্থায়ী সমাধান। `documentItems = useMemo(...)` হুককে আর্লি রিটার্নের পূর্বে টপ-লেভেলে নিরাপদে স্থানান্তর এবং `supporting` ডকুমেন্ট টাইপ অ্যারে মডিউল লেভেলে অপটিমাইজেশন।
+- **স্ট্যাটাস:** ✅ সম্পন্ন (PR #476) — `AdminTutorProfileDetail.tsx`-এ হুক অর্ডার ঠিক করা, `AdminTutorProfileDetail.test.tsx`-এ রিগ্রেশন টেস্ট সংযোজন, ৪৬টি টেস্ট পাস ও ০ TypeScript এরর নিশ্চিত।
+- **প্রম্পট:**
+> admin panel > Tutor profile > pending profile ওপেন করলে Minified React error #310 আসে, আর্লি রিটার্নের পূর্বে useMemo স্থানান্তর করে হুক অর্ডার ফিক্স করুন。
