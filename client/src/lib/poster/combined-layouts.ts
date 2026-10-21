@@ -1,4 +1,4 @@
-import { localDigits, POSTER_WORDS } from "@shared/poster-copy";
+import { localDigits, POSTER_WORDS, tuitionCount } from "@shared/poster-copy";
 import {
   drawCradle,
   drawGrain,
@@ -12,10 +12,12 @@ import {
   measure,
   strokeRoundedRect,
   wrapLines,
+  type PosterIcon,
   type SealColors,
 } from "./canvas-kit";
 import { derivePalette, withAlpha, type OnDeep } from "./palette";
-import type { ClassicCombinedTheme, CombinedPosterInput, PosterTuition } from "./types";
+import { groupTuitions, mistTallHeight } from "./mist-layouts";
+import { TALL_POSTER_WIDTH, type ClassicCombinedTheme, type CombinedPosterInput, type PosterTuition } from "./types";
 
 /**
  * The up-to-four-tuitions posters. Navy is a list, Emerald a grid of gold-edged
@@ -440,4 +442,187 @@ export function drawCombinedLandscape(ctx: CanvasRenderingContext2D, input: Comb
     listRow(ctx, input, t, job, index, { left: listLeft, right: listRight, top: rowTop, height: rowHeight }, { titleSize: 26, metaSize: 24, salarySize: 38, idInline: true, numberColumn: 60, numberSize: 34 });
     hairline(ctx, listLeft, rowTop + rowHeight, listRight, rowTop + rowHeight, t.hair);
   });
+}
+
+
+export function combinedTallHeight(input: CombinedPosterInput): number {
+  return mistTallHeight(input);
+}
+
+export function drawCombinedTall(
+  ctx: CanvasRenderingContext2D,
+  input: CombinedPosterInput,
+  themeId: ClassicCombinedTheme,
+  ground?: string | null,
+) {
+  const t = combinedTokens(themeId, ground);
+  const W = TALL_POSTER_WIDTH;
+  const H = combinedTallHeight(input);
+  const words = POSTER_WORDS[input.locale];
+  const left = 60;
+  const right = 1020;
+  const width = right - left;
+
+  // 1. Background
+  if (themeId === "navy") {
+    background(ctx, W, H, t);
+    ctx.fillStyle = t.accent;
+    ctx.fillRect(0, 0, W, 6);
+  } else if (themeId === "emerald") {
+    background(ctx, W, H, t);
+    emeraldFrame(ctx, W, H, t, 28, 36);
+  } else {
+    // crimson
+    background(ctx, W, H, t);
+    ctx.fillStyle = t.deep.fill;
+    ctx.fillRect(0, 0, W, 320);
+    drawGrain(ctx, W, 320, 0.04, "soft-light");
+  }
+
+  // 2. Header
+  if (themeId === "navy") {
+    brand(ctx, onGround(t), left, 84, 76, 38);
+    datePill(ctx, input.date, right, 84, "right", t.soft, t.pillBorder, 22, 44);
+    drawText(ctx, words.navyTitle, left, 185, { size: 56, weight: 800, color: t.ink, maxWidth: width, tracking: -0.01 });
+    subLine(ctx, input.sub, left, 252, t, 26, 42, width);
+  } else if (themeId === "emerald") {
+    brand(ctx, onGround(t), left + 20, 88, 76, 38);
+    datePill(ctx, input.date, right - 20, 88, "right", t.accent, t.pillBorder, 22, 44);
+    drawText(ctx, words.emeraldTitle, left + 20, 185, { size: 56, weight: 800, color: t.ink, maxWidth: width - 40, tracking: -0.01 });
+    subLine(ctx, input.sub, left + 20, 252, t, 26, 42, width - 40);
+  } else {
+    // crimson
+    brand(ctx, onBand(t), left, 80, 76, 38);
+    datePill(ctx, input.date, right, 80, "right", t.deep.soft, "rgba(255,255,255,0.45)", 22, 44);
+    ctx.fillStyle = t.deep.accent;
+    ctx.beginPath();
+    ctx.arc(left + 7, 154, 7, 0, Math.PI * 2);
+    ctx.fill();
+    drawText(ctx, words.crimsonKicker, left + 26, 154, { size: 26, weight: 700, color: t.deep.accent, tracking: input.locale === "bn" ? 0.02 : 0.16 });
+    drawText(ctx, words.crimsonTitle, left, 214, { size: 58, weight: 800, color: t.deep.ink, maxWidth: width, tracking: -0.01 });
+    drawText(ctx, `${input.subShort} · ${words.applyNow}`, left, 276, { size: 25, weight: 500, color: t.deep.soft, maxWidth: width });
+  }
+
+  // 3. Curriculum Groups & Cards
+  let y = 338;
+  const groups = groupTuitions(input.tuitions);
+  for (const group of groups) {
+    const barHeight = 56;
+    const countHeight = 44;
+    const cardH = 112;
+
+    // Section bar
+    if (themeId === "emerald") {
+      fillRoundedRect(ctx, left, y, width, barHeight, 12, t.deep.fill);
+      strokeRoundedRect(ctx, left, y, width, barHeight, 12, t.accent, 1, 0.4);
+      ctx.fillStyle = t.accent;
+      ctx.beginPath();
+      ctx.arc(left + 24, y + barHeight / 2, 5, 0, Math.PI * 2);
+      ctx.fill();
+      const groupText = input.locale === "en" ? group.label.toUpperCase() : group.label;
+      drawText(ctx, groupText, left + 44, y + barHeight / 2, { size: 24, weight: 800, color: t.accent, tracking: input.locale === "en" ? 0.08 : 0.01, maxWidth: width - 60 });
+    } else {
+      fillRoundedRect(ctx, left, y, width, barHeight, 12, t.deep.fill);
+      fillRoundedRect(ctx, left, y, 6, barHeight, 6, t.accent);
+      ctx.fillStyle = t.accent;
+      ctx.beginPath();
+      ctx.arc(left + 26, y + barHeight / 2, 5, 0, Math.PI * 2);
+      ctx.fill();
+      const groupText = input.locale === "en" ? group.label.toUpperCase() : group.label;
+      drawText(ctx, groupText, left + 46, y + barHeight / 2, { size: 24, weight: 800, color: t.ink, tracking: input.locale === "en" ? 0.08 : 0.01, maxWidth: width - 60 });
+      hairline(ctx, left, y + barHeight, right, y + barHeight, t.hair);
+    }
+    y += barHeight;
+
+    // Count line
+    const count = tuitionCount(group.items.length, input.locale);
+    ctx.fillStyle = themeId === "emerald" ? t.accent : t.soft;
+    ctx.beginPath();
+    ctx.arc(left + 22, y + countHeight / 2, 4, 0, Math.PI * 2);
+    ctx.fill();
+    drawText(ctx, count, left + 38, y + countHeight / 2, { size: 21, weight: 700, color: t.soft });
+    y += countHeight;
+
+    // Cards
+    for (const job of group.items) {
+      if (themeId === "emerald") {
+        fillRoundedRect(ctx, left, y, width, cardH, 14, t.deep.fill);
+        strokeRoundedRect(ctx, left, y, width, cardH, 14, t.deep.stroke, 1.2);
+        fillRoundedRect(ctx, left, y + 14, 4, cardH - 28, 2, t.accent);
+      } else if (themeId === "crimson") {
+        fillRoundedRect(ctx, left, y, width, cardH, 14, t.deep.fill);
+        strokeRoundedRect(ctx, left, y, width, cardH, 14, t.deep.stroke, 1);
+        fillRoundedRect(ctx, left, y + 14, 4, cardH - 28, 2, t.deep.accent);
+      } else {
+        // navy
+        fillRoundedRect(ctx, left, y, width, cardH, 14, t.deep.fill);
+        strokeRoundedRect(ctx, left, y, width, cardH, 14, t.deep.stroke, 1);
+        fillRoundedRect(ctx, left, y + 14, 4, cardH - 28, 2, t.detail);
+      }
+
+      // Row 1: ID chip + tutor pill + salary on right
+      const idText = `# ${job.jobId}`;
+      const idWidth = measure(ctx, idText, 22, 700) + 20;
+      fillRoundedRect(ctx, left + 18, y + 16, idWidth, 32, 8, "rgba(255,255,255,0.08)");
+      drawText(ctx, idText, left + 28, y + 32, { size: 22, weight: 700, color: themeId === "emerald" ? t.accent : t.detail, tracking: 0.04 });
+
+      if (job.tutorPill) {
+        const pillWidth = measure(ctx, job.tutorPill, 17, 700) + 18;
+        const pillX = left + 18 + idWidth + 10;
+        fillRoundedRect(ctx, pillX, y + 17, pillWidth, 30, 6, "rgba(255,255,255,0.06)");
+        strokeRoundedRect(ctx, pillX, y + 17, pillWidth, 30, 6, "rgba(255,255,255,0.12)", 1);
+        drawText(ctx, job.tutorPill, pillX + 9, y + 32, { size: 17, weight: 700, color: t.soft });
+      }
+
+      // Salary on right
+      let salaryOffset = 0;
+      if (job.salary) {
+        const perMonthText = words.perMonthShort;
+        const perWidth = measure(ctx, perMonthText, 20, 500);
+        const salWidth = measure(ctx, job.salary, 30, 800);
+        salaryOffset = salWidth + perWidth + 24;
+        drawText(ctx, perMonthText, right - 20, y + 33, { size: 20, weight: 500, color: t.deep.soft, align: "right" });
+        drawText(ctx, job.salary, right - 20 - perWidth - 6, y + 32, { size: 30, weight: 800, color: t.accent, align: "right" });
+      }
+
+      // Row 2: Headline + location pin + calendar days
+      const maxTitleW = width - 40 - salaryOffset;
+      drawText(ctx, job.rowTitle, left + 18, y + 76, { size: 26, weight: 700, color: t.ink, maxWidth: maxTitleW });
+
+      let metaX = left + 18 + Math.min(measure(ctx, job.rowTitle, 26, 700) + 24, maxTitleW + 16);
+      const metaParts: Array<{ icon: PosterIcon; text: string }> = [];
+      const place = job.areaLine ?? job.area;
+      if (place) metaParts.push({ icon: "pin", text: place });
+      if (job.week) metaParts.push({ icon: "calendar", text: job.week });
+
+      if (metaParts.length > 0 && right - metaX > 160) {
+        for (const part of metaParts) {
+          if (metaX + 100 > right - 20) break;
+          drawIcon(ctx, part.icon, metaX, y + 66, 20, t.soft);
+          metaX += 26;
+          const partW = drawText(ctx, part.text, metaX, y + 76, { size: 21, weight: 500, color: t.soft, maxWidth: right - 20 - metaX });
+          metaX += partW + 20;
+        }
+      }
+
+      y += cardH + 12;
+    }
+    y += 18;
+  }
+
+  // 4. Footer
+  const footerY = y + 6;
+  const footerH = 152;
+  fillRoundedRect(ctx, left, footerY, width, footerH, 20, t.deep.fill);
+  strokeRoundedRect(ctx, left, footerY, width, footerH, 20, t.deep.stroke, 1.5);
+
+  const tile = 112;
+  drawQrTile(ctx, input.url, left + 20, footerY + 20, tile, t.qrDark, 10, 16);
+  const sealSize = 88;
+  drawSeal(ctx, left + 20 + tile + 24 + sealSize / 2, footerY + footerH / 2, sealSize, t.seal);
+
+  const textLeft = left + 20 + tile + 24 + sealSize + 24;
+  const textW = right - 20 - textLeft;
+  drawText(ctx, words.scanForAll, textLeft, footerY + footerH / 2 - 18, { size: 26, weight: 700, color: t.ink, maxWidth: textW });
+  drawText(ctx, input.boardAddress || input.host, textLeft, footerY + footerH / 2 + 18, { size: 22, weight: 600, color: t.detail, maxWidth: textW });
 }

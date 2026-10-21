@@ -570,6 +570,22 @@ describe("AdminFacebookPostsContent", () => {
     expect(screen.getByRole("radio", { name: /Tall list/i })).toBeDefined();
   });
 
+  it("keeps all four combined themes available when Tall list is selected", async () => {
+    render(<AdminFacebookPostsContent />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Bulk Poster/i }));
+
+    expect(await screen.findByRole("heading", { name: /Facebook Multi-Tuition Banner/i })).toBeDefined();
+    fireEvent.click(screen.getByRole("radio", { name: /Tall list/i }));
+
+    const themes = within(screen.getByRole("radiogroup", { name: "Theme" }));
+    for (const name of [/Navy/i, /Emerald/i, /Crimson/i, /Mist/i]) {
+      expect(themes.getByRole("radio", { name })).toBeDefined();
+    }
+    fireEvent.click(themes.getByRole("radio", { name: /Navy/i }));
+    expect(themes.getByRole("radio", { name: /Navy/i }).getAttribute("aria-checked")).toBe("true");
+  });
+
   it("opens the Facebook video of the filtered tuitions, with an Area Grouped caption whatever format the page has chosen", async () => {
     render(<AdminFacebookPostsContent />);
 
