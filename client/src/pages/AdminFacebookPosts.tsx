@@ -26,7 +26,7 @@ import {
   type FacebookPostCustomTemplate,
   type FacebookPostJobInput,
 } from "@shared/facebook-post";
-import { Check, CheckCircle2, Circle, Copy, Eye, FileText, Film, Hash, Image as ImageIcon, Layers, RotateCcw, Share2, ShieldCheck, Sliders, Sparkles, Users, X } from "lucide-react";
+import { Check, CheckCircle2, ChevronDown, Circle, Copy, Eye, FileText, Film, Hash, Image as ImageIcon, Layers, RotateCcw, Share2, ShieldCheck, Sliders, Sparkles, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { FacebookPosterModal } from "@/components/FacebookPosterModal";
 import { FacebookGroupHelperModal } from "@/components/FacebookGroupHelperModal";
@@ -267,6 +267,7 @@ export function AdminFacebookPostsContent() {
   });
 
   const counts = (jobs.data?.counts as Record<string, number> | undefined) ?? {};
+  const totalMatching = jobs.data?.total ?? 0;
   const livePostedCount = jobs.data?.livePostedCount ?? 0;
   const liveUnpostedCount = jobs.data?.liveUnpostedCount ?? 0;
 
@@ -291,6 +292,7 @@ export function AdminFacebookPostsContent() {
   const [videoPicked, setVideoPicked] = useState(false);
   // The tuitions ticked for the bulk poster, in the order they were ticked: the order they are drawn in.
   const [picked, setPicked] = useState<Map<number, LiveJob>>(() => new Map());
+  const [selectedPart, setSelectedPart] = useState<number>(1);
 
   const [includeHashtags, setIncludeHashtags] = useState<boolean>(() => loadSavedIncludeHashtags());
   const [isGroupHelperOpen, setIsGroupHelperOpen] = useState(false);
@@ -322,16 +324,16 @@ export function AdminFacebookPostsContent() {
   /**
    * Fetches up to 100 matching live tuitions with active filters for bulk copy.
    */
-  const fetchFilteredJobs = async (max = 100): Promise<LiveJob[]> => {
+  const fetchFilteredJobs = async (max = 120): Promise<LiveJob[]> => {
     const total = jobs.data?.total ?? 0;
-    if (total <= items.length && page === 1) {
+    if (total <= items.length && page === 1 && max <= items.length) {
       return items;
     }
     const res = await utils.admin.listPostedJobs.fetch({
       stage: "live",
       query,
       page: 1,
-      pageSize: Math.min(max, 100),
+      pageSize: Math.min(max, 150),
       postedBy: "all",
       filters: filterPanel.input,
       facebookPosted: fbPostFilter,
@@ -488,6 +490,14 @@ export function AdminFacebookPostsContent() {
     setPicked(next);
   };
 
+  const BATCH_SIZE = 12;
+  const MAX_BATCH_PARTS = 10;
+  const totalParts = Math.min(MAX_BATCH_PARTS, Math.max(1, Math.ceil(totalMatching / BATCH_SIZE)));
+
+  useEffect(() => {
+    setSelectedPart(1);
+  }, [query, filterPanel.input, fbPostFilter]);
+
   const handleSelectCount = (count: number) => {
     const next = new Map<number, LiveJob>();
     const toPick = items.slice(0, Math.min(count, MAX_TALL_TUITIONS));
@@ -500,6 +510,42 @@ export function AdminFacebookPostsContent() {
     }
     setPicked(next);
     toast.info(`${next.size}টি টিউশন বাছাই করা হয়েছে (${next.size <= 4 ? "১টি স্লাইড" : `${Math.ceil(next.size / 4)}টি স্লাইড`})।`);
+  };
+
+  const handleSelectPart = async (partNumber: number) => {
+    const clampedPart = Math.max(1, Math.min(partNumber, totalParts));
+    const startIndex = (clampedPart - 1) * BATCH_SIZE;
+    const targetCount = clampedPart * BATCH_SIZE;
+
+    try {
+      const allJobs = await fetchFilteredJobs(targetCount);
+      const toPick = allJobs.slice(startIndex, startIndex + BATCH_SIZE);
+      if (toPick.length === 0) {
+        toast.info("বাছাই করার মতো কোনো টিউশন পাওয়া যায়নি।");
+        return;
+      }
+      const next = new Map<number, LiveJob>();
+      for (const job of toPick) {
+        next.set(job.id, job);
+      }
+      setPicked(next);
+      setSelectedPart(clampedPart);
+      const rangeStart = startIndex + 1;
+      const rangeEnd = startIndex + toPick.length;
+      toast.info(`Part ${clampedPart} (${toPick.length}টি টিউশন: ${rangeStart}–${rangeEnd}) বাছাই করা হয়েছে।`);
+    } catch {
+      toast.error("টিউশন লোড করতে ব্যর্থ হয়েছে।");
+    }
+  };
+
+  const handleNextPart = () => {
+    if (picked.size === 0) {
+      void handleSelectPart(1);
+      return;
+    }
+    if (selectedPart < totalParts) {
+      void handleSelectPart(selectedPart + 1);
+    }
   };
 
   const handleGenerateBulkPoster = async () => {
@@ -903,8 +949,6 @@ export function AdminFacebookPostsContent() {
     },
   ];
 
-  const totalMatching = jobs.data?.total ?? 0;
-
   return (
     <div className="mx-auto w-full max-w-[100rem] space-y-4 pb-10">
       {/* Search and Top Controls */}
@@ -1148,14 +1192,45 @@ export function AdminFacebookPostsContent() {
               Select 4
             </button>
             <div className="h-4 w-px bg-j-border" />
+            <div className="relative inline-flex items-center">
+              <select
+                aria-label="Select batch part"
+                value={picked.size > 0 ? selectedPart : 0}
+                onChange={e => void handleSelectPart(Number(e.target.value))}
+                disabled={totalMatching === 0}
+                className="cursor-pointer appearance-none rounded-lg bg-transparent py-1 pl-2.5 pr-6 text-xs font-semibold text-j-ink hover:bg-j-border-light/70 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+                title="Select a 12-tuition batch part (Part 1 to Part 10)"
+              >
+                <option value={0} disabled hidden>
+                  Part 1 ({totalMatching === 0 ? 0 : 1}–{totalMatching === 0 ? 0 : Math.min(BATCH_SIZE, totalMatching)})
+                </option>
+                {Array.from({ length: totalParts }, (_, i) => i + 1).map(p => {
+                  const start = totalMatching === 0 ? 0 : (p - 1) * BATCH_SIZE + 1;
+                  const end = totalMatching === 0 ? 0 : Math.min(p * BATCH_SIZE, totalMatching);
+                  return (
+                    <option key={p} value={p}>
+                      Part {p} ({start}–{end})
+                    </option>
+                  );
+                })}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-1.5 size-3.5 text-j-ink-soft" />
+            </div>
+            <div className="h-4 w-px bg-j-border" />
             <button
               type="button"
-              onClick={() => handleSelectCount(12)}
-              disabled={items.length === 0}
-              className="rounded-lg px-2.5 py-1 text-xs font-semibold text-j-ink hover:bg-j-border-light/70 transition disabled:opacity-40"
-              title="Select top 12 tuitions for Tall List or 3-Slide Carousel"
+              onClick={handleNextPart}
+              disabled={totalMatching <= BATCH_SIZE || (picked.size > 0 && selectedPart >= totalParts)}
+              className="rounded-lg px-2 py-1 text-xs font-semibold text-j-ink hover:bg-j-border-light/70 transition disabled:cursor-not-allowed disabled:opacity-40"
+              title={
+                picked.size === 0
+                  ? "Select Part 1 (1–12)"
+                  : selectedPart < totalParts
+                    ? `Jump to Part ${selectedPart + 1}`
+                    : "Already at last part"
+              }
             >
-              Select 12
+              Next Part ❯
             </button>
           </div>
 

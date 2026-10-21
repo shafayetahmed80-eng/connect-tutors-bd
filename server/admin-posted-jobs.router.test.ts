@@ -55,6 +55,10 @@ describe("admin.listPostedJobs", () => {
     // Filters by applied timeframe
     await createCaller().admin.listPostedJobs({ stage: "live", appliedTimeframe: "3h" });
     expect(dbMocks.listAdminPostedJobsPage).toHaveBeenLastCalledWith({ query: "", stage: "live", page: 1, pageSize: 20, postedBy: "all", appliedTimeframe: "3h" });
+
+    // Allows up to pageSize 150 for multi-batch bulk poster parts
+    await createCaller().admin.listPostedJobs({ stage: "live", pageSize: 150 });
+    expect(dbMocks.listAdminPostedJobsPage).toHaveBeenLastCalledWith(expect.objectContaining({ pageSize: 150 }));
   });
 
   it("refuses an unknown stage, a silly page size, and a non-admin caller", async () => {
