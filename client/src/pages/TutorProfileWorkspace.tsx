@@ -15,8 +15,9 @@ import {
   tutorSupportingDocumentLabels,
   tutorSupportingDocumentTypes,
   type TutorSupportingDocumentType,
+  type TutorDocumentVerificationStatus,
 } from "@shared/tutor-documents";
-import { Check, ChevronDown, Eye, ImagePlus, LockKeyhole, PencilLine, Plus, Trash2, X } from "lucide-react";
+import { AlertCircle, Check, ChevronDown, Eye, ImagePlus, LockKeyhole, PencilLine, Plus, Trash2, X } from "lucide-react";
 import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { TutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { TutorProfileIdentityRail } from "./TutorProfileIdentityRail";
@@ -402,7 +403,18 @@ function FormTextArea({ label, hint, error, required = false, showRequiredMarker
  * status and button on the right. Owns its own hidden file input so every
  * document can be picked independently.
  */
-function DocumentUploadRow({ inputId, label, uploadLabel, required = false, uploaded, uploading, onSelectFile, viewUrl }: {
+function DocumentUploadRow({
+  inputId,
+  label,
+  uploadLabel,
+  required = false,
+  uploaded,
+  status,
+  rejectionReason,
+  uploading,
+  onSelectFile,
+  viewUrl,
+}: {
   inputId: string;
   /** Where the uploaded image can be opened, once the server has given it. */
   viewUrl?: string | null;
@@ -410,31 +422,95 @@ function DocumentUploadRow({ inputId, label, uploadLabel, required = false, uplo
   uploadLabel: string;
   required?: boolean;
   uploaded: boolean;
+  status?: TutorDocumentVerificationStatus;
+  rejectionReason?: string | null;
   uploading: boolean;
   onSelectFile: (file: File) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  return <div className="flex flex-wrap items-center justify-between gap-3 border-b border-tp-border py-3 first:pt-0">
-    <input
-      ref={inputRef}
-      id={inputId}
-      className="sr-only"
-      type="file"
-      accept={TUTOR_DOCUMENT_ACCEPT_ATTRIBUTE}
-      aria-label={`Upload ${label}`}
-      aria-required={required || undefined}
-      onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) onSelectFile(file); }}
-    />
-    <p className="flex items-center gap-2 text-sm font-bold text-tp-value">
-      {required ? <LockKeyhole className="shrink-0 text-tp-accent" size={16} aria-hidden="true" /> : null}
-      {label}
-      {required ? <span aria-hidden="true" className="text-tp-danger">*</span> : null}
-    </p>
-    <div className="flex items-center gap-2">
-      {uploaded ? <span className="flex items-center gap-1 text-xs font-bold text-j-ok"><Check size={14} aria-hidden="true" />Uploaded</span> : null}
-      {uploaded && viewUrl ? <a href={viewUrl} target="_blank" rel="noreferrer" aria-label={`View ${label}`} className="inline-flex h-control items-center gap-1.5 rounded-lg border border-tp-border px-3 text-sm font-semibold text-tp-value hover:bg-tp-accent-wash"><Eye size={15} aria-hidden="true" />View</a> : null}
-      <Button type="button" variant="outline" disabled={uploading} aria-busy={uploading} onClick={() => inputRef.current?.click()} className="rounded-lg border-tp-accent-soft text-tp-accent"><ImagePlus size={15} /> {uploading ? "Uploading…" : uploadLabel}</Button>
+  const isRejected = status === "changes_requested";
+  const isApproved = status === "approved";
+
+  return <div className="border-b border-tp-border py-3 first:pt-0">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <input
+        ref={inputRef}
+        id={inputId}
+        className="sr-only"
+        type="file"
+        accept={TUTOR_DOCUMENT_ACCEPT_ATTRIBUTE}
+        aria-label={`Upload ${label}`}
+        aria-required={required || undefined}
+        onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) onSelectFile(file); }}
+      />
+      <div className="flex items-center gap-2">
+        <p className="flex items-center gap-2 text-sm font-bold text-tp-value">
+          {required ? <LockKeyhole className="shrink-0 text-tp-accent" size={16} aria-hidden="true" /> : null}
+          {label}
+          {required ? <span aria-hidden="true" className="text-tp-danger">*</span> : null}
+        </p>
+        {isApproved ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-3xs font-extrabold text-emerald-800">
+            <Check size={12} aria-hidden="true" /> Verified
+          </span>
+        ) : isRejected ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-3xs font-extrabold text-rose-800">
+            <AlertCircle size={12} aria-hidden="true" /> Re-upload Requested
+          </span>
+        ) : null}
+      </div>
+
+      <div className="flex items-center gap-2">
+        {uploaded && !isApproved && !isRejected ? (
+          <span className="flex items-center gap-1 text-xs font-bold text-j-ok">
+            <Check size={14} aria-hidden="true" /> Uploaded
+          </span>
+        ) : null}
+        {uploaded && viewUrl ? (
+          <a
+            href={viewUrl}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`View ${label}`}
+            className="inline-flex h-control items-center gap-1.5 rounded-lg border border-tp-border px-3 text-sm font-semibold text-tp-value hover:bg-tp-accent-wash"
+          >
+            <Eye size={15} aria-hidden="true" /> View
+          </a>
+        ) : null}
+        <Button
+          type="button"
+          variant="outline"
+          disabled={uploading}
+          aria-busy={uploading}
+          onClick={() => inputRef.current?.click()}
+          className={`rounded-lg ${
+            isRejected
+              ? "border-rose-400 bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold shadow-xs"
+              : "border-tp-accent-soft text-tp-accent"
+          }`}
+        >
+          <ImagePlus size={15} /> {uploading ? "Uploading…" : isRejected ? "Upload Replacement" : uploadLabel}
+        </Button>
+      </div>
     </div>
+
+    {/* Re-upload alert banner when admin has requested changes for this document */}
+    {isRejected ? (
+      <div className="mt-2.5 rounded-xl border border-rose-200 bg-rose-50/90 p-3 text-xs text-rose-900 shadow-2xs">
+        <div className="flex items-center gap-1.5 font-bold text-rose-800">
+          <AlertCircle size={15} className="shrink-0 text-rose-600" />
+          <span>এডমিন থেকে ডকুমেন্ট পুনরায় আপলোডের অনুরোধ</span>
+        </div>
+        {rejectionReason ? (
+          <p className="mt-1 pl-5 text-rose-700 leading-relaxed font-medium">
+            কারণ: {rejectionReason}
+          </p>
+        ) : null}
+        <p className="mt-1 pl-5 text-3xs text-rose-600">
+          অনুগ্রহ করে স্পষ্ট ছবি তুলে &quot;Upload Replacement&quot; বাটনে ক্লিক করে নতুন কপি আপলোড করুন।
+        </p>
+      </div>
+    ) : null}
   </div>;
 }
 
@@ -1186,6 +1262,8 @@ function TutorProfileWorkspaceBody({
         required={isRequired(fieldId) && educationStatus(form, fieldConfig).university.complete}
         viewUrl={documentLinks.data?.universityId}
         uploaded={form.universityIdDocumentStatus === "uploaded"}
+        status={profile?.universityIdDocumentVerification?.status}
+        rejectionReason={profile?.universityIdDocumentVerification?.rejectionReason}
         uploading={uploadingUniversityId}
         onSelectFile={file => void uploadUniversityIdDocument(file)}
       />;
@@ -1218,11 +1296,14 @@ function TutorProfileWorkspaceBody({
       default:
         if (fieldId.startsWith("supportingDocument.")) {
           const documentType = fieldId.slice("supportingDocument.".length) as TutorSupportingDocumentType;
+          const docVerification = profile?.supportingDocumentStatuses?.[documentType];
           return <DocumentUploadRow
             inputId={`tutor-document-${documentType}`}
             label={fieldLabel(fieldId, tutorSupportingDocumentLabels[documentType])}
             uploadLabel="Upload"
             uploaded={form.uploadedSupportingDocuments.includes(documentType)}
+            status={docVerification?.status}
+            rejectionReason={docVerification?.rejectionReason}
             viewUrl={documentLinks.data?.supporting[documentType]}
             uploading={uploadingDocumentType === documentType}
             onSelectFile={file => void uploadSupportingDocument(documentType, file)}

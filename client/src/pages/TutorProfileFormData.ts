@@ -61,6 +61,16 @@ export type PersistedTutorProfileForForm = {
   educationRecords?: PersistedTutorEducationRecord[];
   universityIdDocumentStatus?: "uploaded" | "not_uploaded";
   uploadedSupportingDocuments?: string[];
+  universityIdDocumentVerification?: {
+    status: "not_uploaded" | "uploaded" | "pending" | "approved" | "changes_requested";
+    rejectionReason?: string | null;
+    verifiedAt?: Date | string | null;
+  } | null;
+  supportingDocumentStatuses?: Record<string, {
+    status: "uploaded" | "pending" | "approved" | "changes_requested";
+    rejectionReason?: string | null;
+    verifiedAt?: Date | string | null;
+  }>;
   /** Why an Admin asked for changes. Set only while the profile is `changes_requested`. */
   moderationNote?: string | null;
   moderationNoteAt?: string | Date | null;

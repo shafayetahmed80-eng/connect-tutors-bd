@@ -1,9 +1,12 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
 const dbMocks = vi.hoisted(() => ({
   getTutorProfileForAdmin: vi.fn(),
   getTutorCvPdfForAdmin: vi.fn(),
+  verifyTutorDocument: vi.fn(),
+  getAdminPasswordChangeRequired: vi.fn(),
+  getAdminTwoFactorSettings: vi.fn(),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -27,6 +30,11 @@ function createCaller(user: TrpcContext["user"] = adminUser) {
     res: { cookie() {}, clearCookie() {} },
   } as unknown as TrpcContext);
 }
+
+beforeEach(() => {
+  dbMocks.getAdminPasswordChangeRequired.mockResolvedValue(false);
+  dbMocks.getAdminTwoFactorSettings.mockResolvedValue(undefined);
+});
 
 afterEach(() => vi.clearAllMocks());
 
@@ -91,5 +99,106 @@ describe("admin.getTutorCvPdf", () => {
     await expect(createCaller(tutor).admin.getTutorCvPdf({ tutorId: "tutor-175" })).rejects.toMatchObject({
       code: "FORBIDDEN",
     });
+  });
+});
+
+describe("admin.verifyTutorDocument", () => {
+  it("approves a document and records admin user id", async () => {
+    dbMocks.verifyTutorDocument.mockResolvedValue({
+      updated: true,
+      documentType: "universityId",
+      status: "approved",
+      verifiedBy: "Owner",
+      verifiedAt: new Date(),
+    });
+
+    const result = await createCaller().admin.verifyTutorDocument({
+      tutorId: "tutor-175",
+      documentType: "universityId",
+      status: "approved",
+    });
+
+    expect(dbMocks.verifyTutorDocument).toHaveBeenCalledWith({
+      tutorId: "tutor-175",
+      documentType: "universityId",
+      status: "approved",
+      adminUserId: 42,
+    });
+    expect(result).toMatchObject({
+      updated: true,
+      status: "approved",
+    });
+  });
+
+  it("requests re-upload with a custom reason", async () => {
+    dbMocks.verifyTutorDocument.mockResolvedValue({
+      updated: true,
+      documentType: "nid_card",
+      status: "changes_requested",
+      rejectionReason: "ছবিটি ঝাপসা",
+      verifiedBy: "Owner",
+      verifiedAt: new Date(),
+    });
+
+    const result = await createCaller().admin.verifyTutorDocument({
+      tutorId: "tutor-175",
+      documentType: "nid_card",
+      status: "changes_requested",
+      reason: "ছবিটি ঝাপসা",
+    });
+
+    expect(dbMocks.verifyTutorDocument).toHaveBeenCalledWith({
+      tutorId: "tutor-175",
+      documentType: "nid_card",
+      status: "changes_requested",
+      reason: "ছবিটি ঝাপসা",
+      adminUserId: 42,
+    });
+    expect(result).toMatchObject({
+      updated: true,
+      status: "changes_requested",
+      rejectionReason: "ছবিটি ঝাপসা",
+    });
+  });
+
+  it("throws NOT_FOUND when tutor profile does not exist", async () => {
+    dbMocks.verifyTutorDocument.mockResolvedValue({
+      updated: false,
+      reason: "TUTOR_NOT_FOUND",
+    });
+
+    await expect(
+      createCaller().admin.verifyTutorDocument({
+        tutorId: "tutor-missing",
+        documentType: "universityId",
+        status: "approved",
+      }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("throws BAD_REQUEST when document has not been uploaded yet", async () => {
+    dbMocks.verifyTutorDocument.mockResolvedValue({
+      updated: false,
+      reason: "DOCUMENT_NOT_UPLOADED",
+    });
+
+    await expect(
+      createCaller().admin.verifyTutorDocument({
+        tutorId: "tutor-175",
+        documentType: "passport",
+        status: "approved",
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("rejects non-admin callers with FORBIDDEN", async () => {
+    const tutor = { ...adminUser, role: "tutor" as const };
+    await expect(
+      createCaller(tutor).admin.verifyTutorDocument({
+        tutorId: "tutor-175",
+        documentType: "universityId",
+        status: "approved",
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 });

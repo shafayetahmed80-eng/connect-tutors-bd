@@ -9,7 +9,7 @@ import { hydrateTeachingProfile } from "./TutorProfileWorkspace";
 import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } from "./TutorProfileSectionReadout";
 import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
 import { defaultTutorProfileFieldConfig, indexResolvedFields } from "@shared/tutor-profile-field-registry";
-import { tutorSupportingDocumentLabels, type TutorSupportingDocumentType } from "@shared/tutor-documents";
+import { tutorSupportingDocumentLabels, type TutorSupportingDocumentType, TUTOR_DOCUMENT_REUPLOAD_REASONS, buildTutorDocumentReuploadWhatsAppMessage, type TutorDocumentVerificationStatus } from "@shared/tutor-documents";
 import { ArrowRight, BadgeCheck, CalendarClock, CalendarPlus, ChevronDown, CircleAlert, Copy, ExternalLink, Eye, FileText, Gauge, History, IdCard, Layers, Mail, MessageCircle, Phone, ShieldAlert, UserRound, UserRoundCog } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { useMemo, useState } from "react";
@@ -136,37 +136,141 @@ function ModerationHistory({ tutorId }: { tutorId: string }) {
   </section>;
 }
 
-function DocumentTile({ label, url, onOpenLightbox }: { label: string; url: string | null; onOpenLightbox?: () => void }) {
+function DocumentTile({
+  label,
+  url,
+  status,
+  rejectionReason,
+  verifiedBy,
+  verifiedAt,
+  onOpenLightbox,
+  onApprove,
+  onRequestReupload,
+  isVerifying = false,
+}: {
+  label: string;
+  url: string | null;
+  status?: TutorDocumentVerificationStatus;
+  rejectionReason?: string | null;
+  verifiedBy?: string | null;
+  verifiedAt?: Date | string | null;
+  onOpenLightbox?: () => void;
+  onApprove?: () => void;
+  onRequestReupload?: () => void;
+  isVerifying?: boolean;
+}) {
   const [loadFailed, setLoadFailed] = useState(false);
-  return <div className="rounded-xl border border-j-border bg-j-surface-sunken p-3">
-    <div className="flex items-center justify-between gap-1">
-      <p className="flex items-center gap-1.5 text-2xs font-bold text-j-ink-strong"><FileText size={12} className="text-[#8fb4d0]" aria-hidden={true} />{label}</p>
+  const isApproved = status === "approved";
+  const isRejected = status === "changes_requested";
+
+  return (
+    <div className="flex flex-col justify-between rounded-xl border border-j-border bg-j-surface-sunken p-3 shadow-2xs">
+      <div>
+        <div className="flex items-center justify-between gap-1">
+          <p className="flex items-center gap-1.5 text-2xs font-bold text-j-ink-strong">
+            <FileText size={12} className="text-[#8fb4d0]" aria-hidden={true} />
+            {label}
+          </p>
+          <div className="flex items-center gap-1">
+            {isApproved ? (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-3xs font-extrabold text-emerald-800">
+                <BadgeCheck size={10} /> Approved
+              </span>
+            ) : isRejected ? (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-rose-100 px-1.5 py-0.5 text-3xs font-extrabold text-rose-800">
+                <CircleAlert size={10} /> Changes
+              </span>
+            ) : url && !loadFailed ? (
+              <span className="inline-flex items-center rounded-full bg-sky-100 px-1.5 py-0.5 text-3xs font-bold text-sky-800">
+                Uploaded
+              </span>
+            ) : null}
+
+            {url && !loadFailed ? (
+              <a
+                href={url}
+                target="_blank"
+                rel="noreferrer noopener"
+                aria-label={`Open ${label} in new tab`}
+                title="Open original in new tab"
+                className="rounded p-0.5 text-j-ink-faint hover:text-j-accent hover:bg-white/60 transition"
+              >
+                <ExternalLink size={12} />
+              </a>
+            ) : null}
+          </div>
+        </div>
+
+        {url && !loadFailed ? (
+          <button
+            type="button"
+            onClick={onOpenLightbox}
+            aria-label={`Inspect ${label}`}
+            title="Click to view, zoom and rotate"
+            className="mt-2 block w-full overflow-hidden rounded-lg border border-j-border group relative text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+          >
+            <img
+              src={url}
+              alt={label}
+              className="h-32 w-full object-cover transition duration-200 group-hover:scale-105"
+              onError={() => setLoadFailed(true)}
+            />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+              <span className="inline-flex items-center gap-1.5 rounded-lg bg-black/75 px-2.5 py-1 text-3xs font-bold text-white backdrop-blur shadow">
+                <Eye size={12} /> Inspect
+              </span>
+            </div>
+          </button>
+        ) : (
+          <div className="mt-2 grid h-32 place-items-center rounded-lg border border-dashed border-j-field-border text-2xs text-j-ink-faint">
+            {url && loadFailed ? "Image unavailable" : "Not uploaded"}
+          </div>
+        )}
+
+        {isRejected && rejectionReason ? (
+          <div className="mt-2 rounded-lg border border-rose-200 bg-rose-50/80 p-1.5 text-3xs text-rose-800">
+            <span className="font-bold">Reason:</span>
+            <p className="mt-0.5 line-clamp-2 text-rose-700">{rejectionReason}</p>
+          </div>
+        ) : null}
+
+        {isApproved && verifiedAt ? (
+          <p className="mt-1.5 text-3xs text-emerald-700">
+            Approved on {recordDate(verifiedAt)}
+          </p>
+        ) : null}
+      </div>
+
       {url && !loadFailed ? (
-        <a
-          href={url}
-          target="_blank"
-          rel="noreferrer noopener"
-          aria-label={`Open ${label} in new tab`}
-          title="Open original in new tab"
-          className="rounded p-0.5 text-j-ink-faint hover:text-j-accent hover:bg-white/60 transition"
-        >
-          <ExternalLink size={12} />
-        </a>
+        <div className="mt-2.5 flex items-center gap-1.5 border-t border-j-border/60 pt-2">
+          <button
+            type="button"
+            disabled={isVerifying || isApproved}
+            onClick={onApprove}
+            aria-label={`Approve ${label}`}
+            title="Approve document"
+            className={`inline-flex h-7 flex-1 items-center justify-center gap-1 rounded-md text-3xs font-bold transition ${
+              isApproved
+                ? "bg-emerald-50 text-emerald-600 opacity-60 cursor-default"
+                : "bg-emerald-600 text-white hover:bg-emerald-700 active:scale-95"
+            }`}
+          >
+            <BadgeCheck size={11} /> {isApproved ? "Approved" : "Approve"}
+          </button>
+          <button
+            type="button"
+            disabled={isVerifying}
+            onClick={onRequestReupload}
+            aria-label={`Request re-upload for ${label}`}
+            title="Request re-upload"
+            className="inline-flex h-7 flex-1 items-center justify-center gap-1 rounded-md border border-rose-200 bg-rose-50 text-3xs font-bold text-rose-700 hover:bg-rose-100 hover:border-rose-300 transition active:scale-95"
+          >
+            <CircleAlert size={11} /> Re-upload
+          </button>
+        </div>
       ) : null}
     </div>
-    {url && !loadFailed
-      ? <button type="button" onClick={onOpenLightbox} aria-label={`Inspect ${label}`} title="Click to view, zoom and rotate" className="mt-2 block w-full overflow-hidden rounded-lg border border-j-border group relative text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400">
-          <img src={url} alt={label} className="h-32 w-full object-cover transition duration-200 group-hover:scale-105" onError={() => setLoadFailed(true)} />
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-black/75 px-2.5 py-1 text-3xs font-bold text-white backdrop-blur shadow">
-              <Eye size={12} /> Inspect
-            </span>
-          </div>
-        </button>
-      : <div className="mt-2 grid h-32 place-items-center rounded-lg border border-dashed border-j-field-border text-2xs text-j-ink-faint">
-          {url && loadFailed ? "Image unavailable" : "Not uploaded"}
-        </div>}
-  </div>;
+  );
 }
 
 /**
@@ -195,6 +299,34 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
   const [isDocsOpen, setIsDocsOpen] = useState(true);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [reuploadTarget, setReuploadTarget] = useState<{ id: string; label: string } | null>(null);
+  const [reuploadReason, setReuploadReason] = useState("");
+
+  const verifyDocumentMutation = trpc.admin.verifyTutorDocument.useMutation({
+    onSuccess: (_, vars) => {
+      void utils.admin.getTutorProfile.invalidate({ tutorId });
+      toast.success(vars.status === "approved" ? "Document approved successfully" : "Re-upload requested and notification sent");
+      setReuploadTarget(null);
+      setReuploadReason("");
+    },
+    onError: err => {
+      toast.error(err.message || "Failed to update document status");
+    },
+  });
+
+  const handleApproveDocument = (documentType: string, label: string) => {
+    verifyDocumentMutation.mutate({
+      tutorId,
+      documentType,
+      status: "approved",
+    });
+  };
+
+  const handleOpenReuploadModal = (documentType: string, label: string) => {
+    setReuploadTarget({ id: documentType, label });
+    setReuploadReason(TUTOR_DOCUMENT_REUPLOAD_REASONS[0]);
+  };
+
   const moderation = trpc.admin.moderateTutorProfile.useMutation({
     onSuccess: () => {
       void utils.admin.getTutorProfile.invalidate({ tutorId });
@@ -234,12 +366,21 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
   const supporting = Object.keys(tutorSupportingDocumentLabels) as TutorSupportingDocumentType[];
   const documentItems = useMemo<LightboxDocumentItem[]>(() => {
     if (!profile) return [];
+    const details = profile.documents.details;
     return [
-      { id: "universityId", label: "University ID", url: profile.documents.universityId },
+      {
+        id: "universityId",
+        label: "University ID",
+        url: profile.documents.universityId,
+        status: details?.universityId?.status ?? (profile.documents.universityId ? "uploaded" : "not_uploaded"),
+        reason: details?.universityId?.rejectionReason ?? null,
+      },
       ...supporting.map(type => ({
         id: type,
         label: tutorSupportingDocumentLabels[type],
         url: profile.documents.supporting[type] ?? null,
+        status: details?.supporting?.[type]?.status ?? (profile.documents.supporting[type] ? "uploaded" : "not_uploaded"),
+        reason: details?.supporting?.[type]?.rejectionReason ?? null,
       })),
     ];
   }, [profile, supporting]);
@@ -454,8 +595,36 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
         <h3 className="mb-3 font-bold tracking-[-0.02em] text-j-ink">Documents</h3>
         {isDocsOpen ? (
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <DocumentTile label="University ID" url={profile.documents.universityId} onOpenLightbox={() => { setLightboxIndex(0); setLightboxOpen(true); }} />
-            {supporting.map((type, idx) => <DocumentTile key={type} label={tutorSupportingDocumentLabels[type]} url={profile.documents.supporting[type] ?? null} onOpenLightbox={() => { setLightboxIndex(idx + 1); setLightboxOpen(true); }} />)}
+            <DocumentTile
+              label="University ID"
+              url={profile.documents.universityId}
+              status={profile.documents.details?.universityId?.status}
+              rejectionReason={profile.documents.details?.universityId?.rejectionReason}
+              verifiedBy={profile.documents.details?.universityId?.verifiedBy}
+              verifiedAt={profile.documents.details?.universityId?.verifiedAt}
+              onOpenLightbox={() => { setLightboxIndex(0); setLightboxOpen(true); }}
+              onApprove={() => handleApproveDocument("universityId", "University ID")}
+              onRequestReupload={() => handleOpenReuploadModal("universityId", "University ID")}
+              isVerifying={verifyDocumentMutation.isPending}
+            />
+            {supporting.map((type, idx) => {
+              const details = profile.documents.details?.supporting?.[type];
+              return (
+                <DocumentTile
+                  key={type}
+                  label={tutorSupportingDocumentLabels[type]}
+                  url={profile.documents.supporting[type] ?? null}
+                  status={details?.status}
+                  rejectionReason={details?.rejectionReason}
+                  verifiedBy={details?.verifiedBy}
+                  verifiedAt={details?.verifiedAt}
+                  onOpenLightbox={() => { setLightboxIndex(idx + 1); setLightboxOpen(true); }}
+                  onApprove={() => handleApproveDocument(type, tutorSupportingDocumentLabels[type])}
+                  onRequestReupload={() => handleOpenReuploadModal(type, tutorSupportingDocumentLabels[type])}
+                  isVerifying={verifyDocumentMutation.isPending}
+                />
+              );
+            })}
           </div>
         ) : null}
       </section>
@@ -505,7 +674,110 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
       items={documentItems}
       initialIndex={lightboxIndex}
       tutorName={profile.name}
+      onApprove={item => handleApproveDocument(item.id, item.label)}
+      onRequestReupload={item => handleOpenReuploadModal(item.id, item.label)}
     />
+
+    {/* Re-upload Request Modal with Quick Chips & WhatsApp Generator */}
+    {reuploadTarget ? (
+      <Modal size="dialog" onClose={() => setReuploadTarget(null)} busy={verifyDocumentMutation.isPending}>
+        <ModalHeader title={`Request Re-upload: ${reuploadTarget.label}`} />
+        <ModalBody className="space-y-4">
+          <div className="flex items-start gap-3">
+            <ShieldAlert className="mt-0.5 h-6 w-6 shrink-0 text-rose-600" />
+            <p className="text-sm leading-6 text-j-ink-soft">
+              Select or write the reason why this document needs re-upload. The tutor will receive an in-app notice with the explanation and a replacement upload prompt.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-j-ink-strong mb-1.5">
+              Quick Reasons (কুইক কারণসমূহ)
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {TUTOR_DOCUMENT_REUPLOAD_REASONS.map(chipReason => (
+                <button
+                  key={chipReason}
+                  type="button"
+                  onClick={() => setReuploadReason(chipReason)}
+                  className={`rounded-lg border px-2.5 py-1 text-2xs font-semibold transition ${
+                    reuploadReason === chipReason
+                      ? "border-rose-400 bg-rose-50 text-rose-700 font-bold"
+                      : "border-j-border bg-j-surface-sunken text-j-ink-soft hover:bg-white hover:text-j-ink"
+                  }`}
+                >
+                  {chipReason}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-j-ink-strong mb-1">
+              Detailed Reason / নির্দেশনা
+            </label>
+            <textarea
+              rows={3}
+              value={reuploadReason}
+              onChange={e => setReuploadReason(e.target.value)}
+              placeholder="যেমন: আইডি কার্ডের ছবিটি ঝাপসা, অনুগ্রহ করে উভয় পিঠের স্পষ্ট ছবি তুলে পুনরায় আপলোড করুন।"
+              className="w-full rounded-xl border border-j-field-border bg-white p-2.5 text-sm outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-200"
+            />
+          </div>
+
+          {profile.phone ? (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs font-bold text-emerald-900">1-Click WhatsApp Notification</p>
+                  <p className="text-3xs text-emerald-700">টিউটরের হোয়াটসঅ্যাপ মেসেজ টেমপ্লেট কপি করুন</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const msg = buildTutorDocumentReuploadWhatsAppMessage({
+                      tutorName: profile.name,
+                      documentLabel: reuploadTarget.label,
+                      reason: reuploadReason || "ছবিটি ঝাপসা বা স্পষ্ট নয়",
+                    });
+                    void navigator.clipboard.writeText(msg);
+                    toast.success("WhatsApp message copied to clipboard!");
+                  }}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 text-xs font-bold text-white hover:bg-emerald-700 transition"
+                >
+                  <Copy size={13} /> Copy WhatsApp Template
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </ModalBody>
+        <ModalFooter>
+          <button
+            type="button"
+            onClick={() => setReuploadTarget(null)}
+            disabled={verifyDocumentMutation.isPending}
+            className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={verifyDocumentMutation.isPending}
+            onClick={() => {
+              verifyDocumentMutation.mutate({
+                tutorId,
+                documentType: reuploadTarget.id,
+                status: "changes_requested",
+                reason: reuploadReason.trim() || undefined,
+              });
+            }}
+            className="h-control rounded-xl bg-rose-600 px-4 text-sm font-bold text-white hover:bg-rose-700 transition"
+          >
+            {verifyDocumentMutation.isPending ? "Submitting…" : "Send Re-upload Request"}
+          </button>
+        </ModalFooter>
+      </Modal>
+    ) : null}
 
     {/* Mobile Floating Moderation Action Bar */}
     <aside aria-label="Mobile actions bar" className="fixed inset-x-0 bottom-0 z-30 border-t border-j-border bg-white/95 p-3 shadow-lg backdrop-blur sm:hidden">

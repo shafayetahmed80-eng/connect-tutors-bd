@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
   moderate: vi.fn(),
+  verifyDocument: vi.fn(),
   history: [] as unknown[],
   applications: [
     { interestId: 1, requestId: 21, status: "matched", appointmentConfirmedAt: new Date("2026-09-12T00:00:00.000Z"), createdAt: new Date("2026-09-01T00:00:00.000Z"), classCourse: "Class 9", category: "Bangla Medium", subjects: JSON.stringify(["Physics"]), locationLabel: "Mirpur, Dhaka" },
@@ -68,6 +69,17 @@ vi.mock("@/lib/trpc", () => ({
       },
       moderateTutorProfile: {
         useMutation: () => ({ mutate: mocks.moderate, isPending: false, isError: false, error: null }),
+      },
+      verifyTutorDocument: {
+        useMutation: (opts?: any) => ({
+          mutate: (vars: any) => {
+            mocks.verifyDocument(vars);
+            opts?.onSuccess?.(null, vars);
+          },
+          isPending: false,
+          isError: false,
+          error: null,
+        }),
       },
       listTutorApplications: { useQuery: () => ({ data: mocks.applications, isLoading: false, isError: false }) },
       getTutorModerationHistory: { useQuery: () => ({ data: mocks.history, isLoading: false, isError: false }) },
@@ -384,5 +396,45 @@ describe("Admin Tutor profile detail", () => {
     fireEvent.click(within(bar).getByRole("button", { name: /Moderate/i }));
     expect(screen.getByRole("dialog")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Moderate Tania Sultana" })).toBeTruthy();
+  });
+  it("allows admin to approve a document directly from the document tile", () => {
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+
+    const approveButtons = screen.getAllByRole("button", { name: /^Approve /i });
+    expect(approveButtons.length).toBeGreaterThan(0);
+
+    fireEvent.click(approveButtons[0]);
+    expect(mocks.verifyDocument).toHaveBeenCalledWith({
+      tutorId: "tutor-175",
+      documentType: "universityId",
+      status: "approved",
+    });
+  });
+
+  it("opens re-upload modal with quick chips and WhatsApp generator when Re-upload button is clicked", () => {
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+
+    const reuploadButtons = screen.getAllByRole("button", { name: /^Request re-upload for /i });
+    expect(reuploadButtons.length).toBeGreaterThan(0);
+
+    fireEvent.click(reuploadButtons[0]);
+
+    // Modal opens
+    expect(screen.getByRole("dialog", { name: /Request Re-upload/i })).toBeTruthy();
+    expect(screen.getByText("Quick Reasons (কুইক কারণসমূহ)")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Copy WhatsApp Template/i })).toBeTruthy();
+
+    // Click a quick chip
+    const chip = screen.getByRole("button", { name: "ভুল ডকুমেন্ট আপলোড করা হয়েছে" });
+    fireEvent.click(chip);
+
+    // Submit re-upload request
+    fireEvent.click(screen.getByRole("button", { name: "Send Re-upload Request" }));
+    expect(mocks.verifyDocument).toHaveBeenCalledWith({
+      tutorId: "tutor-175",
+      documentType: "universityId",
+      status: "changes_requested",
+      reason: "ভুল ডকুমেন্ট আপলোড করা হয়েছে",
+    });
   });
 });
