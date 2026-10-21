@@ -270,15 +270,22 @@ describe("the Mist design", () => {
     expect(heightOf(threeCurricula)).toBeGreaterThan(heightOf(oneCurriculum));
   });
 
-  it("is the only design in the tall list, whatever was asked for", () => {
-    const asked = document.createElement("canvas");
-    const mist = document.createElement("canvas");
-    renderCombinedTuitionsPoster(asked, mixed, { theme: "crimson", size: "tall", locale: "en", now });
-    const crimsonText = allText();
-    drawn.texts = [];
-    renderCombinedTuitionsPoster(mist, mixed, { theme: "mist", size: "tall", locale: "en", now });
-    expect(asked.height).toBe(mist.height);
-    expect(crimsonText).toBe(allText());
+  it("draws every combined theme in the tall list with its own unique styling", () => {
+    for (const theme of COMBINED_POSTER_THEMES) {
+      drawn.texts = [];
+      const canvas = document.createElement("canvas");
+      renderCombinedTuitionsPoster(canvas, mixed, { theme, size: "tall", locale: "en", now });
+      expect(canvas.width).toBe(1080);
+      expect(canvas.height).toBe(posterDimensions("tall", mixed, "en").height);
+      const text = allText();
+      expect(text).toContain("# 6800");
+      expect(text).toContain("# 6811");
+      expect(text).not.toContain("# 6812");
+      if (theme === "navy") expect(text).toContain("Today's new tuitions");
+      if (theme === "emerald") expect(text).toContain("High-paying tuitions");
+      if (theme === "crimson") expect(text).toContain("Tutors needed today");
+      if (theme === "mist") expect(text).toContain("Choose your");
+    }
   });
 
   it("draws one tuition square when a tall poster is asked for", () => {

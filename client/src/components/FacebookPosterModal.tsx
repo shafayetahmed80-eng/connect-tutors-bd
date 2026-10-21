@@ -271,7 +271,7 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
   const isCombined = Boolean(jobs && jobs.length > 0);
   // One tuition has no tall list; a tall list is Mist's alone.
   const size: PosterSize = !isCombined && prefs.size === "tall" ? "square" : prefs.size;
-  const theme: SinglePosterTheme | CombinedPosterTheme = isCombined ? (size === "tall" ? "mist" : prefs.combinedTheme) : prefs.singleTheme;
+  const theme: SinglePosterTheme | CombinedPosterTheme = isCombined ? prefs.combinedTheme : prefs.singleTheme;
   const shown = isCombined ? Math.min(jobs!.length, size === "tall" ? MAX_TALL_TUITIONS : MAX_COMBINED_TUITIONS) : 0;
   const needsSerif = theme === "mist";
   // The tuitions this window draws, which Auto reads the curriculum from.
@@ -361,7 +361,7 @@ export function FacebookPosterModal({ isOpen, onClose, job, jobs, caption }: {
     toast.error("ছবি কপি করা যায়নি। ডাউনলোড করে নিন।");
   };
 
-  const themeIds: Array<SinglePosterTheme | CombinedPosterTheme> = size === "tall" ? ["mist"] : isCombined ? COMBINED_POSTER_THEMES : SINGLE_POSTER_THEMES;
+  const themeIds: Array<SinglePosterTheme | CombinedPosterTheme> = isCombined ? COMBINED_POSTER_THEMES : SINGLE_POSTER_THEMES;
   const themeOptions = themeIds.map(id => ({ value: id, ...THEME_LABELS[id] }));
   const sizeOptions: Array<{ value: PosterSize; label: string; detail?: string }> = [
     { value: "square", label: "Square", detail: "1080×1080" },

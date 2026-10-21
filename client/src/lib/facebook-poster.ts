@@ -22,7 +22,7 @@ import {
 } from "@shared/poster-copy";
 import { PUBLIC_SITE_HOST, PUBLIC_SITE_ORIGIN } from "@shared/public-site";
 import { autoGroundForCurricula } from "./poster/auto-ground";
-import { drawCombinedLandscape, drawCombinedSquare } from "./poster/combined-layouts";
+import { combinedTallHeight, drawCombinedLandscape, drawCombinedSquare, drawCombinedTall } from "./poster/combined-layouts";
 import { drawMistCombinedLandscape, drawMistCombinedSquare, drawMistSingleLandscape, drawMistSingleSquare, drawMistTall, mistTallHeight } from "./poster/mist-layouts";
 import { normalizeHex } from "./poster/palette";
 import { drawSingleLandscape, drawSingleSquare } from "./poster/single-layouts";
@@ -150,7 +150,7 @@ function prepare(canvas: HTMLCanvasElement, width: number, height: number): Canv
  */
 export function posterDimensions(size: PosterSize, jobs: FacebookPosterJob[] = [], locale: PosterLocale = "en"): { width: number; height: number } {
   if (size !== "tall") return POSTER_SIZES[size];
-  return { width: TALL_POSTER_WIDTH, height: mistTallHeight(combinedPosterInput(jobs, locale, undefined, MAX_TALL_TUITIONS)) };
+  return { width: TALL_POSTER_WIDTH, height: combinedTallHeight(combinedPosterInput(jobs, locale, undefined, MAX_TALL_TUITIONS)) };
 }
 
 /** The ground colour as a clean hex, or null - no colour picked, or one that is not a colour - for the design's own. */
@@ -186,11 +186,15 @@ export function renderSingleTuitionPoster(canvas: HTMLCanvasElement, job: Facebo
 export function renderCombinedTuitionsPoster(canvas: HTMLCanvasElement, jobs: FacebookPosterJob[], options: CombinedPosterOptions) {
   const ground = groundOf(options.ground);
   if (options.size === "tall") {
-    // The tall list is Mist's alone, whatever design was asked for.
+
     const input = combinedPosterInput(jobs, options.locale, options.now, MAX_TALL_TUITIONS);
-    const ctx = prepare(canvas, TALL_POSTER_WIDTH, mistTallHeight(input));
+    const ctx = prepare(canvas, TALL_POSTER_WIDTH, combinedTallHeight(input));
     if (!ctx) return;
-    drawMistTall(ctx, input, ground);
+    if (options.theme === "mist") {
+      drawMistTall(ctx, input, ground);
+    } else {
+      drawCombinedTall(ctx, input, options.theme, ground);
+    }
     return;
   }
   const { width, height } = POSTER_SIZES[options.size];
