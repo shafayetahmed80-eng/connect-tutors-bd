@@ -1178,7 +1178,7 @@ export function AdminFacebookPostsContent() {
             <ImageIcon className="size-3.5 text-[#1877f2]" />
             <span>
               {picked.size > 0
-                ? `Bulk Poster (${picked.size} picked · ${picked.size <= 4 ? "1 slide" : `${Math.ceil(picked.size / 4)} slides`})`
+                ? `Bulk Poster (${picked.size} picked)`
                 : `Bulk Poster (${Math.min(totalMatching, MAX_TALL_TUITIONS)})`}
             </span>
           </button>

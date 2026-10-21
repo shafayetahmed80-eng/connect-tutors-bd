@@ -654,14 +654,14 @@ describe("AdminFacebookPostsContent", () => {
       fireEvent.click(select4Btn);
 
       // Verify 4 items selected and Bulk Poster button indicates 4 picked
-      expect(screen.getByRole("button", { name: /Bulk Poster \(4 picked · 1 slide\)/i })).toBeDefined();
+      expect(screen.getByRole("button", { name: "Bulk Poster (4 picked)" })).toBeDefined();
 
       // Click 'Select 12'
       const select12Btn = screen.getByRole("button", { name: "Select 12" });
       fireEvent.click(select12Btn);
 
       // Verify 12 items selected and Bulk Poster button indicates 12 picked and 3 slides
-      expect(screen.getByRole("button", { name: /Bulk Poster \(12 picked · 3 slides\)/i })).toBeDefined();
+      expect(screen.getByRole("button", { name: "Bulk Poster (12 picked)" })).toBeDefined();
     } finally {
       mocks.liveData = { ...mocks.liveData, items: originalItems, total: 1 };
     }
