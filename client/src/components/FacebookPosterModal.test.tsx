@@ -135,7 +135,7 @@ describe("the poster window's sizes and themes", () => {
     expect(group("Size").getByRole("radio", { name: /Square/ }).getAttribute("aria-checked")).toBe("true");
   });
 
-  it("gives a run of tuitions Mist and the tall list, which is Mist's alone", () => {
+  it("allows selecting all four themes in the tall list", () => {
     render(<FacebookPosterModal isOpen onClose={() => {}} jobs={jobs} />);
 
     expect(group("Theme").getAllByRole("radio").map(radio => radio.textContent)).toEqual(["Navy", "Emerald", "Crimson", "Mist"]);
@@ -143,12 +143,16 @@ describe("the poster window's sizes and themes", () => {
     expect(lastCombined()).toMatchObject({ theme: "crimson", size: "square" });
 
     fireEvent.click(group("Size").getByRole("radio", { name: "Tall list" }));
-    expect(lastCombined()).toMatchObject({ theme: "mist", size: "tall" });
-    expect(group("Theme").getAllByRole("radio").map(radio => radio.textContent)).toEqual(["Mist"]);
+    expect(lastCombined()).toMatchObject({ theme: "crimson", size: "tall" });
+    expect(group("Theme").getAllByRole("radio").map(radio => radio.textContent)).toEqual(["Navy", "Emerald", "Crimson", "Mist"]);
 
-    // Back to a square: the design that was chosen before comes back.
+    // Switching theme in tall list works
+    fireEvent.click(group("Theme").getByRole("radio", { name: "Mist" }));
+    expect(lastCombined()).toMatchObject({ theme: "mist", size: "tall" });
+
+    // Back to a square: the chosen design stays
     fireEvent.click(group("Size").getByRole("radio", { name: /Square/ }));
-    expect(lastCombined()).toMatchObject({ theme: "crimson", size: "square" });
+    expect(lastCombined()).toMatchObject({ theme: "mist", size: "square" });
   });
 
   it("counts four tuitions in a square and every one it holds in the tall list", () => {
