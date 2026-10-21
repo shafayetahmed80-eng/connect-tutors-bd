@@ -32,4 +32,12 @@ describe("what a Job Board card shows once a Tutor has applied", () => {
     expect(getJobBoardAppliedState({ status: "interested", appliedAt: "2026-01-04T00:00:00.000Z" }))
       .toMatchObject({ appliedOn: "04 Jan 2026" });
   });
+
+  it("displays pending review badge label when tutor profile is pending review", () => {
+    expect(getJobBoardAppliedState({ status: "interested", appliedAt }, { isPendingReview: true })).toEqual({
+      label: "Applied (Profile Pending Review)",
+      appliedOn: "20 Nov 2026",
+      isPendingReview: true,
+    });
+  });
 });

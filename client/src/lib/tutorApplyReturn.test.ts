@@ -46,8 +46,11 @@ describe("Tutor Apply Now return routing", () => {
     expect(buildTutorApplyJobBoardPath(returnPath)).toBe(
       "/tutor/dashboard/jobs?returnTo=%2Fjob-board%3Fjob%3D6945",
     );
-    expect(getTutorApplyPostLoginPath("pending", returnPath)).toBe(
+    expect(getTutorApplyPostLoginPath("draft", returnPath)).toBe(
       "/tutor/dashboard/profile?returnTo=%2Fjob-board%3Fjob%3D6945",
+    );
+    expect(getTutorApplyPostLoginPath("pending", returnPath)).toBe(
+      "/tutor/dashboard/jobs?returnTo=%2Fjob-board%3Fjob%3D6945",
     );
     expect(getTutorApplyPostLoginPath("approved", returnPath)).toBe(
       "/tutor/dashboard/jobs?returnTo=%2Fjob-board%3Fjob%3D6945",

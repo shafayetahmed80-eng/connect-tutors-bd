@@ -72,14 +72,22 @@ describe("Tutor Job Board interest procedures", () => {
     });
   });
 
-  it.each(["draft", "pending", "changes_requested"])('does not let an active Tutor with a %s profile apply before Admin verification', async profileStatus => {
+  it.each(["draft", "changes_requested"])('does not let an active Tutor with a %s profile apply before submission', async profileStatus => {
     interestDbMocks.getTutorProfileByUserId.mockResolvedValue({ tutorId: "tutor-1503", profileStatus });
 
     await expect((createCaller().jobBoard as any).expressInterest({ tutorJobId: 44 })).rejects.toMatchObject({
       code: "PRECONDITION_FAILED",
-      message: "Complete and verify your Tutor profile before applying to Job Board listings.",
+      message: "Complete and submit your Tutor profile before applying to Job Board listings.",
     });
     expect(interestDbMocks.submitTutorJobInterest).not.toHaveBeenCalled();
+  });
+
+  it("allows an active Tutor with a pending profile to apply to Job Board listings", async () => {
+    interestDbMocks.getTutorProfileByUserId.mockResolvedValue({ tutorId: "tutor-1503", profileStatus: "pending" });
+    interestDbMocks.submitTutorJobInterest.mockResolvedValue({ interestId: 19, status: "interested" });
+
+    await expect((createCaller().jobBoard as any).expressInterest({ tutorJobId: 44 })).resolves.toEqual({ interestId: 19, status: "interested" });
+    expect(interestDbMocks.submitTutorJobInterest).toHaveBeenCalledWith({ tutorId: "tutor-1503", tutorJobId: 44 });
   });
 
   it("does not let a Guardian submit or withdraw a Tutor Job Board interest", async () => {
