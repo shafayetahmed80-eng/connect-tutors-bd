@@ -10,13 +10,14 @@ import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } fro
 import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
 import { defaultTutorProfileFieldConfig, indexResolvedFields } from "@shared/tutor-profile-field-registry";
 import { tutorSupportingDocumentLabels, type TutorSupportingDocumentType } from "@shared/tutor-documents";
-import { ArrowRight, BadgeCheck, CalendarClock, CalendarPlus, ChevronDown, CircleAlert, Copy, FileText, Gauge, History, IdCard, Layers, Mail, MessageCircle, Phone, ShieldAlert, UserRound, UserRoundCog } from "lucide-react";
+import { ArrowRight, BadgeCheck, CalendarClock, CalendarPlus, ChevronDown, CircleAlert, Copy, ExternalLink, Eye, FileText, Gauge, History, IdCard, Layers, Mail, MessageCircle, Phone, ShieldAlert, UserRound, UserRoundCog } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { useMemo, useState } from "react";
 import { Link, useRoute } from "wouter";
 import AdminTutorApplications from "@/components/AdminTutorApplications";
 import BackLink from "@/components/BackLink";
 import { TutorCvPreviewModal } from "@/components/TutorCvPreviewModal";
+import { DocumentLightboxModal, type LightboxDocumentItem } from "@/components/DocumentLightboxModal";
 import { toast } from "sonner";
 
 function formatWhatsAppUrl(phone: string | null | undefined): string | null {
@@ -135,14 +136,33 @@ function ModerationHistory({ tutorId }: { tutorId: string }) {
   </section>;
 }
 
-function DocumentTile({ label, url }: { label: string; url: string | null }) {
+function DocumentTile({ label, url, onOpenLightbox }: { label: string; url: string | null; onOpenLightbox?: () => void }) {
   const [loadFailed, setLoadFailed] = useState(false);
   return <div className="rounded-xl border border-j-border bg-j-surface-sunken p-3">
-    <p className="flex items-center gap-1.5 text-2xs font-bold text-j-ink-strong"><FileText size={12} className="text-[#8fb4d0]" aria-hidden={true} />{label}</p>
-    {url && !loadFailed
-      ? <a href={url} target="_blank" rel="noreferrer noopener" className="mt-2 block overflow-hidden rounded-lg border border-j-border group relative">
-          <img src={url} alt={label} className="h-32 w-full object-cover transition group-hover:scale-105" onError={() => setLoadFailed(true)} />
+    <div className="flex items-center justify-between gap-1">
+      <p className="flex items-center gap-1.5 text-2xs font-bold text-j-ink-strong"><FileText size={12} className="text-[#8fb4d0]" aria-hidden={true} />{label}</p>
+      {url && !loadFailed ? (
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer noopener"
+          aria-label={`Open ${label} in new tab`}
+          title="Open original in new tab"
+          className="rounded p-0.5 text-j-ink-faint hover:text-j-accent hover:bg-white/60 transition"
+        >
+          <ExternalLink size={12} />
         </a>
+      ) : null}
+    </div>
+    {url && !loadFailed
+      ? <button type="button" onClick={onOpenLightbox} aria-label={`Inspect ${label}`} title="Click to view, zoom and rotate" className="mt-2 block w-full overflow-hidden rounded-lg border border-j-border group relative text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400">
+          <img src={url} alt={label} className="h-32 w-full object-cover transition duration-200 group-hover:scale-105" onError={() => setLoadFailed(true)} />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-black/75 px-2.5 py-1 text-3xs font-bold text-white backdrop-blur shadow">
+              <Eye size={12} /> Inspect
+            </span>
+          </div>
+        </button>
       : <div className="mt-2 grid h-32 place-items-center rounded-lg border border-dashed border-j-field-border text-2xs text-j-ink-faint">
           {url && loadFailed ? "Image unavailable" : "Not uploaded"}
         </div>}
@@ -173,6 +193,8 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
   const [reason, setReason] = useState("");
   const [activeTab, setActiveTab] = useState<AdminTutorDetailTabKey>("all");
   const [isDocsOpen, setIsDocsOpen] = useState(true);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   const moderation = trpc.admin.moderateTutorProfile.useMutation({
     onSuccess: () => {
       void utils.admin.getTutorProfile.invalidate({ tutorId });
@@ -210,6 +232,17 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
   }
 
   const supporting = Object.keys(tutorSupportingDocumentLabels) as TutorSupportingDocumentType[];
+  const documentItems = useMemo<LightboxDocumentItem[]>(() => {
+    if (!profile) return [];
+    return [
+      { id: "universityId", label: "University ID", url: profile.documents.universityId },
+      ...supporting.map(type => ({
+        id: type,
+        label: tutorSupportingDocumentLabels[type],
+        url: profile.documents.supporting[type] ?? null,
+      })),
+    ];
+  }, [profile, supporting]);
   const decisions = moderationOptions[profile.profileStatus] ?? [];
 
   return <div className="mx-auto w-full max-w-5xl space-y-4 pb-20 sm:pb-10">
@@ -421,8 +454,8 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
         <h3 className="mb-3 font-bold tracking-[-0.02em] text-j-ink">Documents</h3>
         {isDocsOpen ? (
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <DocumentTile label="University ID" url={profile.documents.universityId} />
-            {supporting.map(type => <DocumentTile key={type} label={tutorSupportingDocumentLabels[type]} url={profile.documents.supporting[type] ?? null} />)}
+            <DocumentTile label="University ID" url={profile.documents.universityId} onOpenLightbox={() => { setLightboxIndex(0); setLightboxOpen(true); }} />
+            {supporting.map((type, idx) => <DocumentTile key={type} label={tutorSupportingDocumentLabels[type]} url={profile.documents.supporting[type] ?? null} onOpenLightbox={() => { setLightboxIndex(idx + 1); setLightboxOpen(true); }} />)}
           </div>
         ) : null}
       </section>
@@ -464,6 +497,14 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
       tutorId={tutorId}
       tutorName={profile.name}
       tutorNumber={profile.tutorNumber}
+    />
+
+    <DocumentLightboxModal
+      isOpen={lightboxOpen}
+      onClose={() => setLightboxOpen(false)}
+      items={documentItems}
+      initialIndex={lightboxIndex}
+      tutorName={profile.name}
     />
 
     {/* Mobile Floating Moderation Action Bar */}
