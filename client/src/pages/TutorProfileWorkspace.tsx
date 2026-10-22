@@ -22,6 +22,8 @@ import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react"
 import type { TutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { TutorProfileIdentityRail } from "./TutorProfileIdentityRail";
 import { TutorCvPreviewModal } from "@/components/TutorCvPreviewModal";
+import { TutorSubmissionSuccessModal } from "@/components/TutorSubmissionSuccessModal";
+import { useLocation } from "wouter";
 import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
 import { createProfileDraftPayload, emptyEducationRecord, getProfileDraftFeedback, hydrateTutorProfileForm, type PersistedTutorProfileForForm, type TutorProfileFormState } from "./TutorProfileFormData";
 import { describeMissingDetails, educationStatus, getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy, type TutorProfileSubmissionErrorKey, type TutorProfileSubmissionErrors } from "./TutorProfileUx";
@@ -557,6 +559,8 @@ function TutorProfileWorkspaceBody({
   const [phoneErrors, setPhoneErrors] = useState<Partial<Record<TutorProfilePhoneField, string>>>({});
   const [savedDraftFingerprint, setSavedDraftFingerprint] = useState(() => getProfileDraftFingerprint(hydrateTeachingProfile(profile, onboardingFallback)));
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const [showSubmissionSuccess, setShowSubmissionSuccess] = useState(false);
+  const [, navigate] = useLocation();
   // Snapshot of `form` taken when a section popup opens, restored if it is
   // closed without saving so Cancel/Escape/X discard the in-popup edits.
   const formBeforeSectionEditRef = useRef<TeachingProfileState | null>(null);
@@ -1047,7 +1051,7 @@ function TutorProfileWorkspaceBody({
       clearTutorOnboardingDraft();
       setSavedDraftFingerprint(getProfileDraftFingerprint(form));
       await Promise.all([utils.tutor.getMyProfile.invalidate(), utils.tutor.getDashboardStats.invalidate()]);
-      setFeedback({ type: "success", message: "Profile submitted." });
+      setShowSubmissionSuccess(true);
     } catch (error) {
       if (!recoverServerValidationErrors(error)) {
         setFeedback({ type: "error", message: getTutorProfileMutationFailureFeedback(error).message, details: getTutorProfileServerIssueDetails(error) });
@@ -1577,6 +1581,11 @@ function TutorProfileWorkspaceBody({
       onClose={() => setIsCvModalOpen(false)}
       tutorName={form.name}
       tutorNumber={profile?.tutorNumber}
+    />
+    <TutorSubmissionSuccessModal
+      isOpen={showSubmissionSuccess}
+      onClose={() => setShowSubmissionSuccess(false)}
+      onGoToJobBoard={() => { setShowSubmissionSuccess(false); navigate("/job-board"); }}
     />
   </form>;
 }
