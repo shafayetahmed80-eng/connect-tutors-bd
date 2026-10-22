@@ -3,6 +3,8 @@ import {
   closeMobileSidebarAfterNavigation,
   getMobileWorkspaceContext,
   triggerMobileHapticFeedback,
+  getMobileBottomNavItems,
+  isBottomNavActive,
 } from "./DashboardLayout";
 
 describe("mobile Tutor dashboard navigation", () => {
@@ -64,4 +66,65 @@ describe("mobile Tutor dashboard navigation", () => {
     });
   });
 });
+describe("mobile bottom quick navigation bar", () => {
+  it("determines active bottom nav items accurately without root dashboard bleeding", () => {
+    expect(isBottomNavActive("/tutor/dashboard", "/tutor/dashboard")).toBe(true);
+    expect(isBottomNavActive("/tutor/dashboard/jobs", "/tutor/dashboard")).toBe(false);
+    expect(isBottomNavActive("/tutor/dashboard/jobs", "/tutor/dashboard/jobs")).toBe(true);
+    expect(isBottomNavActive("/tutor/dashboard/jobs/101", "/tutor/dashboard/jobs")).toBe(true);
+    expect(isBottomNavActive("/admin/applied-tutors/55", "/admin/applied-tutors")).toBe(true);
+    expect(isBottomNavActive("/guardian/dashboard/profile", "/guardian/dashboard/posted-jobs")).toBe(false);
+  });
 
+  it("builds 5-slot bottom nav for Tutor panel with Home, Jobs, Status, Profile, and Menu toggle", () => {
+    const dummyNav = [
+      { path: "/tutor/dashboard", label: "Dashboard", icon: () => null },
+      { path: "/tutor/dashboard/jobs", label: "Job Board", icon: () => null },
+      { path: "/tutor/dashboard/status", label: "Status", icon: () => null },
+      { path: "/tutor/dashboard/profile", label: "Profile", icon: () => null },
+    ];
+    const items = getMobileBottomNavItems("tutor", dummyNav as any);
+
+    expect(items).toHaveLength(5);
+    expect(items.map(i => i.key)).toEqual(["home", "jobs", "status", "profile", "menu"]);
+    expect(items[0].path).toBe("/tutor/dashboard");
+    expect(items[1].path).toBe("/tutor/dashboard/jobs");
+    expect(items[2].path).toBe("/tutor/dashboard/status");
+    expect(items[3].path).toBe("/tutor/dashboard/profile");
+    expect(items[4].isMenuToggle).toBe(true);
+    expect(items[4].label).toBe("Menu");
+  });
+
+  it("builds 5-slot bottom nav for Guardian panel with Home, Jobs, Applied, Profile, and Menu toggle", () => {
+    const dummyNav = [
+      { path: "/guardian/dashboard", label: "Dashboard", icon: () => null },
+      { path: "/guardian/dashboard/posted-jobs", label: "Posted jobs", icon: () => null },
+      { path: "/guardian/dashboard/applied-tutors", label: "Applied Tutors", icon: () => null, badge: 3 },
+      { path: "/guardian/dashboard/profile", label: "Profile", icon: () => null },
+    ];
+    const items = getMobileBottomNavItems("guardian", dummyNav as any);
+
+    expect(items).toHaveLength(5);
+    expect(items.map(i => i.key)).toEqual(["home", "jobs", "applied", "profile", "menu"]);
+    expect(items[2].badge).toBe(3);
+    expect(items[4].isMenuToggle).toBe(true);
+  });
+
+  it("builds 5-slot bottom nav for Admin panel with Jobs, Applied, Chats, Appointed, and Menu toggle", () => {
+    const dummyNav = [
+      { path: "/admin/posted-jobs", label: "Posted jobs", icon: () => null },
+      { path: "/admin/applied-tutors", label: "Applied Tutors", icon: () => null },
+      { path: "/admin/tutor-chats", label: "Tutor Chats", icon: () => null, badge: 2 },
+      { path: "/admin/appointed-jobs", label: "Appointed Jobs", icon: () => null },
+    ];
+    const items = getMobileBottomNavItems("admin", dummyNav as any);
+
+    expect(items).toHaveLength(5);
+    expect(items.map(i => i.key)).toEqual(["jobs", "applied", "chats", "appointed", "menu"]);
+    expect(items[0].path).toBe("/admin/posted-jobs");
+    expect(items[1].path).toBe("/admin/applied-tutors");
+    expect(items[2].badge).toBe(2);
+    expect(items[3].path).toBe("/admin/appointed-jobs");
+    expect(items[4].isMenuToggle).toBe(true);
+  });
+});

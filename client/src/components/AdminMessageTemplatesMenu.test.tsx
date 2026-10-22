@@ -173,4 +173,28 @@ describe("AdminMessageTemplatesMenu", () => {
 
     expect(state.deleted).toEqual([{ id: 1 }]);
   });
+
+  it("renders built-in system presets with command badge and inserts them when clicked", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+
+    render(
+      <AdminMessageTemplatesMenu
+        category="tutor_notify"
+        onSelect={onSelect}
+        variant="button"
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: /Templates/i }));
+
+    expect(screen.getByText("নতুন জরুরি টিউশন অ্যালার্ট")).toBeTruthy();
+    expect(screen.getByText("/urgent-jobs")).toBeTruthy();
+
+    await user.click(screen.getByText("নতুন জরুরি টিউশন অ্যালার্ট"));
+    expect(onSelect).toHaveBeenCalledWith({
+      title: "নতুন জরুরি টিউশন অ্যালার্ট",
+      body: expect.stringContaining("টিউশন পোস্ট"),
+    });
+  });
 });

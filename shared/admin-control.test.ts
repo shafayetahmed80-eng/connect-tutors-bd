@@ -69,3 +69,66 @@ describe("the new tuition alerts switch", () => {
     expect(findSiteLimit(NEW_TUITION_TUTOR_ALERTS_ENABLED_ID)).toBeUndefined();
   });
 });
+
+import {
+  CHAT_BUSINESS_HOURS_ENABLED_ID,
+  CHAT_BUSINESS_HOURS_END_ID,
+  CHAT_BUSINESS_HOURS_START_ID,
+  chatBusinessHoursEnabledFromStored,
+  chatBusinessHoursEndFromStored,
+  chatBusinessHoursStartFromStored,
+  extractTopicFromMessage,
+  isWithinBusinessHours,
+  minutesToTimeString,
+  timeStringToMinutes,
+  TUTOR_CHAT_TOPICS,
+} from "./admin-control";
+
+describe("the Chat Business Hours and Auto-Reply switch", () => {
+  it("defaults to off with 10:00 to 20:00 range", () => {
+    expect(chatBusinessHoursEnabledFromStored(undefined)).toBe(false);
+    expect(chatBusinessHoursStartFromStored(undefined)).toBe(600);
+    expect(chatBusinessHoursEndFromStored(undefined)).toBe(1200);
+  });
+
+  it("converts between minutes and hh:mm strings cleanly", () => {
+    expect(minutesToTimeString(600)).toBe("10:00");
+    expect(minutesToTimeString(1200)).toBe("20:00");
+    expect(minutesToTimeString(0)).toBe("00:00");
+
+    expect(timeStringToMinutes("10:00")).toBe(600);
+    expect(timeStringToMinutes("20:00")).toBe(1200);
+    expect(timeStringToMinutes("00:00")).toBe(0);
+    expect(timeStringToMinutes("invalid")).toBe(600);
+  });
+
+  it("accurately tests business hours in Bangladesh UTC+6 timezone", () => {
+    // 08:00 UTC = 14:00 Bangladesh time (2:00 PM) -> within 10:00 to 20:00
+    const dayTime = new Date("2026-10-23T08:00:00.000Z");
+    expect(isWithinBusinessHours(dayTime, 600, 1200)).toBe(true);
+
+    // 21:00 UTC = 03:00 next day Bangladesh time (3:00 AM) -> outside 10:00 to 20:00
+    const nightTime = new Date("2026-10-23T21:00:00.000Z");
+    expect(isWithinBusinessHours(nightTime, 600, 1200)).toBe(false);
+  });
+
+  it("keeps business hours IDs out of the site limits registry", () => {
+    expect(findSiteLimit(CHAT_BUSINESS_HOURS_ENABLED_ID)).toBeUndefined();
+    expect(findSiteLimit(CHAT_BUSINESS_HOURS_START_ID)).toBeUndefined();
+    expect(findSiteLimit(CHAT_BUSINESS_HOURS_END_ID)).toBeUndefined();
+  });
+});
+
+describe("the Pre-Chat Topics helper", () => {
+  it("declares standard topics with icons and prefixes", () => {
+    expect(TUTOR_CHAT_TOPICS.length).toBeGreaterThanOrEqual(5);
+    expect(TUTOR_CHAT_TOPICS.some(t => t.id === "tuition_apply")).toBe(true);
+    expect(TUTOR_CHAT_TOPICS.some(t => t.id === "payment_fee")).toBe(true);
+  });
+
+  it("extracts topic from message prefix or keywords", () => {
+    expect(extractTopicFromMessage("[বিষয়: টিউশন আবেদন] মিরপুর ১০-এ জব আছে?")?.id).toBe("tuition_apply");
+    expect(extractTopicFromMessage("পেমেন্ট ও ফি নিয়ে জানতে চাই")?.id).toBe("payment_fee");
+    expect(extractTopicFromMessage("Hello Admin")?.id).toBeUndefined();
+  });
+});

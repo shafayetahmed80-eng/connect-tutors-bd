@@ -422,7 +422,21 @@ describe("the Tutor's Admin chat panel", () => {
     fireEvent.click(closeBtn);
     expect(screen.queryByText("ফাইল/ছবি")).toBeNull();
   });
+  it("renders pre-chat topic selector chips and allows selecting and toggling inquiry topics", () => {
+    state.messages = [message()];
+    render(<TutorAdminChatPanel />);
+
+    expect(screen.getByText("বিষয় নির্বাচন:")).toBeTruthy();
+    const applyTopicBtn = screen.getByRole("button", { name: "টিউশন আবেদন" });
+    const feeTopicBtn = screen.getByRole("button", { name: "পেমেন্ট ও ফি" });
+
+    // Click 'টিউশনে আবেদন'
+    fireEvent.click(applyTopicBtn);
+    const textarea = screen.getByPlaceholderText("Write a message…") as HTMLTextAreaElement;
+    expect(textarea.value).toBe("[বিষয়: টিউশন আবেদন] ");
+
+    // Click 'প্ল্যাটফর্ম ফি' replaces previous topic
+    fireEvent.click(feeTopicBtn);
+    expect(textarea.value).toBe("[বিষয়: পেমেন্ট ও ফি] ");
+  });
 });
-
-
-

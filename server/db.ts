@@ -22,6 +22,17 @@ import {
   DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_ENABLED,
   GUARDIAN_APPLICANT_VISIBILITY_ID,
   NEW_TUITION_TUTOR_ALERTS_ENABLED_ID,
+  CHAT_BUSINESS_HOURS_ENABLED_ID,
+  CHAT_BUSINESS_HOURS_END_ID,
+  CHAT_BUSINESS_HOURS_START_ID,
+  DEFAULT_CHAT_AUTO_REPLY_MESSAGE,
+  DEFAULT_CHAT_BUSINESS_HOURS_ENABLED,
+  DEFAULT_CHAT_BUSINESS_HOURS_END,
+  DEFAULT_CHAT_BUSINESS_HOURS_START,
+  chatBusinessHoursEnabledFromStored,
+  chatBusinessHoursEndFromStored,
+  chatBusinessHoursStartFromStored,
+  isWithinBusinessHours,
   TUTOR_CHAT_ACCESS_MODE_ID,
   TUTOR_GUARDIAN_LOGIN_OTP_DAYS_ID,
   TUTOR_GUARDIAN_LOGIN_OTP_ENABLED_ID,
@@ -7049,6 +7060,40 @@ export async function sendTutorAdminChatMessageFromTutor(input: { tutorId: strin
   await database.update(tutorAdminChatThreads).set({ lastMessageAt: now, lastMessagePreview: preview.slice(0, 200), tutorLastReadAt: now, archivedAt: null }).where(eq(tutorAdminChatThreads.id, threadId));
   notifyAdminsOfChatMessage(input.tutorId);
   void pushChatMessageToAdmins(database, input.tutorId, preview).catch(() => {});
+
+  // Out-of-Office Auto-Reply Bot
+  try {
+    const businessHours = await getChatBusinessHoursSettings();
+    if (businessHours.enabled && !isWithinBusinessHours(now, businessHours.startMinutes, businessHours.endMinutes)) {
+      const fourHoursAgo = new Date(Date.now() - 4 * 3600000);
+      const [recentAdminMessage] = await database
+        .select({ id: tutorAdminChatMessages.id })
+        .from(tutorAdminChatMessages)
+        .where(and(
+          eq(tutorAdminChatMessages.threadId, threadId),
+          eq(tutorAdminChatMessages.senderRole, "admin"),
+          gte(tutorAdminChatMessages.createdAt, fourHoursAgo),
+        ))
+        .limit(1);
+
+      if (!recentAdminMessage) {
+        const autoReplyNow = new Date(Date.now() + 1000);
+        await database.insert(tutorAdminChatMessages).values({
+          threadId,
+          senderRole: "admin",
+          body: DEFAULT_CHAT_AUTO_REPLY_MESSAGE,
+          createdAt: autoReplyNow,
+        });
+        await database.update(tutorAdminChatThreads).set({
+          lastMessageAt: autoReplyNow,
+          lastMessagePreview: DEFAULT_CHAT_AUTO_REPLY_MESSAGE.slice(0, 200),
+          adminLastReadAt: autoReplyNow,
+        }).where(eq(tutorAdminChatThreads.id, threadId));
+        notifyTutorOfChatMessage(input.tutorId);
+      }
+    }
+  } catch {}
+
   return { sent: true as const };
 }
 
@@ -8583,6 +8628,68 @@ export async function setTutorChatAccessMode(mode: TutorChatAccessMode) {
   return { mode };
 }
 
+
+let chatBusinessHoursCache: {
+  enabled: boolean;
+  startMinutes: number;
+  endMinutes: number;
+  readAt: number;
+} | null = null;
+
+export async function getChatBusinessHoursSettings(options: { fresh?: boolean } = {}) {
+  if (!options.fresh && chatBusinessHoursCache && Date.now() - chatBusinessHoursCache.readAt < SITE_LIMIT_CACHE_MS) {
+    return {
+      enabled: chatBusinessHoursCache.enabled,
+      startMinutes: chatBusinessHoursCache.startMinutes,
+      endMinutes: chatBusinessHoursCache.endMinutes,
+    };
+  }
+  const database = await getDb();
+  if (!database) {
+    return {
+      enabled: DEFAULT_CHAT_BUSINESS_HOURS_ENABLED,
+      startMinutes: DEFAULT_CHAT_BUSINESS_HOURS_START,
+      endMinutes: DEFAULT_CHAT_BUSINESS_HOURS_END,
+    };
+  }
+  const rows = await database
+    .select({ limitId: siteLimitsTable.limitId, value: siteLimitsTable.value })
+    .from(siteLimitsTable)
+    .where(inArray(siteLimitsTable.limitId, [
+      CHAT_BUSINESS_HOURS_ENABLED_ID,
+      CHAT_BUSINESS_HOURS_START_ID,
+      CHAT_BUSINESS_HOURS_END_ID,
+    ]));
+  const stored = new Map(rows.map(r => [r.limitId, Number(r.value)] as const));
+  const settings = {
+    enabled: chatBusinessHoursEnabledFromStored(stored.get(CHAT_BUSINESS_HOURS_ENABLED_ID)),
+    startMinutes: chatBusinessHoursStartFromStored(stored.get(CHAT_BUSINESS_HOURS_START_ID)),
+    endMinutes: chatBusinessHoursEndFromStored(stored.get(CHAT_BUSINESS_HOURS_END_ID)),
+  };
+  chatBusinessHoursCache = { ...settings, readAt: Date.now() };
+  return settings;
+}
+
+export async function setChatBusinessHoursSettings(input: {
+  enabled: boolean;
+  startMinutes?: number;
+  endMinutes?: number;
+}) {
+  await upsertSiteLimit(CHAT_BUSINESS_HOURS_ENABLED_ID, input.enabled ? 1 : 0);
+  if (typeof input.startMinutes === "number") {
+    await upsertSiteLimit(CHAT_BUSINESS_HOURS_START_ID, input.startMinutes);
+  }
+  if (typeof input.endMinutes === "number") {
+    await upsertSiteLimit(CHAT_BUSINESS_HOURS_END_ID, input.endMinutes);
+  }
+  chatBusinessHoursCache = null;
+  return {
+    enabled: input.enabled,
+    startMinutes: input.startMinutes ?? DEFAULT_CHAT_BUSINESS_HOURS_START,
+    endMinutes: input.endMinutes ?? DEFAULT_CHAT_BUSINESS_HOURS_END,
+  };
+}
+
 export async function getAdminControl() {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
@@ -8594,7 +8701,8 @@ export async function getAdminControl() {
   const tutorGuardianLoginOtp = await getTutorGuardianLoginOtpSettings({ fresh: true });
   const newTuitionTutorAlerts = { enabled: await getNewTuitionTutorAlertsEnabled({ fresh: true }) };
   const tutorChatAccessMode = await getTutorChatAccessMode({ fresh: true });
-  return { guardianApplicantVisibility, appointmentRequestsOutsideShortlist: Number(outside?.value ?? 0), tutorGuardianLoginOtp, newTuitionTutorAlerts, tutorChatAccessMode };
+  const chatBusinessHours = await getChatBusinessHoursSettings({ fresh: true });
+  return { guardianApplicantVisibility, appointmentRequestsOutsideShortlist: Number(outside?.value ?? 0), tutorGuardianLoginOtp, newTuitionTutorAlerts, tutorChatAccessMode, chatBusinessHours };
 }
 
 let newTuitionTutorAlertsCache: { enabled: boolean; readAt: number } | null = null;

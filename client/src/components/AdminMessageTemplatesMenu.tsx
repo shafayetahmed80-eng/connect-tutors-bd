@@ -4,7 +4,9 @@ import { BookmarkPlus, FileText, ListPlus, Plus, Trash2, X } from "lucide-react"
 import React, { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-export type MessageTemplateCategory = "tutor_chat" | "tutor_notify" | "guardian_notify";
+import { getPresetsByCategory, type MessagePresetCategory } from "@shared/message-presets";
+
+export type MessageTemplateCategory = MessagePresetCategory;
 
 export type AdminMessageTemplatesMenuProps = {
   category: MessageTemplateCategory;
@@ -99,7 +101,26 @@ export function AdminMessageTemplatesMenu({
       }))
     : [];
 
-  const allTemplates = [...serverTemplates, ...legacyQuickReplies];
+  const defaultPresets = getPresetsByCategory(category)
+    .filter(
+      p =>
+        !serverTemplates.some(st => st.title === p.title) &&
+        !legacyQuickReplies.some(lq => lq.title === p.title)
+    )
+    .map(p => ({
+      id: `preset-${p.id}`,
+      title: p.title,
+      body: p.body,
+      category: p.category,
+      isBuiltIn: true,
+      command: p.command,
+    }));
+
+  const allTemplates = [
+    ...serverTemplates.map(st => ({ ...st, isBuiltIn: false as const, command: undefined as string | undefined })),
+    ...legacyQuickReplies.map(lq => ({ ...lq, isBuiltIn: false as const, command: undefined as string | undefined })),
+    ...defaultPresets,
+  ];
 
   const handleStartSaveCurrent = () => {
     setNewTitle(currentDraft?.title?.trim() || currentDraft?.body?.slice(0, 30).trim() || "");
@@ -254,24 +275,37 @@ export function AdminMessageTemplatesMenu({
                     }}
                     className="min-w-0 flex-1 text-left"
                   >
-                    <p className="truncate text-xs font-bold text-j-ink group-hover:text-j-accent">{item.title}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-xs font-bold text-j-ink group-hover:text-j-accent">{item.title}</p>
+                      {item.command ? (
+                        <span className="shrink-0 rounded bg-sky-50 px-1.5 py-0.2 font-mono text-3xs font-semibold text-sky-700">
+                          {item.command}
+                        </span>
+                      ) : null}
+                    </div>
                     <p className="line-clamp-2 text-2xs leading-relaxed text-j-ink-soft">{item.body}</p>
                   </button>
-                  <button
-                    type="button"
-                    aria-label={`Delete template ${item.title}`}
-                    title="Delete template"
-                    onClick={() => {
-                      if ("legacyId" in item && item.legacyId) {
-                        removeLegacyQuickReply.mutate({ id: item.legacyId });
-                      } else {
-                        remove.mutate({ id: item.id });
-                      }
-                    }}
-                    className="shrink-0 p-1 text-j-ink-faint opacity-50 transition-opacity hover:text-red-600 hover:opacity-100 group-hover:opacity-100"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
+                  {item.isBuiltIn ? (
+                    <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-3xs font-medium text-j-ink-muted">
+                      ডিফল্ট
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label={`Delete template ${item.title}`}
+                      title="Delete template"
+                      onClick={() => {
+                        if ("legacyId" in item && item.legacyId) {
+                          removeLegacyQuickReply.mutate({ id: item.legacyId });
+                        } else if (typeof item.id === "number") {
+                          remove.mutate({ id: item.id });
+                        }
+                      }}
+                      className="shrink-0 p-1 text-j-ink-faint opacity-50 transition-opacity hover:text-red-600 hover:opacity-100 group-hover:opacity-100"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  )}
                 </div>
               ))
             )}

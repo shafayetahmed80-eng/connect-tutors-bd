@@ -208,6 +208,11 @@ export function ChatShortcutsHelpPill() {
         <kbd className="rounded bg-slate-100 border border-slate-300 px-1 py-0.2 text-3xs font-mono">Ctrl+F</kbd>
         <span>সার্চ</span>
       </span>
+      <span>·</span>
+      <span className="flex items-center gap-0.5">
+        <kbd className="rounded bg-slate-100 border border-slate-300 px-1 py-0.2 text-3xs font-mono">/</kbd>
+        <span>কুইক রিপ্লাই</span>
+      </span>
     </div>
   );
 }

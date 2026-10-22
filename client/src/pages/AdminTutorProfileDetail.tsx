@@ -826,7 +826,7 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
 export default function AdminTutorProfileDetail() {
   const [, params] = useRoute("/admin/tutor-profiles/:tutorId");
   const tutorId = params?.tutorId ?? "";
-  return <AdminWorkspaceLayout title="Tutor Profiles">
+  return <AdminWorkspaceLayout title="Tutor Profiles" hideBottomNav>
     {tutorId ? <AdminTutorProfileDetailContent tutorId={tutorId} /> : null}
   </AdminWorkspaceLayout>;
 }
