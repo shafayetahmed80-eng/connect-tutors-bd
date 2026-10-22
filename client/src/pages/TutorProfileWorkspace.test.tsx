@@ -736,18 +736,18 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     await waitFor(() => expect((submitButton as HTMLButtonElement).disabled).toBe(false));
   });
 
-  it("requires an explicit return before Apply Now and offers it only once approved", async () => {
+  it("requires an explicit return before Apply Now and offers it for pending and approved profiles", async () => {
     const returnToSelectedJob = vi.fn();
     const user = userEvent.setup({ document: window.document });
     const pendingWorkspace = render(<TutorProfileWorkspace profile={{ ...completeProfile, profileStatus: "pending" }} onboardingFallback={null} tutorApplyReturnTo="/job-board?job=CT-JOB-000042" onReturnToSelectedJob={returnToSelectedJob} />);
 
-    // Under review there is no shortcut back to the job anywhere on the page.
-    expect(screen.getByRole("region", { name: "Profile summary" })).toBeTruthy();
-    expect(screen.queryByRole("region", { name: "Selected tuition application" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Return to selected tuition" })).toBeNull();
-    expect(returnToSelectedJob).not.toHaveBeenCalled();
+    // Under review or approved, eligible tutors can return to their selected job
+    const pendingRail = screen.getByRole("region", { name: "Profile summary" });
+    await user.click(within(pendingRail).getByRole("button", { name: "Return to selected tuition" }));
+    expect(returnToSelectedJob).toHaveBeenCalledOnce();
 
     pendingWorkspace.unmount();
+    returnToSelectedJob.mockClear();
     render(<TutorProfileWorkspace profile={{ ...completeProfile, profileStatus: "approved" }} onboardingFallback={null} tutorApplyReturnTo="/job-board?job=CT-JOB-000042" onReturnToSelectedJob={returnToSelectedJob} />);
     const approvedRail = screen.getByRole("region", { name: "Profile summary" });
     await user.click(within(approvedRail).getByRole("button", { name: "Return to selected tuition" }));

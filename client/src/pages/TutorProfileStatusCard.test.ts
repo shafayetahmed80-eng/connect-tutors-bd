@@ -60,9 +60,10 @@ describe("getTutorProfileStatusCard", () => {
       actionLabel: "Return to selected tuition",
     });
     expect(getTutorProfileStatusCard({ ...completeDraft, profileStatus: "pending", hasSelectedTuitionReturn: true })).toMatchObject({
-      title: "Profile under review",
-      description: "Admin approval is required before you can return to the selected tuition and choose Apply Now yourself.",
-      action: "none",
+      title: "Ready to apply",
+      description: "Your profile is under review, but you are eligible to apply. Return to the selected tuition and click Apply Now yourself.",
+      action: "return",
+      actionLabel: "Return to selected tuition",
     });
     expect(getTutorProfileStatusCard({ ...completeDraft, profileStatus: "changes_requested", hasSelectedTuitionReturn: true })).toMatchObject({
       title: "Updates requested",
