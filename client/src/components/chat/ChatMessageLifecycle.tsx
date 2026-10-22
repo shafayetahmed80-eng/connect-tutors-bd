@@ -62,12 +62,24 @@ export function ChatMessageActionMenu({
 
   return (
     <AnimatePresence>
+      <div
+        key="action-menu-backdrop"
+        className="fixed inset-0 z-10 sm:hidden"
+        onClick={e => {
+          e.stopPropagation();
+          onClose();
+        }}
+        aria-hidden="true"
+      />
       <motion.div
+        key="action-menu-panel"
         initial={{ opacity: 0, scale: 0.9, y: 4 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 4 }}
         transition={{ type: "spring", stiffness: 450, damping: 25 }}
-        className="absolute z-20 mt-1 flex flex-wrap items-center gap-1 rounded-xl border border-j-border bg-white p-1.5 shadow-lg backdrop-blur-sm"
+        className={`absolute z-20 mt-1 flex flex-wrap items-center gap-1 rounded-xl border border-j-border bg-white p-1.5 shadow-lg backdrop-blur-sm max-w-[calc(100vw-2.5rem)] sm:max-w-none ${
+          isOwn ? "right-0" : "left-0"
+        }`}
         data-testid="chat-message-action-menu"
         onClick={e => e.stopPropagation()}
       >

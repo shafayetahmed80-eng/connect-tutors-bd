@@ -27,7 +27,7 @@ import {
 } from "@/components/chat/ChatProductivityShortcuts";
 import { motion } from "framer-motion";
 import SearchInput from "@/components/SearchInput";
-import { Briefcase, Check, Clock, CornerUpLeft, Loader2, Maximize2, Mic, Paperclip, Phone, RotateCcw, Send, ShieldCheck, Square, ThumbsUp, WifiOff, X } from "lucide-react";
+import { Briefcase, Check, Clock, CornerUpLeft, Loader2, Maximize2, Mic, Paperclip, Phone, Plus, RotateCcw, Send, ShieldCheck, Square, ThumbsUp, WifiOff, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -51,9 +51,9 @@ function formatChatTime(value: string | Date) {
   return new Date(value).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-function AttachmentView({ url, contentType, own, onImageClick }: { url: string; contentType: string | null; own?: boolean; onImageClick?: (url: string) => void }) {
+function AttachmentView({ url, contentType, own, onImageClick, onImageLoad }: { url: string; contentType: string | null; own?: boolean; onImageClick?: (url: string) => void; onImageLoad?: () => void }) {
   if (contentType?.startsWith("image/") || url.match(/\.(jpeg|jpg|gif|png|webp)/i)) {
-    return <ChatMediaGallery urls={parseImageUrls(url)} onImageClick={onImageClick} own={own} />;
+    return <ChatMediaGallery urls={parseImageUrls(url)} onImageClick={onImageClick} own={own} onImageLoad={onImageLoad} />;
   }
   if (contentType?.startsWith("audio/")) {
     return <ChatVoiceNotePlayer url={url} dark={own} />;
@@ -111,6 +111,7 @@ export function TutorAdminChatPanel() {
   const [pastedImageFile, setPastedImageFile] = useState<File | null>(null);
   const [shareJobModalOpen, setShareJobModalOpen] = useState(false);
   const [forwardMessageBody, setForwardMessageBody] = useState<string | null>(null);
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const [pinnedJobId, setPinnedJobId] = useState<string | null>(() => {
     try {
       return localStorage.getItem("chat_pinned_job_tutor") || null;
@@ -377,7 +378,7 @@ export function TutorAdminChatPanel() {
     onDragLeave={handleDragLeave}
     onDragOver={handleDragOver}
     onDrop={handleDrop}
-    className="relative flex h-[calc(100vh-220px)] min-h-[420px] flex-col overflow-hidden rounded-xl border border-j-border bg-white shadow-[0_10px_26px_-18px_rgba(38,83,117,0.5)]"
+    className="relative flex h-[calc(100dvh-160px)] sm:h-[calc(100vh-220px)] min-h-[340px] sm:min-h-[420px] flex-col overflow-hidden rounded-xl border border-j-border bg-white shadow-[0_10px_26px_-18px_rgba(38,83,117,0.5)]"
   >
     <ChatDropzoneOverlay isDragging={isDraggingOver} />
     <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[#dce9f1] px-4 py-3">
@@ -494,6 +495,7 @@ export function TutorAdminChatPanel() {
                         contentType={message.attachmentContentType}
                         own={own}
                         onImageClick={setLightboxUrl}
+                        onImageLoad={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })}
                       />
                     ) : null}
                   </>
@@ -641,7 +643,88 @@ export function TutorAdminChatPanel() {
               <VoiceRecordingBar onStop={handleMic} onCancel={voiceRecorder.cancel} />
             ) : (
               <>
-                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadProgress !== null} aria-label="Attach a file" className="grid h-control w-control shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50">
+            {/* Mobile action drawer toggle button */}
+            <div className="relative sm:hidden">
+              <button
+                type="button"
+                onClick={() => setMobileActionsOpen(prev => !prev)}
+                aria-label={mobileActionsOpen ? "Close actions menu" : "More attachment and chat actions"}
+                aria-expanded={mobileActionsOpen}
+                className={`grid h-control w-10 shrink-0 place-items-center rounded-xl border transition-colors ${
+                  mobileActionsOpen
+                    ? "border-j-accent bg-j-accent-wash text-j-accent"
+                    : "border-j-border text-j-ink-soft hover:bg-j-surface-sunken"
+                }`}
+              >
+                <Plus className={`size-4 transition-transform duration-200 ${mobileActionsOpen ? "rotate-45" : ""}`} />
+              </button>
+
+              {mobileActionsOpen ? (
+                <>
+                  <div
+                    className="fixed inset-0 z-30 bg-black/20 backdrop-blur-[1px]"
+                    onClick={() => setMobileActionsOpen(false)}
+                    aria-hidden="true"
+                  />
+                  <div className="fixed inset-x-3 bottom-18 z-40 flex items-center justify-around gap-2 rounded-2xl border border-j-border bg-white p-3 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-150">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileActionsOpen(false);
+                        fileInputRef.current?.click();
+                      }}
+                      disabled={uploadProgress !== null}
+                      aria-label="Attach a file"
+                      className="flex flex-col items-center gap-1 text-2xs font-semibold text-j-ink-soft"
+                    >
+                      <span className="grid size-10 place-items-center rounded-xl border border-j-border bg-j-surface-sunken text-j-ink">
+                        <Paperclip className="size-4" />
+                      </span>
+                      <span>ফাইল/ছবি</span>
+                    </button>
+
+                    {voiceRecorder.supported ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileActionsOpen(false);
+                          void handleMic();
+                        }}
+                        disabled={uploadProgress !== null}
+                        aria-label="Record a voice note"
+                        className="flex flex-col items-center gap-1 text-2xs font-semibold text-j-ink-soft"
+                      >
+                        <span className="grid size-10 place-items-center rounded-xl border border-j-border bg-j-surface-sunken text-j-ink">
+                          <Mic className="size-4" />
+                        </span>
+                        <span>ভয়েস</span>
+                      </button>
+                    ) : null}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileActionsOpen(false);
+                        setShareJobModalOpen(true);
+                      }}
+                      disabled={uploadProgress !== null}
+                      aria-label="টিউশন জব কার্ড শেয়ার করুন"
+                      title="টিউশন শেয়ার করুন"
+                      className="flex flex-col items-center gap-1 text-2xs font-semibold text-j-ink-soft"
+                    >
+                      <span className="grid size-10 place-items-center rounded-xl border border-j-border bg-j-surface-sunken text-j-ink">
+                        <Briefcase className="size-4" />
+                      </span>
+                      <span>টিউশন কার্ড</span>
+                    </button>
+                  </div>
+                </>
+              ) : null}
+            </div>
+
+            {/* Desktop Action Buttons */}
+            <div className="hidden sm:flex sm:items-center sm:gap-2">
+              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadProgress !== null} aria-label="Attach a file" className="grid h-control w-control shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50">
                   <Paperclip className="size-4" />
                 </button>
                 {voiceRecorder.supported ? (
@@ -665,15 +748,17 @@ export function TutorAdminChatPanel() {
                 >
                   <Briefcase className="size-4" />
                 </button>
+                </div>
                 <Textarea
                   value={body}
                   onChange={event => { setBody(event.target.value); pingTyping(); }}
                   onKeyDown={handleKeyDown}
                   onPaste={handlePaste}
                   maxLength={CHAT_MESSAGE_MAX}
-                  rows={2}
+                  rows={1}
+                  enterKeyHint="send"
                   placeholder="Write a message…"
-                  className="min-h-9 flex-1 resize-none"
+                  className="min-h-9 flex-1 resize-none py-2 text-xs sm:text-sm"
                 />
                 <ChatSendButton ariaLabel="Send message" disabled={(!body.trim() && !pastedImageFile) || send.isPending || uploadProgress !== null} isPending={send.isPending} />
               </>

@@ -810,5 +810,23 @@ describe("the card and filter panel over the conversations", () => {
     // Verify localStorage draft for target tutor was written
     expect(window.localStorage.getItem("connect_tutors_chat_draft_admin_t2")).toContain("Need rescheduling for Saturday");
   });
+
+  it("supports mobile action drawer toggle and reveals attachment actions", () => {
+    state.threads = [thread({ tutorId: "t1", tutorName: "Tutor One", tutorNumber: 101 })];
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByRole("button", { name: /Tutor One/ }));
+
+    const plusBtn = screen.getByRole("button", { name: "More attachment and chat actions" });
+    expect(plusBtn).toBeTruthy();
+
+    fireEvent.click(plusBtn);
+    expect(screen.getByText("ফাইল/ছবি")).toBeTruthy();
+    expect(screen.getByText("টিউশন কার্ড")).toBeTruthy();
+    expect(screen.getByText("টেমপ্লেট")).toBeTruthy();
+
+    const closeBtn = screen.getByRole("button", { name: "Close actions menu" });
+    fireEvent.click(closeBtn);
+    expect(screen.queryByText("ফাইল/ছবি")).toBeNull();
+  });
 });
 
