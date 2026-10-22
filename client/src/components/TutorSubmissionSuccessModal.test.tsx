@@ -44,4 +44,21 @@ describe("TutorSubmissionSuccessModal", () => {
     fireEvent.click(stayBtn);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("renders custom ctaLabel when provided", () => {
+    const onGoToJobBoard = vi.fn();
+    render(
+      <TutorSubmissionSuccessModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onGoToJobBoard={onGoToJobBoard}
+        ctaLabel="নির্বাচিত টিউশনে যান ও আবেদন করুন"
+      />
+    );
+
+    const ctaBtn = screen.getByRole("button", { name: /নির্বাচিত টিউশনে যান ও আবেদন করুন/i });
+    expect(ctaBtn).toBeTruthy();
+    fireEvent.click(ctaBtn);
+    expect(onGoToJobBoard).toHaveBeenCalledTimes(1);
+  });
 });

@@ -6,6 +6,7 @@ export type TutorSubmissionSuccessModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onGoToJobBoard: () => void;
+  ctaLabel?: string;
 };
 
 /**
@@ -17,6 +18,7 @@ export function TutorSubmissionSuccessModal({
   isOpen,
   onClose,
   onGoToJobBoard,
+  ctaLabel,
 }: TutorSubmissionSuccessModalProps) {
   if (!isOpen) return null;
 
@@ -59,7 +61,7 @@ export function TutorSubmissionSuccessModal({
             className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-j-accent px-4 text-sm font-bold text-white shadow-sm hover:bg-j-accent-hover transition-colors sm:w-auto"
           >
             <Briefcase className="h-4 w-4" aria-hidden="true" />
-            <span>জব বোর্ডে যান ও আবেদন করুন</span>
+            <span>{ctaLabel || "জব বোর্ডে যান ও আবেদন করুন"}</span>
           </button>
           <button
             type="button"

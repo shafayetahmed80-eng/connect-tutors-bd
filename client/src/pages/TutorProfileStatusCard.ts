@@ -41,11 +41,19 @@ export function getTutorProfileStatusCard(input: TutorProfileStatusCardInput): T
   }
 
   if (input.profileStatus === "pending") {
+    if (input.hasSelectedTuitionReturn) {
+      return {
+        title: "Ready to apply",
+        description: "Your profile is under review, but you are eligible to apply. Return to the selected tuition and click Apply Now yourself.",
+        action: "return",
+        actionLabel: "Return to selected tuition",
+        showProgress: false,
+        tone: "review",
+      };
+    }
     return {
       title: "Profile under review",
-      description: input.hasSelectedTuitionReturn
-        ? "Admin approval is required before you can return to the selected tuition and choose Apply Now yourself."
-        : "An Admin is reviewing your profile. You will be notified if updates are required.",
+      description: "An Admin is reviewing your profile. You will be notified if updates are required, and you can already apply on the Job Board while review is in progress.",
       action: "none",
       showProgress: false,
       tone: "review",

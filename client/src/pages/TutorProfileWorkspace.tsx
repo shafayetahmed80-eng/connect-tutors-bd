@@ -1585,7 +1585,17 @@ function TutorProfileWorkspaceBody({
     <TutorSubmissionSuccessModal
       isOpen={showSubmissionSuccess}
       onClose={() => setShowSubmissionSuccess(false)}
-      onGoToJobBoard={() => { setShowSubmissionSuccess(false); navigate("/job-board"); }}
+      onGoToJobBoard={() => {
+        setShowSubmissionSuccess(false);
+        if (onReturnToSelectedJob) {
+          onReturnToSelectedJob();
+        } else if (tutorApplyReturnTo) {
+          navigate(tutorApplyReturnTo);
+        } else {
+          navigate("/tutor/dashboard/jobs");
+        }
+      }}
+      ctaLabel={tutorApplyReturnTo ? "নির্বাচিত টিউশনে যান ও আবেদন করুন" : undefined}
     />
   </form>;
 }
