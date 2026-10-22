@@ -1400,7 +1400,15 @@ export const appRouter = router({
       // The schema holds the ceiling; these are the Owner's numbers.
       assertTutorProfileDraftWithinLimits(await db.getSiteLimits(), input);
       try {
-        return await db.saveTutorProfileDraft(ctx.user.id, input);
+        // Check status before save so we know whether to notify admins of re-review.
+        const profileBefore = await db.getTutorProfileByUserId(ctx.user.id);
+        const wasSubmitted = profileBefore?.profileStatus === "pending" || profileBefore?.profileStatus === "approved";
+        const result = await db.saveTutorProfileDraft(ctx.user.id, input);
+        if (wasSubmitted) {
+          // Profile was re-queued for review inside saveTutorProfileDraft; notify admins.
+          void db.notifyTutorRegistrationToAdmins({ userId: ctx.user.id }).catch(() => {});
+        }
+        return result;
       } catch (error) {
         return rethrowProfileValidationError(error, { procedure: "saveProfileDraft", userId: ctx.user.id });
       }

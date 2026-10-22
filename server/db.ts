@@ -2465,6 +2465,13 @@ export async function saveTutorProfileDraft(userId: number, input: TutorProfileE
     await replaceSelections(tutorTuitionModes, input.tuitionTypes?.map(mode => ({ tutorId, mode })));
     await replaceSelections(tutorPreferredTeachingDays, input.preferredTeachingDays?.map(dayOfWeek => ({ tutorId, dayOfWeek })));
     await replaceSelections(tutorPreferredTimeSlots, input.preferredTimeSlots?.map(timeSlot => ({ tutorId, timeSlot })));
+
+    // If the tutor has already submitted for review (pending or approved), any
+    // subsequent draft save re-queues the profile for admin review.
+    const reReviewStatuses = ["pending", "approved"] as const;
+    if ((reReviewStatuses as readonly string[]).includes(existingProfile.profileStatus)) {
+      await transaction.update(tutors).set({ profileStatus: "pending" }).where(eq(tutors.id, tutorId));
+    }
   });
 
   return getTutorProfileByUserId(userId);

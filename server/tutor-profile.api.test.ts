@@ -5,6 +5,7 @@ const profileDbMocks = vi.hoisted(() => ({
   getTutorProfileByUserId: vi.fn(),
   saveTutorProfileDraft: vi.fn(),
   submitTutorProfile: vi.fn(),
+  notifyTutorRegistrationToAdmins: vi.fn(),
   searchUniversities: vi.fn(),
   searchFacultyDepartments: vi.fn(),
   searchBangladeshLocations: vi.fn(),
@@ -20,6 +21,7 @@ vi.mock("./db", async importOriginal => {
     getTutorProfileByUserId: profileDbMocks.getTutorProfileByUserId,
     saveTutorProfileDraft: profileDbMocks.saveTutorProfileDraft,
     submitTutorProfile: profileDbMocks.submitTutorProfile,
+    notifyTutorRegistrationToAdmins: profileDbMocks.notifyTutorRegistrationToAdmins,
     searchUniversities: profileDbMocks.searchUniversities,
     searchFacultyDepartments: profileDbMocks.searchFacultyDepartments,
     searchBangladeshLocations: profileDbMocks.searchBangladeshLocations,
@@ -92,6 +94,7 @@ describe("TP-05 owner Tutor Profile procedures", () => {
     profileDbMocks.renewTutorPortalSession.mockResolvedValue(true);
     profileDbMocks.getTutorProfileByUserId.mockResolvedValue(ownerProfile);
     profileDbMocks.saveTutorProfileDraft.mockResolvedValue(ownerProfile);
+    profileDbMocks.notifyTutorRegistrationToAdmins.mockResolvedValue(undefined);
     profileDbMocks.submitTutorProfile.mockResolvedValue({
       ...ownerProfile,
       profileStatus: "pending",
@@ -289,7 +292,44 @@ describe("TP-05 owner Tutor Profile procedures", () => {
     await expect((createCaller().catalog as any).searchRegistrationLocations({ cityId: "dhaka", query: "", limit: 301 })).rejects.toMatchObject({ code: "BAD_REQUEST" });
   });
 
-  it("exposes only structured draft saving and review submission as Tutor Profile write routes", () => {
+  it("re-queues a pending-review profile for admin review when a draft save is made", async () => {
+    profileDbMocks.getTutorProfileByUserId.mockResolvedValue({ ...ownerProfile, profileStatus: "pending" });
+    profileDbMocks.saveTutorProfileDraft.mockResolvedValue({ ...ownerProfile, profileStatus: "pending" });
+
+    await (createCaller("tutor", 101).tutor as any).saveProfileDraft({ headline: "Updated headline" });
+
+    expect(profileDbMocks.saveTutorProfileDraft).toHaveBeenCalledWith(101, { headline: "Updated headline" });
+    expect(profileDbMocks.notifyTutorRegistrationToAdmins).toHaveBeenCalledWith({ userId: 101 });
+  });
+
+  it("re-queues an approved profile for admin review when a draft save is made", async () => {
+    profileDbMocks.getTutorProfileByUserId.mockResolvedValue({ ...ownerProfile, profileStatus: "approved" });
+    profileDbMocks.saveTutorProfileDraft.mockResolvedValue({ ...ownerProfile, profileStatus: "pending" });
+
+    await (createCaller("tutor", 101).tutor as any).saveProfileDraft({ aboutMe: "Updated bio" });
+
+    expect(profileDbMocks.notifyTutorRegistrationToAdmins).toHaveBeenCalledWith({ userId: 101 });
+  });
+
+  it("does not notify admins when a draft-status profile is saved", async () => {
+    profileDbMocks.getTutorProfileByUserId.mockResolvedValue({ ...ownerProfile, profileStatus: "draft" });
+    profileDbMocks.saveTutorProfileDraft.mockResolvedValue(ownerProfile);
+
+    await (createCaller("tutor", 101).tutor as any).saveProfileDraft({ headline: "Still drafting" });
+
+    expect(profileDbMocks.notifyTutorRegistrationToAdmins).not.toHaveBeenCalled();
+  });
+
+  it("does not notify admins when a changes_requested profile is saved", async () => {
+    profileDbMocks.getTutorProfileByUserId.mockResolvedValue({ ...ownerProfile, profileStatus: "changes_requested" });
+    profileDbMocks.saveTutorProfileDraft.mockResolvedValue(ownerProfile);
+
+    await (createCaller("tutor", 101).tutor as any).saveProfileDraft({ headline: "Fixing changes" });
+
+    expect(profileDbMocks.notifyTutorRegistrationToAdmins).not.toHaveBeenCalled();
+  });
+
+    it("exposes only structured draft saving and review submission as Tutor Profile write routes", () => {
     const procedures = (appRouter as any)._def.procedures as Record<string, unknown>;
 
     expect(procedures["tutor.upsertProfile"]).toBeUndefined();
