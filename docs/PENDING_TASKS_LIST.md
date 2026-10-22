@@ -534,3 +534,10 @@
 - **Implementation:** PR #480 - server/db.ts (saveTutorProfileDraft sets pending inside transaction), server/routers.ts (saveProfileDraft fires notifyTutorRegistrationToAdmins), server/tutor-profile.api.test.ts (4 new tests).
 - **Status:**
 > Profile auto-re-queues for admin review on any edit after submission.
+
+
+### (Task). Tutor Profile Return Path & Status Card Copy Fix [Completed - PR #481]
+- **Summary:** Restores selected tuition return routing in TutorSubmissionSuccessModal (falling back to /tutor/dashboard/jobs instead of leaving dashboard layout for generic /job-board) with contextual 'নির্বাচিত টিউশনে যান ও আবেদন করুন' CTA label. Updates TutorProfileStatusCard so that pending profile with selected job return shows 'Ready to apply' action 'return' ('Return to selected tuition') and removes stale copy saying admin approval is required before applying.
+- **Implementation:** PR #481 - TutorSubmissionSuccessModal.tsx, TutorProfileWorkspace.tsx, TutorProfileStatusCard.ts, and tests updated.
+- **Status:**
+> Selected job return path restored and pending status card copy synchronized.
