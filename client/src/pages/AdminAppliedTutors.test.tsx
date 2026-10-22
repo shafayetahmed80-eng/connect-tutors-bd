@@ -313,6 +313,9 @@ describe("Admin Applied Tutors page", () => {
     expect(buttonsIn(1)).toEqual(["Remove from shortlist", "Appoint"]);
     // Only an approved profile can be appointed.
     expect(buttonsIn(2)).toEqual(["Shortlist", "Appoint (disabled)"]);
+    const appointBtn2 = Array.from(screen.getAllByRole("row").slice(1)[2].querySelectorAll("button")).find(b => b.textContent === "Appoint");
+    expect(appointBtn2?.getAttribute("title")).toBe("Profile is pending review. Approve profile first.");
+    expect(within(screen.getAllByRole("row").slice(1)[2]).getByText("Pending Profile")).toBeTruthy();
     // A waiting Guardian request is answered by Approve, not a second Appoint.
     expect(buttonsIn(3)).toEqual(["Shortlist"]);
   });

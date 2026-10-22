@@ -24,7 +24,7 @@ export type ApplicantActionInput = {
   tutorApproved: boolean;
 };
 
-export type ApplicantActionOption = { action: ApplicantAction; disabled: boolean };
+export type ApplicantActionOption = { action: ApplicantAction; disabled: boolean; disabledReason?: string };
 
 const enabled = (action: ApplicantAction): ApplicantActionOption => ({ action, disabled: false });
 
@@ -40,7 +40,11 @@ export function applicantActions(input: ApplicantActionInput): ApplicantActionOp
     if (status === "shortlisted") options.push(enabled("unshortlist"));
     // One Tutor at a time: an Appointed tuition already has its Tutor.
     if (stage === "live" && (status === "interested" || status === "shortlisted")) {
-      options.push({ action: "appoint", disabled: !input.tutorApproved });
+      options.push({
+        action: "appoint",
+        disabled: !input.tutorApproved,
+        disabledReason: !input.tutorApproved ? "Profile is pending review. Approve profile first." : undefined,
+      });
     }
     return options;
   }

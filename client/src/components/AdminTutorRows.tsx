@@ -203,7 +203,19 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
     }] : []),
     ...(numbered ? [{ key: "serial", label: "#", place: "head" as const, cell: (_tutor: AdminTutorRow, index: number) => <span className="tabular-nums text-2xs text-j-ink-muted">{serialFrom + index}</span> }] : []),
     { key: "tutorNumber", label: "Tutor ID", place: "head", cell: tutor => <span className="font-mono text-2xs text-j-ink-muted">{tutor.tutorNumber ?? <span className="font-sans italic text-j-ink-faint">Not set</span>}</span> },
-    { key: "name", label: "Name", place: "head", cell: tutor => <span className="font-bold text-j-ink">{tutor.name}</span> },
+    {
+      key: "name", label: "Name", place: "head",
+      cell: tutor => (
+        <span className="inline-flex items-center gap-1.5 font-bold text-j-ink">
+          <span>{tutor.name}</span>
+          {showApplicationStage && tutor.profileStatus === "pending" ? (
+            <span className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200/60 px-1.5 py-0.5 text-3xs font-semibold text-amber-800" title="Profile is pending review">
+              Pending Profile
+            </span>
+          ) : null}
+        </span>
+      ),
+    },
     {
       key: "phone",
       label: "Mobile",
@@ -254,13 +266,14 @@ export default function AdminTutorRows({ tutors, caption, emptyLabel, serialFrom
     ...(applicantRowActions ? [{
       key: "action", label: "Action", place: "action" as const,
       cell: (tutor: AdminTutorRow) => <span className="flex flex-wrap gap-1.5">
-        {applicantRowActions.optionsFor(tutor).map(({ action, disabled }) => <button
+        {applicantRowActions.optionsFor(tutor).map(({ action, disabled, disabledReason }) => <button
           key={action}
           type="button"
           disabled={applicantRowActions.busy || disabled}
           onClick={() => applicantRowActions.onAction(tutor, action)}
           aria-label={applicantActionNames[action](tutor.name)}
-          className={`inline-flex h-7 items-center whitespace-nowrap rounded-lg px-2.5 text-2xs font-bold disabled:opacity-40 ${applicantActionStyles[action]}`}
+          title={disabled ? (disabledReason ?? "Action is disabled") : undefined}
+          className={`inline-flex h-7 items-center whitespace-nowrap rounded-lg px-2.5 text-2xs font-bold disabled:opacity-40 disabled:cursor-not-allowed ${applicantActionStyles[action]}`}
         >{applicantActionLabels[action]}</button>)}
       </span>,
     }] : []),
@@ -487,18 +500,24 @@ export function AdminTutorCompactCard({
       {/* Applicant Row Actions (Shortlist, Appoint, Confirm) */}
       {applicantRowActions ? (
         <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-1.5">
-          {applicantRowActions.optionsFor(tutor).map(({ action, disabled }) => (
+          {applicantRowActions.optionsFor(tutor).map(({ action, disabled, disabledReason }) => (
             <button
               key={action}
               type="button"
               disabled={applicantRowActions.busy || disabled}
               onClick={() => applicantRowActions.onAction(tutor, action)}
               aria-label={applicantActionNames[action](tutor.name)}
-              className={`inline-flex h-7 items-center whitespace-nowrap rounded-lg px-2.5 text-2xs font-bold disabled:opacity-40 ${applicantActionStyles[action]}`}
+              title={disabled ? (disabledReason ?? "Action is disabled") : undefined}
+              className={`inline-flex h-7 items-center whitespace-nowrap rounded-lg px-2.5 text-2xs font-bold disabled:opacity-40 disabled:cursor-not-allowed ${applicantActionStyles[action]}`}
             >
               {applicantActionLabels[action]}
             </button>
           ))}
+          {applicantRowActions.optionsFor(tutor).find(opt => opt.action === "appoint" && opt.disabled && opt.disabledReason)?.disabledReason ? (
+            <p className="w-full text-3xs font-medium text-amber-700 mt-0.5">
+              ⚠️ {applicantRowActions.optionsFor(tutor).find(opt => opt.action === "appoint" && opt.disabled)?.disabledReason}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
