@@ -561,3 +561,9 @@
 - **Implementation:** PR #484 - shared/admin-applicant-actions.ts, client/src/components/AdminTutorRows.tsx, and tests updated.
 - **Status:**
 > Tooltip reason on disabled action buttons and pending profile badge active in applicant rows.
+
+### (Task). Retain Tutor & Guardian Login OTP Trust Across Normal Logouts [Completed - PR #485]
+- **Summary:** Retained the trusted device login OTP proof cookie (connect-login-2fa) across normal member logouts (auth.logout), mirroring the Admin 2FA behavior. Tutors and Guardians who sign out and sign back in within the Admin-configured trust window (rememberDays, default 30 days) on the same browser are not prompted for OTP again and can sign in directly with their password. Global invalidation remains securely accessible via Admin 'Reset trusted browsers' or member 'Sign out everywhere'.
+- **Implementation:** PR #485 - server/routers.ts, server/auth.logout.test.ts, server/login-two-factor.router.test.ts updated.
+- **Status:**
+> Trusted device login OTP proof retained across logouts within configured rememberDays window.
