@@ -154,10 +154,12 @@ export function ChatDocumentCard({
 export function ChatMediaGallery({
   urls,
   onImageClick,
+  onImageLoad,
   own = false,
 }: {
   urls: string[];
   onImageClick?: (url: string) => void;
+  onImageLoad?: () => void;
   own?: boolean;
 }) {
   if (urls.length === 0) return null;
@@ -175,6 +177,7 @@ export function ChatMediaGallery({
         <img
           src={singleUrl}
           alt="Attachment"
+          onLoad={onImageLoad}
           className="max-h-60 w-full object-cover transition-transform duration-200 group-hover:scale-102"
         />
         <span className="absolute bottom-1.5 right-1.5 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-3xs font-semibold text-white backdrop-blur-xs opacity-0 transition-opacity group-hover:opacity-100">
@@ -208,6 +211,7 @@ export function ChatMediaGallery({
             <img
               src={imgUrl}
               alt={`Gallery image ${idx + 1}`}
+              onLoad={onImageLoad}
               className="size-full object-cover transition-transform duration-200 group-hover:scale-105"
             />
             {isLastAndExtra ? (

@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "./_core/context";
 
-const dbMocks = vi.hoisted(() => ({ getAdminControl: vi.fn(), setGuardianApplicantVisibility: vi.fn(), setNewTuitionTutorAlertsEnabled: vi.fn() }));
+const dbMocks = vi.hoisted(() => ({
+  getAdminControl: vi.fn(),
+  setGuardianApplicantVisibility: vi.fn(),
+  setNewTuitionTutorAlertsEnabled: vi.fn(),
+  setTutorChatAccessMode: vi.fn(),
+}));
 
 vi.mock("./db", async importOriginal => {
   const actual = await importOriginal<typeof import("./db")>();
@@ -52,6 +57,18 @@ describe("adminControl", () => {
     await expect(createCaller({ ...owner, openId: "another-admin" }).adminControl.setNewTuitionTutorAlertsEnabled({ enabled: true })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(createCaller({ ...owner, role: "guardian" as const }).adminControl.setNewTuitionTutorAlertsEnabled({ enabled: true })).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(dbMocks.setNewTuitionTutorAlertsEnabled).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets the Owner switch the tutor chat access mode, and nobody else", async () => {
+    dbMocks.setTutorChatAccessMode.mockResolvedValue({ mode: "approved" });
+
+    await expect(createCaller().adminControl.setTutorChatAccessMode({ mode: "approved" })).resolves.toEqual({ mode: "approved" });
+    expect(dbMocks.setTutorChatAccessMode).toHaveBeenCalledWith("approved");
+
+    await expect(createCaller().adminControl.setTutorChatAccessMode({ mode: "invalid" } as never)).rejects.toThrow();
+    await expect(createCaller({ ...owner, openId: "another-admin" }).adminControl.setTutorChatAccessMode({ mode: "all" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(createCaller({ ...owner, role: "tutor" as const }).adminControl.setTutorChatAccessMode({ mode: "all" })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(dbMocks.setTutorChatAccessMode).toHaveBeenCalledTimes(1);
   });
 
   it("is the Owner's alone - not another Admin's, and not a Guardian's", async () => {

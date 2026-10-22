@@ -115,4 +115,40 @@ describe("ChatMessageLifecycle helpers and components", () => {
     fireEvent.click(screen.getByText("বাতিল"));
     expect(onCancel).toHaveBeenCalled();
   });
+
+  it("renders ChatMessageActionMenu with responsive classes (right-0 for own, left-0 for peer) and dismisses via mobile backdrop", () => {
+    const onClose = vi.fn();
+    const { rerender } = render(
+      <ChatMessageActionMenu
+        messageId={105}
+        createdAt={new Date()}
+        body="Test responsive positioning"
+        isOwn={true}
+        isOpen={true}
+        onClose={onClose}
+      />
+    );
+
+    const menu = screen.getByTestId("chat-message-action-menu");
+    expect(menu.className).toContain("right-0");
+    expect(menu.className).toContain("max-w-[calc(100vw-2.5rem)]");
+
+    const backdrop = document.querySelector(".fixed.inset-0.z-10.sm\\:hidden");
+    expect(backdrop).toBeTruthy();
+    if (backdrop) fireEvent.click(backdrop);
+    expect(onClose).toHaveBeenCalled();
+
+    rerender(
+      <ChatMessageActionMenu
+        messageId={106}
+        createdAt={new Date()}
+        body="Peer message"
+        isOwn={false}
+        isOpen={true}
+        onClose={onClose}
+      />
+    );
+    const peerMenu = screen.getByTestId("chat-message-action-menu");
+    expect(peerMenu.className).toContain("left-0");
+  });
 });

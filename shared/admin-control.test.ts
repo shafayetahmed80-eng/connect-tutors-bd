@@ -6,6 +6,10 @@ import {
   guardianApplicantVisibilityFromStored,
   newTuitionTutorAlertsEnabledFromStored,
   storedGuardianApplicantVisibility,
+  DEFAULT_TUTOR_CHAT_ACCESS_MODE,
+  TUTOR_CHAT_ACCESS_MODE_ID,
+  tutorChatAccessModeFromStored,
+  storedTutorChatAccessMode,
 } from "./admin-control";
 import { findSiteLimit } from "./site-limits";
 
@@ -26,6 +30,26 @@ describe("the Guardian applicant switch", () => {
 
   it("is kept out of the limits registry, so the Limits editor can never save it", () => {
     expect(findSiteLimit(GUARDIAN_APPLICANT_VISIBILITY_ID)).toBeUndefined();
+  });
+});
+
+describe("the Tutor live chat access switch", () => {
+  it("defaults to appointed tutors only", () => {
+    expect(DEFAULT_TUTOR_CHAT_ACCESS_MODE).toBe("appointed");
+    expect(tutorChatAccessModeFromStored(undefined)).toBe("appointed");
+    expect(tutorChatAccessModeFromStored(null)).toBe("appointed");
+  });
+
+  it("stores each choice as a distinct number and reads it back", () => {
+    for (const mode of ["appointed", "approved", "all", "disabled"] as const) {
+      expect(tutorChatAccessModeFromStored(storedTutorChatAccessMode(mode))).toBe(mode);
+    }
+    // An unknown number falls back to appointed
+    expect(tutorChatAccessModeFromStored(99)).toBe("appointed");
+  });
+
+  it("is kept out of the limits registry, so the Limits editor can never save it", () => {
+    expect(findSiteLimit(TUTOR_CHAT_ACCESS_MODE_ID)).toBeUndefined();
   });
 });
 

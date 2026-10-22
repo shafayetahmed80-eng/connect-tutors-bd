@@ -1,4 +1,6 @@
 import { BrandMark, brandWordmark } from "@/components/BrandMark";
+import { WhatsAppIcon } from "@/components/WhatsAppIcon";
+import type { TutorChatAccessMode } from "@shared/admin-control";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useTutorChatSocket, useOnlineStatus, type ChatConnectionStatus } from "@/hooks/useChatSocket";
@@ -25,7 +27,7 @@ import {
 } from "@/components/chat/ChatProductivityShortcuts";
 import { motion } from "framer-motion";
 import SearchInput from "@/components/SearchInput";
-import { Briefcase, Check, Clock, CornerUpLeft, Loader2, Maximize2, Mic, Paperclip, Phone, RotateCcw, Send, ShieldCheck, Square, ThumbsUp, WifiOff, X } from "lucide-react";
+import { Briefcase, Check, Clock, CornerUpLeft, Loader2, Maximize2, Mic, Paperclip, Phone, Plus, RotateCcw, Send, ShieldCheck, Square, ThumbsUp, WifiOff, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -49,9 +51,9 @@ function formatChatTime(value: string | Date) {
   return new Date(value).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-function AttachmentView({ url, contentType, own, onImageClick }: { url: string; contentType: string | null; own?: boolean; onImageClick?: (url: string) => void }) {
+function AttachmentView({ url, contentType, own, onImageClick, onImageLoad }: { url: string; contentType: string | null; own?: boolean; onImageClick?: (url: string) => void; onImageLoad?: () => void }) {
   if (contentType?.startsWith("image/") || url.match(/\.(jpeg|jpg|gif|png|webp)/i)) {
-    return <ChatMediaGallery urls={parseImageUrls(url)} onImageClick={onImageClick} own={own} />;
+    return <ChatMediaGallery urls={parseImageUrls(url)} onImageClick={onImageClick} own={own} onImageLoad={onImageLoad} />;
   }
   if (contentType?.startsWith("audio/")) {
     return <ChatVoiceNotePlayer url={url} dark={own} />;
@@ -64,6 +66,29 @@ function AttachmentView({ url, contentType, own, onImageClick }: { url: string; 
  * Tutor only ever sees the sender as "Admin" - never a specific person - the
  * same "any Admin" shape as a bulk notice.
  */
+const ineligibleChatNotices: Record<TutorChatAccessMode, { titleBn: string; descBn: string; subtitleEn: string }> = {
+  appointed: {
+    titleBn: "শুধুমাত্র নিয়োগপ্রাপ্ত টিউটরদের জন্য উন্মুক্ত",
+    descBn: "কমপক্ষে একটি টিউশন নিয়োগ (Appointed) হওয়ার পর লাইভ চ্যাটে মেসেজ পাঠানো যাবে।",
+    subtitleEn: "You can message the Admin team once at least one of your tuitions has been appointed.",
+  },
+  approved: {
+    titleBn: "প্রোফাইল অনুমোদনের অপেক্ষায়",
+    descBn: "আপনার টিউটর প্রোফাইল অ্যাডমিন কর্তৃক অনুমোদিত (Approved) হলে লাইভ চ্যাটে মেসেজ পাঠানো যাবে।",
+    subtitleEn: "You can message the Admin team once your tutor profile has been approved.",
+  },
+  all: {
+    titleBn: "লাইভ চ্যাট সাময়িক সীমিত",
+    descBn: "বর্তমানে লাইভ চ্যাটে মেসেজ পাঠানো সীমিত রয়েছে।",
+    subtitleEn: "You can message the Admin team once chat access is enabled.",
+  },
+  disabled: {
+    titleBn: "লাইভ চ্যাট সাময়িকভাবে বন্ধ",
+    descBn: "টিউটর লাইভ চ্যাট বর্তমানে সাময়িকভাবে বন্ধ রয়েছে।",
+    subtitleEn: "Tutor live chat is temporarily disabled by admin.",
+  },
+};
+
 export function TutorAdminChatPanel() {
   const utils = trpc.useUtils();
   const threadQuery = trpc.tutorAdminChat.thread.useQuery(undefined, { refetchInterval: CHAT_POLL_MS });
@@ -86,6 +111,7 @@ export function TutorAdminChatPanel() {
   const [pastedImageFile, setPastedImageFile] = useState<File | null>(null);
   const [shareJobModalOpen, setShareJobModalOpen] = useState(false);
   const [forwardMessageBody, setForwardMessageBody] = useState<string | null>(null);
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const [pinnedJobId, setPinnedJobId] = useState<string | null>(() => {
     try {
       return localStorage.getItem("chat_pinned_job_tutor") || null;
@@ -156,6 +182,7 @@ export function TutorAdminChatPanel() {
   }, [messages, visibleCount, query]);
 
   const eligible = threadQuery.data?.eligible ?? false;
+  const chatAccessMode: TutorChatAccessMode = threadQuery.data?.mode ?? "appointed";
   const adminLastReadAt = threadQuery.data?.adminLastReadAt ? new Date(threadQuery.data.adminLastReadAt).getTime() : null;
   const lastOwnMessage = [...allMessages].reverse().find(message => message.senderRole === "tutor" && !deletedMessageIds.has(message.id));
   const lastOwnMessageId = lastOwnMessage?.id;
@@ -351,7 +378,7 @@ export function TutorAdminChatPanel() {
     onDragLeave={handleDragLeave}
     onDragOver={handleDragOver}
     onDrop={handleDrop}
-    className="relative flex h-[calc(100vh-220px)] min-h-[420px] flex-col overflow-hidden rounded-xl border border-j-border bg-white shadow-[0_10px_26px_-18px_rgba(38,83,117,0.5)]"
+    className="relative flex h-[calc(100dvh-160px)] sm:h-[calc(100vh-220px)] min-h-[340px] sm:min-h-[420px] flex-col overflow-hidden rounded-xl border border-j-border bg-white shadow-[0_10px_26px_-18px_rgba(38,83,117,0.5)]"
   >
     <ChatDropzoneOverlay isDragging={isDraggingOver} />
     <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[#dce9f1] px-4 py-3">
@@ -468,6 +495,7 @@ export function TutorAdminChatPanel() {
                         contentType={message.attachmentContentType}
                         own={own}
                         onImageClick={setLightboxUrl}
+                        onImageLoad={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })}
                       />
                     ) : null}
                   </>
@@ -615,7 +643,88 @@ export function TutorAdminChatPanel() {
               <VoiceRecordingBar onStop={handleMic} onCancel={voiceRecorder.cancel} />
             ) : (
               <>
-                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadProgress !== null} aria-label="Attach a file" className="grid h-control w-control shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50">
+            {/* Mobile action drawer toggle button */}
+            <div className="relative sm:hidden">
+              <button
+                type="button"
+                onClick={() => setMobileActionsOpen(prev => !prev)}
+                aria-label={mobileActionsOpen ? "Close actions menu" : "More attachment and chat actions"}
+                aria-expanded={mobileActionsOpen}
+                className={`grid h-control w-10 shrink-0 place-items-center rounded-xl border transition-colors ${
+                  mobileActionsOpen
+                    ? "border-j-accent bg-j-accent-wash text-j-accent"
+                    : "border-j-border text-j-ink-soft hover:bg-j-surface-sunken"
+                }`}
+              >
+                <Plus className={`size-4 transition-transform duration-200 ${mobileActionsOpen ? "rotate-45" : ""}`} />
+              </button>
+
+              {mobileActionsOpen ? (
+                <>
+                  <div
+                    className="fixed inset-0 z-30 bg-black/20 backdrop-blur-[1px]"
+                    onClick={() => setMobileActionsOpen(false)}
+                    aria-hidden="true"
+                  />
+                  <div className="fixed inset-x-3 bottom-18 z-40 flex items-center justify-around gap-2 rounded-2xl border border-j-border bg-white p-3 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-150">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileActionsOpen(false);
+                        fileInputRef.current?.click();
+                      }}
+                      disabled={uploadProgress !== null}
+                      aria-label="Attach a file"
+                      className="flex flex-col items-center gap-1 text-2xs font-semibold text-j-ink-soft"
+                    >
+                      <span className="grid size-10 place-items-center rounded-xl border border-j-border bg-j-surface-sunken text-j-ink">
+                        <Paperclip className="size-4" />
+                      </span>
+                      <span>ফাইল/ছবি</span>
+                    </button>
+
+                    {voiceRecorder.supported ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileActionsOpen(false);
+                          void handleMic();
+                        }}
+                        disabled={uploadProgress !== null}
+                        aria-label="Record a voice note"
+                        className="flex flex-col items-center gap-1 text-2xs font-semibold text-j-ink-soft"
+                      >
+                        <span className="grid size-10 place-items-center rounded-xl border border-j-border bg-j-surface-sunken text-j-ink">
+                          <Mic className="size-4" />
+                        </span>
+                        <span>ভয়েস</span>
+                      </button>
+                    ) : null}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileActionsOpen(false);
+                        setShareJobModalOpen(true);
+                      }}
+                      disabled={uploadProgress !== null}
+                      aria-label="টিউশন জব কার্ড শেয়ার করুন"
+                      title="টিউশন শেয়ার করুন"
+                      className="flex flex-col items-center gap-1 text-2xs font-semibold text-j-ink-soft"
+                    >
+                      <span className="grid size-10 place-items-center rounded-xl border border-j-border bg-j-surface-sunken text-j-ink">
+                        <Briefcase className="size-4" />
+                      </span>
+                      <span>টিউশন কার্ড</span>
+                    </button>
+                  </div>
+                </>
+              ) : null}
+            </div>
+
+            {/* Desktop Action Buttons */}
+            <div className="hidden sm:flex sm:items-center sm:gap-2">
+              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadProgress !== null} aria-label="Attach a file" className="grid h-control w-control shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50">
                   <Paperclip className="size-4" />
                 </button>
                 {voiceRecorder.supported ? (
@@ -639,22 +748,54 @@ export function TutorAdminChatPanel() {
                 >
                   <Briefcase className="size-4" />
                 </button>
+                </div>
                 <Textarea
                   value={body}
                   onChange={event => { setBody(event.target.value); pingTyping(); }}
                   onKeyDown={handleKeyDown}
                   onPaste={handlePaste}
                   maxLength={CHAT_MESSAGE_MAX}
-                  rows={2}
+                  rows={1}
+                  enterKeyHint="send"
                   placeholder="Write a message…"
-                  className="min-h-9 flex-1 resize-none"
+                  className="min-h-9 flex-1 resize-none py-2 text-xs sm:text-sm"
                 />
                 <ChatSendButton ariaLabel="Send message" disabled={(!body.trim() && !pastedImageFile) || send.isPending || uploadProgress !== null} isPending={send.isPending} />
               </>
             )}
           </form>
         </div>
-      : <p className="border-t border-[#dce9f1] p-4 text-center text-sm text-j-ink-muted">You can message the Admin team once at least one of your tuitions has been appointed.</p>}
+      : <div className="border-t border-[#dce9f1] bg-j-surface-sunken/40 p-4 text-center">
+          <div className="mx-auto max-w-lg space-y-1.5">
+            <p className="text-sm font-bold text-j-ink-strong">
+              {ineligibleChatNotices[chatAccessMode]?.titleBn ?? ineligibleChatNotices.appointed.titleBn}
+            </p>
+            <p className="text-xs leading-relaxed text-j-ink-soft">
+              {ineligibleChatNotices[chatAccessMode]?.descBn ?? ineligibleChatNotices.appointed.descBn}
+            </p>
+            <p className="text-2xs text-j-ink-faint">
+              {ineligibleChatNotices[chatAccessMode]?.subtitleEn ?? ineligibleChatNotices.appointed.subtitleEn}
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+              <a
+                href={contact.whatsapp("আসসালামু আলাইকুম, আমি টিউটর সাপোর্ট চাই।")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-100"
+              >
+                <WhatsAppIcon className="size-3.5 fill-emerald-600" />
+                WhatsApp-এ মেসেজ দিন
+              </a>
+              <a
+                href={contact.tel}
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-j-border bg-white px-3 text-xs font-semibold text-j-ink-strong transition-colors hover:bg-j-surface-sunken"
+              >
+                <Phone className="size-3.5 text-j-accent" />
+                হেল্পলাইনে কল করুন ({contact.display})
+              </a>
+            </div>
+          </div>
+        </div>}
     <ImageLightboxModal url={lightboxUrl} onClose={() => setLightboxUrl(null)} title="Attachment Preview" />
     {shareJobModalOpen ? (
       <ShareJobModal
