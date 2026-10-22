@@ -85,7 +85,7 @@ import {
 } from "./admin-security";
 import { adminNewDevicePush, adminWrongPasswordPush, createFailureStreak } from "./admin-sign-in-alerts";
 import { clearAdminTwoFactorProofCookie, hasAdminTwoFactorProof, isKnownAdminDevice, markAdminDeviceKnown, setAdminTwoFactorProofCookie } from "./admin-two-factor";
-import { clearLoginTwoFactorProofCookie, hasLoginTwoFactorProof, setLoginTwoFactorProofCookie } from "./login-two-factor";
+import { hasLoginTwoFactorProof, setLoginTwoFactorProofCookie } from "./login-two-factor";
 import QRCode from "qrcode";
 import {
   createTutorPortalExpiry,
@@ -1048,9 +1048,9 @@ export const appRouter = router({
       const isTutor = ctx.user?.role === "tutor";
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      // Keep 30-day Admin 2FA trusted device proof intact across normal logouts.
-      // Global invalidation is performed via 'Sign out everywhere' (sessionsValidFrom).
-      if (ctx.user && ctx.user.role !== "admin") clearLoginTwoFactorProofCookie(ctx.req, ctx.res);
+      // Keep trusted device proofs (Admin 2FA and Tutor/Guardian login OTP) intact across normal logouts.
+      // Signing back in on this browser within the configured trust period (rememberDays) will not re-prompt for OTP.
+      // Global invalidation is performed via 'Sign out everywhere' or Admin 'Reset trusted browsers'.
       return { success: true, globalTutorPortalLogout: isTutor } as const;
     }),
     loginTwoFactorStatus: loginIdentityProcedure.query(async ({ ctx }) => {
