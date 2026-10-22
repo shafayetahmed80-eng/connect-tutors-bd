@@ -541,3 +541,10 @@
 - **Implementation:** PR #481 - TutorSubmissionSuccessModal.tsx, TutorProfileWorkspace.tsx, TutorProfileStatusCard.ts, and tests updated.
 - **Status:**
 > Selected job return path restored and pending status card copy synchronized.
+
+
+### (Task). Tutor Profile Re-Review Warnings on Profile Edit [Completed - PR #482]
+- **Summary:** Displays an informative alert banner above the section tabs when profile status is 'approved', clearly warning tutors that saving changes to any section will automatically re-queue their profile for Admin review (status returning to Pending Review). Inside TutorProfileSectionModal, displays a contextual reReviewWarning box before saving, updates saveSectionDraft feedback upon saving to confirm re-review queueing, and updates the approved status card description.
+- **Implementation:** PR #482 - TutorProfileSectionModal.tsx, TutorProfileWorkspace.tsx, TutorProfileStatusCard.ts, and tests updated.
+- **Status:**
+> Re-review alert banner and section modal edit warnings active.
