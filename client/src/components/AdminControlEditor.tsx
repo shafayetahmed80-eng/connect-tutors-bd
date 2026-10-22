@@ -3,6 +3,12 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/moda
 import { trpc } from "@/lib/trpc";
 import {
   DEFAULT_NEW_TUITION_TUTOR_ALERTS_ENABLED,
+  DEFAULT_CHAT_AUTO_REPLY_MESSAGE,
+  DEFAULT_CHAT_BUSINESS_HOURS_ENABLED,
+  DEFAULT_CHAT_BUSINESS_HOURS_END,
+  DEFAULT_CHAT_BUSINESS_HOURS_START,
+  minutesToTimeString,
+  timeStringToMinutes,
   DEFAULT_TUTOR_CHAT_ACCESS_MODE,
   DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_DAYS,
   DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_ENABLED,
@@ -180,6 +186,114 @@ function TutorChatAccessSwitch({ mode }: { mode: TutorChatAccessMode }) {
       <span className="font-semibold">💡 অ্যাডমিন রিপ্লাই বাইপাস:</span> অ্যাডমিন যদি কোনো টিউটরকে আগে মেসেজ পাঠান, তবে মোড যাই থাকুক না কেন টিউটর তাৎক্ষণিকভাবে উত্তর দিতে পারবেন।
     </div>
   </section>;
+}
+
+
+/**
+ * Live Chat Business Hours & Out-of-Office Auto-Reply Bot settings.
+ * During off-hours, an incoming message from a tutor triggers a courteous auto-reply.
+ */
+function ChatBusinessHoursSettings({ settings }: { settings?: { enabled: boolean; startMinutes: number; endMinutes: number } }) {
+  const utils = trpc.useUtils();
+  const enabled = settings?.enabled ?? DEFAULT_CHAT_BUSINESS_HOURS_ENABLED;
+  const startMin = settings?.startMinutes ?? DEFAULT_CHAT_BUSINESS_HOURS_START;
+  const endMin = settings?.endMinutes ?? DEFAULT_CHAT_BUSINESS_HOURS_END;
+
+  const [startTime, setStartTime] = useState(() => minutesToTimeString(startMin));
+  const [endTime, setEndTime] = useState(() => minutesToTimeString(endMin));
+
+  const setHours = trpc.adminControl.setChatBusinessHours.useMutation({
+    onSuccess: () => { void utils.adminControl.get.invalidate(); toast.success("Saved."); },
+    onError: error => { toast.error(error.message); },
+  });
+
+  const handleToggle = (nextEnabled: boolean) => {
+    setHours.mutate({
+      enabled: nextEnabled,
+      startMinutes: timeStringToMinutes(startTime),
+      endMinutes: timeStringToMinutes(endTime),
+    });
+  };
+
+  const handleSaveTimes = () => {
+    setHours.mutate({
+      enabled,
+      startMinutes: timeStringToMinutes(startTime),
+      endMinutes: timeStringToMinutes(endTime),
+    });
+  };
+
+  const changed = timeStringToMinutes(startTime) !== startMin || timeStringToMinutes(endTime) !== endMin;
+
+  return (
+    <section className="mt-3 rounded-xl border border-j-border bg-white p-3 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 id="chat-business-hours-heading" className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">
+            Live Chat Business Hours (অফিস সময় ও অটো-রেসপন্ডার)
+          </h2>
+          <p className="mt-0.5 text-xs text-j-ink-muted">
+            অফিস সময়ের বাইরে কোনো টিউটর মেসেজ দিলে তাৎক্ষণিক স্বয়ংক্রিয় প্রফেশনাল বার্তা পাঠাবে।
+          </p>
+        </div>
+        <div role="radiogroup" aria-labelledby="chat-business-hours-heading" className="inline-flex gap-1 rounded-xl border border-j-border bg-j-surface-sunken p-1">
+          {([[false, "Off"], [true, "On"]] as const).map(([val, label]) => (
+            <button
+              key={label}
+              type="button"
+              role="radio"
+              aria-checked={enabled === val}
+              disabled={setHours.isPending}
+              onClick={() => { if (enabled !== val) handleToggle(val); }}
+              className={`h-8 rounded-lg px-3 text-xs font-bold disabled:opacity-60 ${
+                enabled === val ? "bg-white text-j-accent shadow-sm" : "text-j-ink-soft hover:text-j-ink-strong"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {enabled ? (
+        <div className="mt-3 space-y-3 rounded-lg border border-sky-100 bg-sky-50/50 p-3 text-xs text-sky-950">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-1.5 font-semibold">
+              <span>শুরু (Start):</span>
+              <input
+                type="time"
+                value={startTime}
+                onChange={e => setStartTime(e.target.value)}
+                className="h-8 rounded-lg border border-j-border bg-white px-2 text-xs font-medium text-j-ink"
+              />
+            </label>
+            <label className="flex items-center gap-1.5 font-semibold">
+              <span>শেষ (End):</span>
+              <input
+                type="time"
+                value={endTime}
+                onChange={e => setEndTime(e.target.value)}
+                className="h-8 rounded-lg border border-j-border bg-white px-2 text-xs font-medium text-j-ink"
+              />
+            </label>
+            {changed ? (
+              <button
+                type="button"
+                onClick={handleSaveTimes}
+                disabled={setHours.isPending}
+                className="h-8 rounded-lg bg-j-accent px-3 text-xs font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                Save Times
+              </button>
+            ) : null}
+          </div>
+          <p className="text-2xs leading-relaxed text-sky-800">
+            🤖 <span className="font-semibold">স্বয়ংক্রিয় বার্তার নমুনা:</span> "{DEFAULT_CHAT_AUTO_REPLY_MESSAGE}"
+          </p>
+        </div>
+      ) : null}
+    </section>
+  );
 }
 
 function NewTuitionAlertsSwitch({ enabled }: { enabled: boolean }) {
@@ -406,6 +520,8 @@ export default function AdminControlEditor() {
     <NewTuitionAlertsSwitch enabled={control.data.newTuitionTutorAlerts?.enabled ?? DEFAULT_NEW_TUITION_TUTOR_ALERTS_ENABLED} />
 
     <TutorChatAccessSwitch mode={control.data.tutorChatAccessMode ?? DEFAULT_TUTOR_CHAT_ACCESS_MODE} />
+
+    <ChatBusinessHoursSettings settings={control.data.chatBusinessHours} />
 
     <LoginCodeSettings settings={control.data.tutorGuardianLoginOtp} />
 

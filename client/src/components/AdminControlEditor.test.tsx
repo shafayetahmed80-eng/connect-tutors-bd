@@ -10,13 +10,16 @@ const state = vi.hoisted(() => ({
     tutorGuardianLoginOtp: { enabled: false, rememberDays: 30 },
     newTuitionTutorAlerts: { enabled: true },
     tutorChatAccessMode: "appointed",
+    chatBusinessHours: { enabled: true, startMinute: 600, endMinute: 1200, autoReplyOffHours: true },
   } as {
     guardianApplicantVisibility: "all" | "shortlisted";
     appointmentRequestsOutsideShortlist: number;
     tutorGuardianLoginOtp?: { enabled: boolean; rememberDays: number };
     newTuitionTutorAlerts?: { enabled: boolean };
     tutorChatAccessMode?: "appointed" | "approved" | "all" | "disabled";
+    chatBusinessHours?: { enabled: boolean; startMinute: number; endMinute: number; autoReplyOffHours: boolean };
   },
+  setChatBusinessHours: vi.fn(),
   mutate: vi.fn(),
   setAlertsEnabled: vi.fn(),
   setChatAccessMode: vi.fn(),
@@ -43,6 +46,7 @@ vi.mock("@/lib/trpc", () => ({
       setTutorGuardianLoginOtpEnabled: { useMutation: () => ({ mutate: state.setOtpEnabled, isPending: false }) },
       setTutorGuardianLoginOtpDays: { useMutation: () => ({ mutate: state.setOtpDays, isPending: false }) },
       resetTutorGuardianLoginTrust: { useMutation: () => ({ mutate: state.resetTrust, isPending: false }) },
+      setChatBusinessHours: { useMutation: () => ({ mutate: state.setChatBusinessHours, isPending: false }) },
     },
     siteContent: {
       list: { useQuery: () => ({ data: state.overrides, isLoading: false, isError: false }) },
@@ -67,6 +71,7 @@ afterEach(() => {
     tutorGuardianLoginOtp: { enabled: false, rememberDays: 30 },
     newTuitionTutorAlerts: { enabled: true },
     tutorChatAccessMode: "appointed",
+    chatBusinessHours: { enabled: true, startMinute: 600, endMinute: 1200, autoReplyOffHours: true },
   };
   state.overrides = [];
 });
@@ -322,5 +327,30 @@ describe("where Tutors send their payments", () => {
     expect(enabled).toHaveLength(1);
     fireEvent.click(enabled[0]);
     expect(state.saveLink).toHaveBeenCalledWith({ slotId: paymentAccountSlotId("rocket"), text: null });
+  });
+});
+
+describe("Live chat business hours and auto-responder", () => {
+  const group = () => within(screen.getByRole("radiogroup", { name: /Live Chat Business Hours/i }));
+
+  it("displays the business hours schedule and auto-responder toggle", () => {
+    render(<AdminControlEditor />);
+
+    expect(screen.getByText(/Live Chat Business Hours/i)).toBeTruthy();
+    expect(group().getByRole("radio", { name: "On" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByLabelText(/শুরু \(Start\):/i)).toBeTruthy();
+    expect(screen.getByLabelText(/শেষ \(End\):/i)).toBeTruthy();
+  });
+
+  it("toggles off-hours auto responder", () => {
+    render(<AdminControlEditor />);
+
+    fireEvent.click(group().getByRole("radio", { name: "Off" }));
+
+    expect(state.setChatBusinessHours).toHaveBeenCalledWith({
+      enabled: false,
+      startMinutes: 600,
+      endMinutes: 1200,
+    });
   });
 });

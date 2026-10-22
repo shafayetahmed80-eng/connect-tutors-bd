@@ -1,4 +1,6 @@
 import { AdminChatFilterFields, useAdminChatFilters } from "@/components/AdminChatFilters";
+import { getPresetsByCategory } from "@shared/message-presets";
+import { extractTopicFromMessage } from "@shared/admin-control";
 import { AdminRequestFilterBar } from "@/components/AdminRequestFilters";
 import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { Button } from "@/components/ui/button";
@@ -114,11 +116,15 @@ function QuickRepliesMenu({ onInsert, currentDraft }: { onInsert: (body: string)
 
   const rawQuickReplies = listQuery.data?.items ?? [];
   const rawTemplates = templatesQuery.data?.items ?? [];
+  const defaultPresets = getPresetsByCategory("tutor_chat");
   const items = [
-    ...rawQuickReplies.map(item => ({ id: `qr-${item.id}`, numId: item.id, isTemplate: false, label: item.label, body: item.body })),
+    ...rawQuickReplies.map(item => ({ id: `qr-${item.id}`, numId: item.id, isTemplate: false, isBuiltIn: false, label: item.label, body: item.body, command: undefined as string | undefined })),
     ...rawTemplates
       .filter(t => !rawQuickReplies.some(q => q.label === t.title && q.body === t.body))
-      .map(t => ({ id: `tpl-${t.id}`, numId: t.id, isTemplate: true, label: t.title, body: t.body })),
+      .map(t => ({ id: `tpl-${t.id}`, numId: t.id, isTemplate: true, isBuiltIn: false, label: t.title, body: t.body, command: undefined as string | undefined })),
+    ...defaultPresets
+      .filter(p => !rawQuickReplies.some(q => q.label === p.title) && !rawTemplates.some(t => t.title === p.title))
+      .map(p => ({ id: `preset-${p.id}`, numId: -1, isTemplate: false, isBuiltIn: true, label: p.title, body: p.body, command: p.command })),
   ];
 
   const submitNew = (event: React.FormEvent) => {
@@ -183,16 +189,25 @@ function QuickRepliesMenu({ onInsert, currentDraft }: { onInsert: (body: string)
           {items.length === 0 ? <p className="px-1.5 py-3 text-center text-xs text-j-ink-muted">No quick replies yet.</p> : null}
           {items.map(item => <div key={item.id} className="flex items-start gap-1.5 rounded-lg px-1.5 py-1.5 hover:bg-j-surface-sunken transition-colors">
             <button type="button" onClick={() => { onInsert(item.body); setOpen(false); }} className="min-w-0 flex-1 text-left">
-              <p className="truncate text-xs font-bold text-j-ink">{item.label}</p>
+              <div className="flex items-center gap-1.5">
+                <p className="truncate text-xs font-bold text-j-ink">{item.label}</p>
+                {item.command ? <span className="rounded bg-sky-50 px-1 py-0.2 font-mono text-3xs font-semibold text-sky-700">{item.command}</span> : null}
+              </div>
               <p className="truncate text-2xs text-j-ink-muted">{item.body}</p>
             </button>
-            {managing ? <button type="button" onClick={() => {
-              if (item.isTemplate) {
-                removeTemplate.mutate({ id: item.numId });
-              } else {
-                remove.mutate({ id: item.numId });
-              }
-            }} aria-label={`Delete ${item.label}`} className="shrink-0 rounded px-1 py-0.5 text-2xs font-bold text-red-600 hover:bg-red-50">Delete</button> : null}
+            {managing ? (
+              item.isBuiltIn ? (
+                <span className="shrink-0 rounded px-1 py-0.5 text-3xs font-bold text-j-ink-muted">ডিফল্ট</span>
+              ) : (
+                <button type="button" onClick={() => {
+                  if (item.isTemplate) {
+                    removeTemplate.mutate({ id: item.numId });
+                  } else {
+                    remove.mutate({ id: item.numId });
+                  }
+                }} aria-label={`Delete ${item.label}`} className="shrink-0 rounded px-1 py-0.5 text-2xs font-bold text-red-600 hover:bg-red-50">Delete</button>
+              )
+            ) : null}
           </div>)}
         </div>
         {managing ? <form onSubmit={submitNew} className="mt-2 space-y-2 border-t border-j-border pt-2">
@@ -394,6 +409,7 @@ function ThreadList({ selectedTutorId, onSelect, archived, onArchivedChange, que
       {items.map(item => {
         const tag = priorityTagsByTutor[item.tutorId];
         const tagConfig = tag ? CHAT_PRIORITY_CONFIG[tag] : null;
+        const topic = item.lastMessagePreview ? extractTopicFromMessage(item.lastMessagePreview) : null;
         return (
           <button
             key={item.tutorId}
@@ -414,7 +430,15 @@ function ThreadList({ selectedTutorId, onSelect, archived, onArchivedChange, que
               </span>
             </span>
             <span className="text-2xs font-semibold text-j-ink-faint">Tutor ID {item.tutorNumber ?? "—"}</span>
-            {item.lastMessagePreview ? <span className="truncate text-xs text-j-ink-soft">{item.lastMessagePreview}</span> : null}
+            <div className="flex items-center gap-1.5 min-w-0">
+              {topic ? (
+                <span className="inline-flex items-center gap-0.5 rounded bg-sky-100 px-1.5 py-0.2 text-3xs font-bold text-sky-800 shrink-0">
+                  <span>{topic.icon}</span>
+                  <span>{topic.label}</span>
+                </span>
+              ) : null}
+              {item.lastMessagePreview ? <span className="truncate text-xs text-j-ink-soft">{item.lastMessagePreview}</span> : null}
+            </div>
             {item.claimedByAdminName ? <span className="truncate text-2xs font-semibold text-j-accent">Claimed by {item.claimedByAdminName}</span> : null}
           </button>
         );
@@ -449,6 +473,8 @@ function ThreadPanel({
 }) {
   const utils = trpc.useUtils();
   const threadQuery = trpc.admin.getTutorChatThread.useQuery({ tutorId }, { refetchInterval: CHAT_POLL_MS });
+  const quickRepliesQuery = trpc.admin.listChatQuickReplies.useQuery(undefined);
+  const templatesQuery = trpc.admin.listMessageTemplates.useQuery({ category: "tutor_chat" });
   const [body, setBody] = useState("");
   const [query, setQuery] = useState("");
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -530,6 +556,79 @@ function ThreadPanel({
     if (query.trim()) return messages;
     return messages.slice(Math.max(0, messages.length - visibleCount));
   }, [messages, visibleCount, query]);
+
+  const [slashDismissed, setSlashDismissed] = useState(false);
+  const [slashIndex, setSlashIndex] = useState(0);
+
+  const slashQuery = useMemo(() => {
+    if (!body.startsWith("/") || slashDismissed) return null;
+    return body.slice(1).trim().toLowerCase();
+  }, [body, slashDismissed]);
+
+  const slashCandidates = useMemo(() => {
+    if (slashQuery === null) return [];
+    const defaultPresets = getPresetsByCategory("tutor_chat");
+    const customReplies = quickRepliesQuery.data?.items ?? [];
+    const customTemplates = templatesQuery.data?.items ?? [];
+
+    const pool = [
+      ...defaultPresets.map(p => ({
+        id: `preset-${p.id}`,
+        command: p.command,
+        label: p.title,
+        body: p.body,
+        isBuiltIn: true,
+      })),
+      ...customReplies.map(r => ({
+        id: `qr-${r.id}`,
+        command: `/${r.label.replace(/\s+/g, "-").toLowerCase()}`,
+        label: r.label,
+        body: r.body,
+        isBuiltIn: false,
+      })),
+      ...customTemplates
+        .filter(t => !customReplies.some(r => r.label === t.title))
+        .map(t => ({
+          id: `tpl-${t.id}`,
+          command: `/${t.title.replace(/\s+/g, "-").toLowerCase()}`,
+          label: t.title,
+          body: t.body,
+          isBuiltIn: false,
+        })),
+    ];
+
+    if (!slashQuery) return pool;
+
+    return pool.filter(item =>
+      item.command.slice(1).toLowerCase().includes(slashQuery) ||
+      item.label.toLowerCase().includes(slashQuery) ||
+      item.body.toLowerCase().includes(slashQuery)
+    );
+  }, [slashQuery, quickRepliesQuery.data?.items, templatesQuery.data?.items]);
+
+  useEffect(() => {
+    setSlashIndex(0);
+  }, [slashQuery]);
+
+  useEffect(() => {
+    if (!body.startsWith("/")) {
+      setSlashDismissed(false);
+    }
+  }, [body]);
+
+  const applySlashCommand = (item: { label: string; body: string }) => {
+    setBody(item.body);
+    setSlashDismissed(true);
+    toast.info(`কুইক রিপ্লাই যুক্ত হয়েছে: ${item.label}`);
+  };
+
+  const activeThreadTopic = useMemo(() => {
+    for (let i = allMessages.length - 1; i >= 0; i--) {
+      const found = extractTopicFromMessage(allMessages[i].body);
+      if (found) return found;
+    }
+    return null;
+  }, [allMessages]);
 
   const tutor = threadQuery.data?.tutor;
   const tutorLastReadAt = threadQuery.data?.tutorLastReadAt ? new Date(threadQuery.data.tutorLastReadAt).getTime() : null;
@@ -683,6 +782,31 @@ function ThreadPanel({
     submitMessage();
   };
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (slashCandidates.length > 0 && slashQuery !== null) {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setSlashIndex(i => (i + 1) % slashCandidates.length);
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setSlashIndex(i => (i - 1 + slashCandidates.length) % slashCandidates.length);
+        return;
+      }
+      if (event.key === "Enter" || event.key === "Tab") {
+        event.preventDefault();
+        const chosen = slashCandidates[slashIndex] || slashCandidates[0];
+        if (chosen) {
+          applySlashCommand(chosen);
+        }
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setSlashDismissed(true);
+        return;
+      }
+    }
     handleComposerKeyDown(event);
   };
 
@@ -742,7 +866,15 @@ function ThreadPanel({
             : <UserRound size={18} aria-hidden={true} />}
         </span>
         <div className="min-w-0">
-          <p className="text-2xs font-bold text-j-ink-faint">Tutor ID {tutor?.tutorNumber ?? "—"}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-2xs font-bold text-j-ink-faint">Tutor ID {tutor?.tutorNumber ?? "—"}</p>
+            {activeThreadTopic ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-sky-100 px-1.5 py-0.2 text-3xs font-bold text-sky-800" title="Selected inquiry topic">
+                <span>{activeThreadTopic.icon}</span>
+                <span>{activeThreadTopic.label}</span>
+              </span>
+            ) : null}
+          </div>
           <p className="truncate text-sm font-bold text-j-ink">{tutor?.tutorName ?? "Loading…"}</p>
           {tutor?.phone ? <p className="max-w-[120px] truncate text-2xs font-semibold text-j-ink-soft sm:max-w-none">{tutor.phone}</p> : null}
         </div>
@@ -1041,7 +1173,43 @@ function ThreadPanel({
             <div className="h-full bg-j-accent transition-[width]" style={{ width: `${uploadProgress}%` }} />
           </div>
         : null}
-      <form onSubmit={handleSubmit} className="flex items-end gap-1.5 p-3 sm:gap-2">
+      <form onSubmit={handleSubmit} className="relative flex items-end gap-1.5 p-3 sm:gap-2">
+        {slashCandidates.length > 0 && slashQuery !== null ? (
+          <div
+            data-testid="slash-commands-menu"
+            className="absolute bottom-full left-3 right-3 mb-2 z-30 max-h-56 overflow-y-auto rounded-xl border border-sky-200 bg-white p-1.5 shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-150 sm:left-14 sm:right-auto sm:w-96"
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 px-2 py-1 text-3xs font-semibold text-j-ink-faint">
+              <span>কুইক রিপ্লাই শর্টকাট ({slashCandidates.length})</span>
+              <span className="flex items-center gap-1 font-mono">
+                <kbd className="rounded bg-slate-100 border px-1">Tab</kbd> / <kbd className="rounded bg-slate-100 border px-1">↵</kbd> নির্বাচন
+              </span>
+            </div>
+            <div className="space-y-0.5 pt-1">
+              {slashCandidates.map((c, idx) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onMouseEnter={() => setSlashIndex(idx)}
+                  onClick={() => applySlashCommand(c)}
+                  className={`flex w-full items-start gap-2 rounded-lg px-2 py-1.5 text-left transition-colors ${
+                    idx === slashIndex
+                      ? "bg-sky-50 border border-sky-200"
+                      : "hover:bg-slate-50 border border-transparent"
+                  }`}
+                >
+                  <span className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 font-mono text-3xs font-bold text-[#1267c8]">
+                    {c.command}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-bold text-j-ink">{c.label}</p>
+                    <p className="line-clamp-1 text-3xs text-j-ink-soft">{c.body}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" onChange={handleAttach} />
         {voiceRecorder.recording ? (
           <VoiceRecordingBar onStop={handleMic} onCancel={voiceRecorder.cancel} />

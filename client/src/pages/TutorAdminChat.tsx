@@ -1,6 +1,6 @@
 import { BrandMark, brandWordmark } from "@/components/BrandMark";
 import { WhatsAppIcon } from "@/components/WhatsAppIcon";
-import type { TutorChatAccessMode } from "@shared/admin-control";
+import { TUTOR_CHAT_TOPICS, isWithinBusinessHours, type TutorChatAccessMode } from "@shared/admin-control";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useTutorChatSocket, useOnlineStatus, type ChatConnectionStatus } from "@/hooks/useChatSocket";
@@ -636,6 +636,49 @@ export function TutorAdminChatPanel() {
           <div className="flex flex-wrap items-center justify-between gap-1.5 px-3 pt-2">
             {hasRestoredDraft ? <ChatDraftRestoredIndicator onClear={clearDraft} /> : <div />}
             <ChatShortcutsHelpPill />
+          </div>
+          {!isWithinBusinessHours(new Date()) ? (
+            <div className="flex items-center gap-2 border-b border-amber-100 bg-amber-50/70 px-3 py-1.5 text-2xs font-semibold text-amber-900">
+              <Clock className="size-3 text-amber-600 shrink-0" />
+              <span>অফিস আওয়ারের বাইরে (নিয়মিত সময়: সকাল ১০টা – রাত ৮টা)। মেসেজ পাঠিয়ে রাখুন, টিম অনলাইন হয়ে দ্রুত উত্তর দেবে।</span>
+            </div>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-1.5 border-b border-[#eef3f7] bg-slate-50/60 px-3 py-1.5 text-2xs">
+            <span className="font-bold text-j-ink-muted">বিষয় নির্বাচন:</span>
+            {TUTOR_CHAT_TOPICS.map(topic => {
+              const isSelected = body.startsWith(topic.prefix) || body.includes(`[বিষয়: ${topic.label}]`) || body.includes(`[বিষয়: ${topic.label}]`);
+              return (
+                <button
+                  key={topic.id}
+                  type="button"
+                  onClick={() => {
+                    setBody(prev => {
+                      let clean = prev;
+                      for (const t of TUTOR_CHAT_TOPICS) {
+                        if (clean.startsWith(t.prefix)) {
+                          clean = clean.slice(t.prefix.length).trimStart();
+                        } else if (clean.startsWith(`[বিষয়: ${t.label}]`)) {
+                          clean = clean.slice(`[বিষয়: ${t.label}]`.length).trimStart();
+                        } else if (clean.startsWith(`[বিষয়: ${t.label}]`)) {
+                          clean = clean.slice(`[বিষয়: ${t.label}]`.length).trimStart();
+                        }
+                      }
+                      if (isSelected) {
+                        return clean;
+                      }
+                      return clean ? `${topic.prefix} ${clean}` : `${topic.prefix} `;
+                    });
+                  }}
+                  className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-3xs font-bold transition-colors ${
+                    isSelected
+                      ? "border-sky-300 bg-sky-100 text-[#1267c8] shadow-xs"
+                      : "border-slate-200 bg-white text-j-ink-soft hover:border-sky-200 hover:bg-sky-50/50 hover:text-[#1267c8]"
+                  }`}
+                >
+                  {topic.label}
+                </button>
+              );
+            })}
           </div>
           <form onSubmit={handleSubmit} className="flex items-end gap-2 p-3">
             <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" onChange={handleAttach} />
