@@ -7,6 +7,8 @@ const dbMocks = vi.hoisted(() => ({
   setNewTuitionTutorAlertsEnabled: vi.fn(),
   setTutorChatAccessMode: vi.fn(),
   setChatBusinessHoursSettings: vi.fn(),
+  getAdminPasswordChangeRequired: vi.fn().mockResolvedValue(false),
+  getAdminTwoFactorSettings: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock("./db", async importOriginal => {
