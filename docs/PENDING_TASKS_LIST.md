@@ -555,3 +555,9 @@
 - **Implementation:** PR #483 - server/admin-monitoring.ts, client/src/pages/AdminTutorProfileDetail.tsx, and tests updated.
 - **Status:**
 > Admins can now approve profiles directly from changes_requested status.
+
+### (Task). Admin Applicant Rows: Tooltip & Badge for Pending Tutors [Completed - PR #484]
+- **Summary:** Added disabledReason to ApplicantActionOption in shared/admin-applicant-actions.ts to supply an explanatory message ('Profile is pending review. Approve profile first.') when appointing is disabled due to an unapproved profile. Displayed an amber 'Pending Profile' chip next to the applicant's name in AdminTutorRows.tsx when showApplicationStage is true, bound title tooltips to disabled action buttons on desktop, and added a contextual mobile notice ('⚠️ Profile is pending review. Approve profile first.') for touch screen clarity.
+- **Implementation:** PR #484 - shared/admin-applicant-actions.ts, client/src/components/AdminTutorRows.tsx, and tests updated.
+- **Status:**
+> Tooltip reason on disabled action buttons and pending profile badge active in applicant rows.
