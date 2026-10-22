@@ -10,13 +10,16 @@ const state = vi.hoisted(() => ({
     tutorGuardianLoginOtp: { enabled: false, rememberDays: 30 },
     newTuitionTutorAlerts: { enabled: true },
     tutorChatAccessMode: "appointed",
+    chatBusinessHours: { enabled: true, startMinute: 600, endMinute: 1200, autoReplyOffHours: true },
   } as {
     guardianApplicantVisibility: "all" | "shortlisted";
     appointmentRequestsOutsideShortlist: number;
     tutorGuardianLoginOtp?: { enabled: boolean; rememberDays: number };
     newTuitionTutorAlerts?: { enabled: boolean };
     tutorChatAccessMode?: "appointed" | "approved" | "all" | "disabled";
+    chatBusinessHours?: { enabled: boolean; startMinute: number; endMinute: number; autoReplyOffHours: boolean };
   },
+  setChatBusinessHours: vi.fn(),
   mutate: vi.fn(),
   setAlertsEnabled: vi.fn(),
   setChatAccessMode: vi.fn(),
@@ -43,6 +46,7 @@ vi.mock("@/lib/trpc", () => ({
       setTutorGuardianLoginOtpEnabled: { useMutation: () => ({ mutate: state.setOtpEnabled, isPending: false }) },
       setTutorGuardianLoginOtpDays: { useMutation: () => ({ mutate: state.setOtpDays, isPending: false }) },
       resetTutorGuardianLoginTrust: { useMutation: () => ({ mutate: state.resetTrust, isPending: false }) },
+      setChatBusinessHours: { useMutation: () => ({ mutate: state.setChatBusinessHours, isPending: false }) },
     },
     siteContent: {
       list: { useQuery: () => ({ data: state.overrides, isLoading: false, isError: false }) },
@@ -67,6 +71,7 @@ afterEach(() => {
     tutorGuardianLoginOtp: { enabled: false, rememberDays: 30 },
     newTuitionTutorAlerts: { enabled: true },
     tutorChatAccessMode: "appointed",
+    chatBusinessHours: { enabled: true, startMinute: 600, endMinute: 1200, autoReplyOffHours: true },
   };
   state.overrides = [];
 });
@@ -83,19 +88,52 @@ describe("the Tutor live chat access switch", () => {
     expect(group().getByRole("radio", { name: /সাময়িক বন্ধ/i }).getAttribute("aria-checked")).toBe("false");
   });
 
-  it("changes the mode when another option is picked, and does nothing for the mode already in force", () => {
+  it("shows confirmation modal when another option is picked, cancels without saving, and saves when confirmed", () => {
     render(<AdminControlEditor />);
 
+    // Clicking current mode does nothing and doesn't open modal
     fireEvent.click(group().getByRole("radio", { name: /নিয়োগপ্রাপ্ত/i }));
     expect(state.setChatAccessMode).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
 
+    // Clicking another option opens confirmation modal with details
     fireEvent.click(group().getByRole("radio", { name: /অনুমোদিত/i }));
+    expect(state.setChatAccessMode).not.toHaveBeenCalled();
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("টিউটর লাইভ চ্যাট পারমিশন পরিবর্তন নিশ্চিত করুন")).toBeTruthy();
+    expect(within(dialog).getByText(/অনুমোদিত প্রোফাইল অ্যাক্সেস/i)).toBeTruthy();
+
+    // Cancelling closes modal without saving
+    fireEvent.click(within(dialog).getByRole("button", { name: "বাতিল করুন" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(state.setChatAccessMode).not.toHaveBeenCalled();
+
+    // Picking option again and confirming saves the change
+    fireEvent.click(group().getByRole("radio", { name: /অনুমোদিত/i }));
+    const confirmDialog = screen.getByRole("dialog");
+    fireEvent.click(within(confirmDialog).getByRole("button", { name: /মোড পরিবর্তন করুন/i }));
     expect(state.setChatAccessMode).toHaveBeenCalledWith({ mode: "approved" });
+  });
+
+  it("warns about open floodgate when switching to All tutors and saves when confirmed", () => {
+    render(<AdminControlEditor />);
 
     fireEvent.click(group().getByRole("radio", { name: /সকল টিউটর/i }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/সতর্কতা: উন্মুক্ত চ্যাট অ্যাক্সেস/i)).toBeTruthy();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: /সকল টিউটরকে চ্যাট অনুমতি দিন/i }));
     expect(state.setChatAccessMode).toHaveBeenCalledWith({ mode: "all" });
+  });
+
+  it("warns about chat suspension when switching to Disabled and saves when confirmed", () => {
+    render(<AdminControlEditor />);
 
     fireEvent.click(group().getByRole("radio", { name: /সাময়িক বন্ধ/i }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/সতর্কতা: চ্যাট সাময়িক স্থগিত/i)).toBeTruthy();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: /চ্যাট সাময়িক বন্ধ করুন/i }));
     expect(state.setChatAccessMode).toHaveBeenCalledWith({ mode: "disabled" });
   });
 
@@ -322,5 +360,30 @@ describe("where Tutors send their payments", () => {
     expect(enabled).toHaveLength(1);
     fireEvent.click(enabled[0]);
     expect(state.saveLink).toHaveBeenCalledWith({ slotId: paymentAccountSlotId("rocket"), text: null });
+  });
+});
+
+describe("Live chat business hours and auto-responder", () => {
+  const group = () => within(screen.getByRole("radiogroup", { name: /Live Chat Business Hours/i }));
+
+  it("displays the business hours schedule and auto-responder toggle", () => {
+    render(<AdminControlEditor />);
+
+    expect(screen.getByText(/Live Chat Business Hours/i)).toBeTruthy();
+    expect(group().getByRole("radio", { name: "On" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByLabelText(/শুরু \(Start\):/i)).toBeTruthy();
+    expect(screen.getByLabelText(/শেষ \(End\):/i)).toBeTruthy();
+  });
+
+  it("toggles off-hours auto responder", () => {
+    render(<AdminControlEditor />);
+
+    fireEvent.click(group().getByRole("radio", { name: "Off" }));
+
+    expect(state.setChatBusinessHours).toHaveBeenCalledWith({
+      enabled: false,
+      startMinutes: 600,
+      endMinutes: 1200,
+    });
   });
 });

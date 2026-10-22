@@ -6,6 +6,9 @@ const dbMocks = vi.hoisted(() => ({
   setGuardianApplicantVisibility: vi.fn(),
   setNewTuitionTutorAlertsEnabled: vi.fn(),
   setTutorChatAccessMode: vi.fn(),
+  setChatBusinessHoursSettings: vi.fn(),
+  getAdminPasswordChangeRequired: vi.fn().mockResolvedValue(false),
+  getAdminTwoFactorSettings: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -69,6 +72,19 @@ describe("adminControl", () => {
     await expect(createCaller({ ...owner, openId: "another-admin" }).adminControl.setTutorChatAccessMode({ mode: "all" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(createCaller({ ...owner, role: "tutor" as const }).adminControl.setTutorChatAccessMode({ mode: "all" })).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(dbMocks.setTutorChatAccessMode).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets the Owner configure chat business hours, and nobody else", async () => {
+    dbMocks.setChatBusinessHoursSettings.mockResolvedValue({ enabled: true, startMinutes: 600, endMinutes: 1200 });
+
+    await expect(createCaller().adminControl.setChatBusinessHours({ enabled: true, startMinutes: 600, endMinutes: 1200 }))
+      .resolves.toEqual({ enabled: true, startMinutes: 600, endMinutes: 1200 });
+    expect(dbMocks.setChatBusinessHoursSettings).toHaveBeenCalledWith({ enabled: true, startMinutes: 600, endMinutes: 1200 });
+
+    await expect(createCaller({ ...owner, openId: "another-admin" }).adminControl.setChatBusinessHours({ enabled: true }))
+      .rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(createCaller({ ...owner, role: "tutor" as const }).adminControl.setChatBusinessHours({ enabled: true }))
+      .rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("is the Owner's alone - not another Admin's, and not a Guardian's", async () => {

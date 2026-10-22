@@ -828,5 +828,72 @@ describe("the card and filter panel over the conversations", () => {
     fireEvent.click(closeBtn);
     expect(screen.queryByText("ফাইল/ছবি")).toBeNull();
   });
-});
+  it("renders floating slash commands menu on typing '/' and inserts preset when selected", () => {
+    state.threads = [thread({ tutorId: "t1", tutorName: "Tutor One", tutorNumber: 101 })];
+    state.threadMessages = [message({ body: "What are your platform charges?" })];
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByRole("button", { name: /Tutor One/ }));
 
+    const textarea = screen.getByPlaceholderText("Reply as Admin…") as HTMLTextAreaElement;
+
+    // Type "/fe"
+    fireEvent.change(textarea, { target: { value: "/fe" } });
+
+    // Menu should appear
+    expect(screen.getByTestId("slash-commands-menu")).toBeTruthy();
+    expect(screen.getByText("/fee")).toBeTruthy();
+    expect(screen.getByText("প্ল্যাটফর্ম ফি ও পেমেন্ট নিয়ম")).toBeTruthy();
+
+    // Click on "/fee"
+    fireEvent.click(screen.getByText("/fee"));
+
+    // Menu disappears and textarea gets full preset body
+    expect(screen.queryByTestId("slash-commands-menu")).toBeNull();
+    expect(textarea.value).toContain("প্ল্যাটফর্ম চার্জ হিসেবে প্রদেয়");
+  });
+
+  it("navigates and selects slash command using Enter keyboard key", () => {
+    state.threads = [thread({ tutorId: "t1", tutorName: "Tutor One", tutorNumber: 101 })];
+    state.threadMessages = [message({ body: "Please guide me on verification" })];
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByRole("button", { name: /Tutor One/ }));
+
+    const textarea = screen.getByPlaceholderText("Reply as Admin…") as HTMLTextAreaElement;
+
+    // Type "/ver"
+    fireEvent.change(textarea, { target: { value: "/ver" } });
+    expect(screen.getByTestId("slash-commands-menu")).toBeTruthy();
+    expect(screen.getByText("/verify")).toBeTruthy();
+
+    // Press Enter to select
+    fireEvent.keyDown(textarea, { key: "Enter" });
+    expect(screen.queryByTestId("slash-commands-menu")).toBeNull();
+    expect(textarea.value).toContain("প্রোফাইল দ্রুত ভেরিফাই করতে");
+  });
+
+  it("displays inquiry topic badge on thread list and header when a topic prefix exists", () => {
+    state.threads = [
+      thread({
+        tutorId: "t1",
+        tutorName: "Tutor One",
+        tutorNumber: 101,
+        lastMessagePreview: "[বিষয়: টিউশন আবেদন] ধানমন্ডিতে ক্লাস ৪ পড়াতে আগ্রহী",
+      }),
+    ];
+    state.threadMessages = [
+      message({
+        body: "[বিষয়: টিউশন আবেদন] ধানমন্ডিতে ক্লাস ৪ পড়াতে আগ্রহী",
+      }),
+    ];
+    render(<AdminTutorChatsContent />);
+
+    // In thread list, topic badge should be visible
+    expect(screen.getAllByText("টিউশন আবেদন").length).toBeGreaterThan(0);
+
+    // Select thread
+    fireEvent.click(screen.getByRole("button", { name: /Tutor One/ }));
+
+    // In header, topic badge should also be visible
+    expect(screen.getByTitle("Selected inquiry topic")).toBeTruthy();
+  });
+});
