@@ -112,3 +112,89 @@ export function storedTutorChatAccessMode(mode: TutorChatAccessMode): number {
     case "disabled": return 3;
   }
 }
+
+/**
+ * Chat Business Hours & Out-of-Office Auto-Reply Bot.
+ * Allows Project Owner to define daily office hours (in minutes from midnight, Bangladesh time UTC+6).
+ * During off-hours, incoming messages from tutors trigger an immediate courteous auto-reply bot.
+ */
+export const CHAT_BUSINESS_HOURS_ENABLED_ID = "control.chatBusinessHoursEnabled";
+export const CHAT_BUSINESS_HOURS_START_ID = "control.chatBusinessHoursStart";
+export const CHAT_BUSINESS_HOURS_END_ID = "control.chatBusinessHoursEnd";
+
+export const DEFAULT_CHAT_BUSINESS_HOURS_ENABLED = false;
+export const DEFAULT_CHAT_BUSINESS_HOURS_START = 600; // 10:00 AM (10 * 60)
+export const DEFAULT_CHAT_BUSINESS_HOURS_END = 1200; // 8:00 PM (20 * 60)
+
+export const DEFAULT_CHAT_AUTO_REPLY_MESSAGE =
+  "আসসালামু আলাইকুম। আমাদের অফিস সময় প্রতিদিন সকাল ১০:০০ টা থেকে রাত ৮:০০ টা পর্যন্ত। আপনার বার্তাটি আমরা পেয়েছি। অফিস শুরু হওয়ামাত্রই অ্যাডমিন টিম উত্তর দেবে। জরুরি প্রয়োজনে হেল্পলাইনে কল করুন।";
+
+export function chatBusinessHoursEnabledFromStored(value: number | null | undefined): boolean {
+  if (value === 0) return false;
+  if (value === 1) return true;
+  return DEFAULT_CHAT_BUSINESS_HOURS_ENABLED;
+}
+
+export function chatBusinessHoursStartFromStored(value: number | null | undefined): number {
+  if (typeof value === "number" && value >= 0 && value < 1440) return value;
+  return DEFAULT_CHAT_BUSINESS_HOURS_START;
+}
+
+export function chatBusinessHoursEndFromStored(value: number | null | undefined): number {
+  if (typeof value === "number" && value >= 0 && value < 1440) return value;
+  return DEFAULT_CHAT_BUSINESS_HOURS_END;
+}
+
+export function minutesToTimeString(minutes: number): string {
+  const clamped = Math.max(0, Math.min(1439, Math.floor(minutes)));
+  const h = Math.floor(clamped / 60);
+  const m = clamped % 60;
+  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+}
+
+export function timeStringToMinutes(timeStr: string): number {
+  const parts = timeStr.trim().split(":");
+  if (parts.length >= 2) {
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (!Number.isNaN(h) && !Number.isNaN(m)) {
+      return Math.max(0, Math.min(1439, h * 60 + m));
+    }
+  }
+  return DEFAULT_CHAT_BUSINESS_HOURS_START;
+}
+
+export function isWithinBusinessHours(
+  date: Date = new Date(),
+  startMinutes = DEFAULT_CHAT_BUSINESS_HOURS_START,
+  endMinutes = DEFAULT_CHAT_BUSINESS_HOURS_END
+): boolean {
+  // Bangladesh is UTC+6
+  const utc = date.getTime() + date.getTimezoneOffset() * 60000;
+  const bdTime = new Date(utc + 6 * 3600000);
+  const currentMinutes = bdTime.getHours() * 60 + bdTime.getMinutes();
+  return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+}
+
+/**
+ * Pre-Chat Topics for Tutor Live Chat
+ */
+export type TutorChatTopic = {
+  id: string;
+  label: string;
+  icon: string;
+  prefix: string;
+};
+
+export const TUTOR_CHAT_TOPICS: ReadonlyArray<TutorChatTopic> = [
+  { id: "tuition_apply", label: "টিউশন আবেদন", icon: "💼", prefix: "[বিষয়: টিউশন আবেদন]" },
+  { id: "payment_fee", label: "পেমেন্ট ও ফি", icon: "💳", prefix: "[বিষয়: পেমেন্ট ও ফি]" },
+  { id: "profile_verify", label: "প্রোফাইল ভেরিফিকেশন", icon: "👤", prefix: "[বিষয়: প্রোফাইল ভেরিফিকেশন]" },
+  { id: "demo_class", label: "ডেমো ক্লাস / শিডিউল", icon: "📅", prefix: "[বিষয়: ডেমো ক্লাস]" },
+  { id: "general_inquiry", label: "সাধারণ জিজ্ঞাসা", icon: "❓", prefix: "[বিষয়: সাধারণ জিজ্ঞাসা]" },
+];
+
+export function extractTopicFromMessage(body: string): TutorChatTopic | undefined {
+  if (!body) return undefined;
+  return TUTOR_CHAT_TOPICS.find(t => body.includes(t.prefix) || body.toLowerCase().includes(t.label.toLowerCase()));
+}

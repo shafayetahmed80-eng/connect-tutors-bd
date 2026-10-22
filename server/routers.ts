@@ -1956,6 +1956,13 @@ export const appRouter = router({
     setTutorChatAccessMode: ownerAdminProcedure
       .input(z.object({ mode: z.enum(tutorChatAccessModeValues) }))
       .mutation(({ input }) => db.setTutorChatAccessMode(input.mode)),
+    setChatBusinessHours: ownerAdminProcedure
+      .input(z.object({
+        enabled: z.boolean(),
+        startMinutes: z.number().int().min(0).max(1439).optional(),
+        endMinutes: z.number().int().min(0).max(1439).optional(),
+      }))
+      .mutation(({ input }) => db.setChatBusinessHoursSettings(input)),
     setTutorGuardianLoginOtpEnabled: ownerAdminProcedure
       .input(z.object({ enabled: z.boolean() }))
       .mutation(({ input }) => db.setTutorGuardianLoginOtpEnabled(input.enabled)),
