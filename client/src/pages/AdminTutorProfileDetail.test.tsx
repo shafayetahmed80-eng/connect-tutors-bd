@@ -283,17 +283,25 @@ describe("Admin Tutor profile detail", () => {
     expect(within(screen.getByRole("region", { name: "Moderation history" })).getByText("No moderation decisions yet.")).toBeTruthy();
   });
 
-  it("can still suspend a profile that is waiting on the Tutor's changes", () => {
+  it("can approve or suspend a profile that is in changes_requested status", () => {
     mocks.profile.profileStatus = "changes_requested";
     render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
 
     fireEvent.click(screen.getByRole("button", { name: /Review & moderate/i }));
     const next = screen.getByLabelText(/Next status/i) as HTMLSelectElement;
-    expect(within(next).getAllByRole("option").map(option => option.textContent)).toEqual(["Suspend profile"]);
-    const save = screen.getByRole("button", { name: /Save moderation/i }) as HTMLButtonElement;
-    expect(save.disabled).toBe(true);
+    expect(within(next).getAllByRole("option").map(option => option.textContent)).toEqual(["Approve profile", "Suspend profile"]);
 
+    // Can directly approve without a mandatory reason
+    const save = screen.getByRole("button", { name: /Save moderation/i }) as HTMLButtonElement;
+    expect(save.disabled).toBe(false);
+    fireEvent.click(save);
+    expect(mocks.moderate).toHaveBeenCalledWith({ tutorId: "tutor-175", nextStatus: "approved", reason: undefined });
+
+    // Or switch to suspend, which requires a reason
+    fireEvent.change(next, { target: { value: "suspended" } });
+    expect(save.disabled).toBe(true);
     fireEvent.change(screen.getByLabelText(/Admin reason/i), { target: { value: "The University ID is not genuine" } });
+    expect(save.disabled).toBe(false);
     fireEvent.click(save);
     expect(mocks.moderate).toHaveBeenCalledWith({ tutorId: "tutor-175", nextStatus: "suspended", reason: "The University ID is not genuine" });
   });

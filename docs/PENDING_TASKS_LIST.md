@@ -32,6 +32,10 @@
 - **প্রম্পট:**
 > টিউটররা জব বোর্ডে তাদের পছন্দের এলাকা ও বিষয়ের সার্চ ফিল্টার সেভ করে রাখতে পারবেন এবং ঐ ক্যাটাগরিতে নতুন কোনো টিউশন এলেই তাদের আলাদা নোটিফিকেশন পাঠানোর ব্যবস্থা করুন।
 
+### ৬.১ টিউটর প্রোফাইল সাবমিশন, জব বোর্ড এলিজিবিলিটি ও চেঞ্জ রিকোয়েস্ট ওয়ার্কফ্লো
+- **বিবরণ:** টিউটর ফর্ম সাবমিট করলেই সফলতার ডায়লগে টিউশনে আবেদন করার যোগ্য বার্তা প্রদর্শন, প্রোফাইল পেন্ডিং থাকা অবস্থায়ও জব বোর্ড থেকে আবেদন করার সুযোগ এবং আবেদনের পাশে "Applied (Profile Pending Review)" ব্যাজ প্রদর্শন।
+- **স্ট্যাটাস:** 🟡 প্রগ্রেস (Task 1: জব বোর্ড পেন্ডিং অ্যাপ্লাই ও স্ট্যাটাস ব্যাজ সম্পন্ন)
+
 ### ৬. টিউটর প্রোফাইল সেকশন ট্যাবের মোবাইল ভিজিবিলিটি ও স্ক্রোল প্রম্পট [✅ সম্পন্ন - PR #406]
 - **বিবরণ:** TutorProfileSectionTabs-এ মোবাইলে ৫টি ট্যাব সহজে বোঝার জন্য ডানে-বামে ভিজ্যুয়াল ফেডিং শ্যাডো ও স্ক্রোল প্রম্পট যুক্ত করুন যাতে টিউটররা বুঝতে পারেন আরও ট্যাব রয়েছে।
 - **স্ট্যাটাস:** ✅ সম্পন্ন (PR #406) — `edges.start` ও `edges.end` ভিত্তিক ডাইনামিক ফেডিং গ্রেডিয়েন্ট ওভারলে, টাচ নজ বাটন (`ChevronLeft`/`ChevronRight`), এবং সেলফ-ডিসমিসিং মোবাইল স্ক্রোল প্রম্পট (`Swipe for more sections (5 total)`) যুক্ত করা হয়েছে।
@@ -511,3 +515,55 @@
 - **স্ট্যাটাস:** ✅ সম্পন্ন (PR #477) — `shared/policy-pages.ts`-এ সম্পূর্ণ পলিসি ও রেট চার্ট সংযোজন, `shared/policy-pages.test.ts`-এ ৫টি ডেডিকেটেড ইউনিট টেস্ট পাস, CI গ্রিন ও ০ TypeScript এরর নিশ্চিত।
 - **প্রম্পট:**
 > প্ল্যাটফর্ম চার্জ ও রিফান্ড পলিসি দেন /terms-conditions-এ যুক্ত করে দেন।
+
+
+### (Task). Tutor Job Board Eligibility: Pending tutors can apply with status badge [Completed - PR #478]
+- **Summary:** Renamed getApprovedTutorProfileId to getEligibleTutorProfileId. Pending-status tutors can now apply on Job Board and see an amber 'Applied (Profile Pending Review)' badge. Post-login routing for pending tutors goes to /tutor/dashboard/jobs.
+- **Implementation:** PR #478 - server/routers.ts, client/src/pages/JobBoard.tsx, client/src/lib/tutorApplyReturn.ts, tests updated.
+- **Status:**
+> Pending tutors can apply on Job Board and see an informational pending badge.
+
+### (Task). Tutor Submission Success: Show success dialog with job eligibility note after profile submit [Completed - PR #479]
+- **Summary:** After submitting profile for review, tutor sees a Bengali celebratory modal confirming submission and showing job board eligibility. CTA button navigates to Job Board.
+- **Implementation:** PR #479 - client/src/components/TutorSubmissionSuccessModal.tsx (new), client/src/pages/TutorProfileWorkspace.tsx, tests added.
+- **Status:**
+> Success modal shown after profile submit with job board CTA.
+
+### (Task). Tutor Profile Re-review on Edit: Re-queue for admin review when pending/approved tutor edits profile [Completed - PR #480]
+- **Summary:** When a tutor (pending or approved status) saves any draft change, profile status resets to 'pending' and admins receive a push notification for re-review. Draft/changes_requested saves are unaffected.
+- **Implementation:** PR #480 - server/db.ts (saveTutorProfileDraft sets pending inside transaction), server/routers.ts (saveProfileDraft fires notifyTutorRegistrationToAdmins), server/tutor-profile.api.test.ts (4 new tests).
+- **Status:**
+> Profile auto-re-queues for admin review on any edit after submission.
+
+
+### (Task). Tutor Profile Return Path & Status Card Copy Fix [Completed - PR #481]
+- **Summary:** Restores selected tuition return routing in TutorSubmissionSuccessModal (falling back to /tutor/dashboard/jobs instead of leaving dashboard layout for generic /job-board) with contextual 'নির্বাচিত টিউশনে যান ও আবেদন করুন' CTA label. Updates TutorProfileStatusCard so that pending profile with selected job return shows 'Ready to apply' action 'return' ('Return to selected tuition') and removes stale copy saying admin approval is required before applying.
+- **Implementation:** PR #481 - TutorSubmissionSuccessModal.tsx, TutorProfileWorkspace.tsx, TutorProfileStatusCard.ts, and tests updated.
+- **Status:**
+> Selected job return path restored and pending status card copy synchronized.
+
+
+### (Task). Tutor Profile Re-Review Warnings on Profile Edit [Completed - PR #482]
+- **Summary:** Displays an informative alert banner above the section tabs when profile status is 'approved', clearly warning tutors that saving changes to any section will automatically re-queue their profile for Admin review (status returning to Pending Review). Inside TutorProfileSectionModal, displays a contextual reReviewWarning box before saving, updates saveSectionDraft feedback upon saving to confirm re-review queueing, and updates the approved status card description.
+- **Implementation:** PR #482 - TutorProfileSectionModal.tsx, TutorProfileWorkspace.tsx, TutorProfileStatusCard.ts, and tests updated.
+- **Status:**
+> Re-review alert banner and section modal edit warnings active.
+
+
+### (Task). Admin Direct Approval from Changes-Requested Status [Completed - PR #483]
+- **Summary:** Added 'changes_requested:approved' to ALLOWED_TRANSITIONS in server/admin-monitoring.ts and updated moderationOptions in AdminTutorProfileDetail.tsx to ['approved', 'suspended'], allowing Admins to directly approve a tutor profile whose status is changes_requested without forcing a resubmission cycle.
+- **Implementation:** PR #483 - server/admin-monitoring.ts, client/src/pages/AdminTutorProfileDetail.tsx, and tests updated.
+- **Status:**
+> Admins can now approve profiles directly from changes_requested status.
+
+### (Task). Admin Applicant Rows: Tooltip & Badge for Pending Tutors [Completed - PR #484]
+- **Summary:** Added disabledReason to ApplicantActionOption in shared/admin-applicant-actions.ts to supply an explanatory message ('Profile is pending review. Approve profile first.') when appointing is disabled due to an unapproved profile. Displayed an amber 'Pending Profile' chip next to the applicant's name in AdminTutorRows.tsx when showApplicationStage is true, bound title tooltips to disabled action buttons on desktop, and added a contextual mobile notice ('⚠️ Profile is pending review. Approve profile first.') for touch screen clarity.
+- **Implementation:** PR #484 - shared/admin-applicant-actions.ts, client/src/components/AdminTutorRows.tsx, and tests updated.
+- **Status:**
+> Tooltip reason on disabled action buttons and pending profile badge active in applicant rows.
+
+### (Task). Retain Tutor & Guardian Login OTP Trust Across Normal Logouts [Completed - PR #485]
+- **Summary:** Retained the trusted device login OTP proof cookie (connect-login-2fa) across normal member logouts (auth.logout), mirroring the Admin 2FA behavior. Tutors and Guardians who sign out and sign back in within the Admin-configured trust window (rememberDays, default 30 days) on the same browser are not prompted for OTP again and can sign in directly with their password. Global invalidation remains securely accessible via Admin 'Reset trusted browsers' or member 'Sign out everywhere'.
+- **Implementation:** PR #485 - server/routers.ts, server/auth.logout.test.ts, server/login-two-factor.router.test.ts updated.
+- **Status:**
+> Trusted device login OTP proof retained across logouts within configured rememberDays window.

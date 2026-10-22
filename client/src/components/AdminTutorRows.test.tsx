@@ -195,6 +195,54 @@ describe("AdminTutorRows", () => {
     expect(onAction).toHaveBeenCalledWith(mockTutors[0], "appoint");
   });
 
+  it("renders disabled reason and title for disabled applicant actions on mobile cards", () => {
+    onAPhone();
+    render(
+      <AdminTutorRows
+        tutors={[mockTutors[1]]}
+        caption="Applied Tutors"
+        emptyLabel="None"
+        applicantRowActions={{
+          busy: false,
+          optionsFor: () => [
+            { action: "shortlist", disabled: false },
+            { action: "appoint", disabled: true, disabledReason: "Profile is pending review. Approve profile first." },
+          ],
+          onAction: vi.fn(),
+        }}
+      />
+    );
+
+    const appointBtn = screen.getByRole("button", { name: "Appoint Nusrat Jahan" });
+    expect((appointBtn as HTMLButtonElement).disabled).toBe(true);
+    expect(appointBtn.getAttribute("title")).toBe("Profile is pending review. Approve profile first.");
+    expect(screen.getByText(/Profile is pending review. Approve profile first./)).toBeTruthy();
+  });
+
+  it("displays Pending Profile badge and disabled title in applicant table view", () => {
+    render(
+      <AdminTutorRows
+        tutors={[mockTutors[1]]}
+        caption="Applied Tutors"
+        emptyLabel="None"
+        showApplicationStage={true}
+        applicantRowActions={{
+          busy: false,
+          optionsFor: () => [
+            { action: "shortlist", disabled: false },
+            { action: "appoint", disabled: true, disabledReason: "Profile is pending review. Approve profile first." },
+          ],
+          onAction: vi.fn(),
+        }}
+      />
+    );
+
+    expect(screen.getByText("Pending Profile")).toBeTruthy();
+    const appointBtn = screen.getByRole("button", { name: "Appoint Nusrat Jahan" });
+    expect((appointBtn as HTMLButtonElement).disabled).toBe(true);
+    expect(appointBtn.getAttribute("title")).toBe("Profile is pending review. Approve profile first.");
+  });
+
   it("opens the Quick Peek bottom sheet drawer on tapping the peek button", () => {
     onAPhone();
     render(

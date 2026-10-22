@@ -85,7 +85,7 @@ import {
 } from "./admin-security";
 import { adminNewDevicePush, adminWrongPasswordPush, createFailureStreak } from "./admin-sign-in-alerts";
 import { clearAdminTwoFactorProofCookie, hasAdminTwoFactorProof, isKnownAdminDevice, markAdminDeviceKnown, setAdminTwoFactorProofCookie } from "./admin-two-factor";
-import { clearLoginTwoFactorProofCookie, hasLoginTwoFactorProof, setLoginTwoFactorProofCookie } from "./login-two-factor";
+import { hasLoginTwoFactorProof, setLoginTwoFactorProofCookie } from "./login-two-factor";
 import QRCode from "qrcode";
 import {
   createTutorPortalExpiry,
@@ -247,10 +247,10 @@ async function getAuthenticatedTutorProfileId(userId: number) {
   return profile.tutorId;
 }
 
-async function getApprovedTutorProfileId(userId: number) {
+async function getEligibleTutorProfileId(userId: number) {
   const profile = await db.getTutorProfileByUserId(userId);
-  if (!profile?.tutorId || profile.profileStatus !== "approved") {
-    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Complete and verify your Tutor profile before applying to Job Board listings." });
+  if (!profile?.tutorId || (profile.profileStatus !== "approved" && profile.profileStatus !== "pending")) {
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Complete and submit your Tutor profile before applying to Job Board listings." });
   }
   return profile.tutorId;
 }
@@ -1048,9 +1048,9 @@ export const appRouter = router({
       const isTutor = ctx.user?.role === "tutor";
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      // Keep 30-day Admin 2FA trusted device proof intact across normal logouts.
-      // Global invalidation is performed via 'Sign out everywhere' (sessionsValidFrom).
-      if (ctx.user && ctx.user.role !== "admin") clearLoginTwoFactorProofCookie(ctx.req, ctx.res);
+      // Keep trusted device proofs (Admin 2FA and Tutor/Guardian login OTP) intact across normal logouts.
+      // Signing back in on this browser within the configured trust period (rememberDays) will not re-prompt for OTP.
+      // Global invalidation is performed via 'Sign out everywhere' or Admin 'Reset trusted browsers'.
       return { success: true, globalTutorPortalLogout: isTutor } as const;
     }),
     loginTwoFactorStatus: loginIdentityProcedure.query(async ({ ctx }) => {
@@ -1358,7 +1358,7 @@ export const appRouter = router({
     expressInterest: activeTutorProcedure
       .input(z.object({ tutorJobId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => {
-        const tutorId = await getApprovedTutorProfileId(ctx.user.id);
+        const tutorId = await getEligibleTutorProfileId(ctx.user.id);
         try {
           const outcome = await db.submitTutorJobInterest({ tutorId, tutorJobId: input.tutorJobId });
           void db.notifyTutorAppliedToAdmins({ tutorId, tutorJobId: input.tutorJobId }).catch(() => {});
@@ -1400,7 +1400,15 @@ export const appRouter = router({
       // The schema holds the ceiling; these are the Owner's numbers.
       assertTutorProfileDraftWithinLimits(await db.getSiteLimits(), input);
       try {
-        return await db.saveTutorProfileDraft(ctx.user.id, input);
+        // Check status before save so we know whether to notify admins of re-review.
+        const profileBefore = await db.getTutorProfileByUserId(ctx.user.id);
+        const wasSubmitted = profileBefore?.profileStatus === "pending" || profileBefore?.profileStatus === "approved";
+        const result = await db.saveTutorProfileDraft(ctx.user.id, input);
+        if (wasSubmitted) {
+          // Profile was re-queued for review inside saveTutorProfileDraft; notify admins.
+          void db.notifyTutorRegistrationToAdmins({ userId: ctx.user.id }).catch(() => {});
+        }
+        return result;
       } catch (error) {
         return rethrowProfileValidationError(error, { procedure: "saveProfileDraft", userId: ctx.user.id });
       }

@@ -144,11 +144,19 @@ describe("clearing the sign-in SMS code", () => {
     await expect(caller.auth.verifyLoginTwoFactorCode({ code: "0000" })).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
   });
 
-  it("drops this browser's proof when the person signs out", async () => {
+  it("retains this browser's proof across normal logouts so signing back in does not need OTP again", async () => {
     switchedOn();
-    const { caller, res } = createCaller();
+    dbMocks.checkPhoneVerificationCode.mockResolvedValue({ status: "ok", id: 601 });
+    const { caller, res, setCookies } = createCaller();
+    await caller.auth.verifyLoginTwoFactorCode({ code: "4821" });
+    expect(setCookies["connect-login-2fa"]).toBeTruthy();
+
     await caller.auth.logout();
-    expect(res.clearCookie).toHaveBeenCalledWith("connect-login-2fa", expect.anything());
+    expect(res.clearCookie).not.toHaveBeenCalledWith("connect-login-2fa", expect.anything());
+
+    const { caller: afterLogout } = createCaller(guardian, cookieHeaderFor(setCookies));
+    await expect(afterLogout.auth.loginTwoFactorStatus()).resolves.toMatchObject({ required: true, cleared: true });
+    await expect(afterLogout.guardianProfile.me()).resolves.toMatchObject({ userId: 7 });
   });
 });
 

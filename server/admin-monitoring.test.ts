@@ -8,7 +8,7 @@ describe("Tutor moderation rules", () => {
     expect(validateTutorModerationAction({ from: "pending", to: "suspended", reason: "Identity document needs clarification" })).toEqual({ valid: true });
     expect(validateTutorModerationAction({ from: "approved", to: "suspended", reason: "Repeated policy breach" })).toEqual({ valid: true });
     expect(validateTutorModerationAction({ from: "draft", to: "approved" })).toEqual({ valid: false, reason: "MODERATION_TRANSITION_NOT_ALLOWED" });
-    expect(validateTutorModerationAction({ from: "changes_requested", to: "approved" })).toEqual({ valid: false, reason: "MODERATION_TRANSITION_NOT_ALLOWED" });
+    expect(validateTutorModerationAction({ from: "changes_requested", to: "approved" })).toEqual({ valid: true });
   });
 
   it("requires a meaningful trimmed reason only for changes-requested and suspension actions", () => {
@@ -26,8 +26,8 @@ describe("Tutor moderation rules", () => {
   it("lets an Admin suspend a profile that is waiting on the Tutor's changes, with a reason", () => {
     expect(validateTutorModerationAction({ from: "changes_requested", to: "suspended" })).toEqual({ valid: false, reason: "MODERATION_REASON_REQUIRED" });
     expect(validateTutorModerationAction({ from: "changes_requested", to: "suspended", reason: "The University ID is not genuine" })).toEqual({ valid: true });
-    // Approval still waits for the Tutor to resubmit.
-    expect(validateTutorModerationAction({ from: "changes_requested", to: "approved" })).toEqual({ valid: false, reason: "MODERATION_TRANSITION_NOT_ALLOWED" });
+    // An Admin can directly approve a profile that was in changes_requested.
+    expect(validateTutorModerationAction({ from: "changes_requested", to: "approved" })).toEqual({ valid: true });
   });
 
   it("lets an Admin lift a suspension, straight back to approved or back to the Tutor for changes", () => {
