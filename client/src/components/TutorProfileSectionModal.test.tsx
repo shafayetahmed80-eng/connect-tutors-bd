@@ -95,4 +95,21 @@ describe("TutorProfileSectionModal", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("renders reReviewWarning when provided", () => {
+    renderModal({ reReviewWarning: "Notice: Saving changes to this section will re-queue your profile for Admin review." });
+
+    expect(screen.getByRole("note")).toBeTruthy();
+    expect(screen.getByText(/Saving changes to this section will re-queue your profile for Admin review/)).toBeTruthy();
+  });
+
+  it("renders validation notice when provided", () => {
+    renderModal({
+      notice: { tone: "error", text: "Please fix the required fields", details: ["Passing year is required"] },
+    });
+
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(screen.getByText("Please fix the required fields")).toBeTruthy();
+    expect(screen.getByText("Passing year is required")).toBeTruthy();
+  });
 });

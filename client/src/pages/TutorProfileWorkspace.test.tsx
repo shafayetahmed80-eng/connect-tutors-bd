@@ -754,6 +754,13 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     expect(returnToSelectedJob).toHaveBeenCalledOnce();
   });
 
+  it("renders a re-review notice banner when an approved profile is viewed in the workspace", () => {
+    render(<TutorProfileWorkspace profile={{ ...completeProfile, profileStatus: "approved" }} onboardingFallback={null} />);
+
+    expect(screen.getByRole("note", { name: "Profile re-review notice" })).toBeTruthy();
+    expect(screen.getByText(/Your profile is approved\. Any changes you save will automatically be sent to the Admin team for re-review/)).toBeTruthy();
+  });
+
   it("previews the whole profile from the rail and returns to the tabbed editor", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);

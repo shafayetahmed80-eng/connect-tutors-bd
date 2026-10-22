@@ -33,7 +33,7 @@ export function getTutorProfileStatusCard(input: TutorProfileStatusCardInput): T
     }
     return {
       title: "Profile approved",
-      description: "Your profile is approved and ready for Tutor opportunities.",
+      description: "Your profile is approved and ready for Tutor opportunities. Any updates you save will be sent for Admin re-review.",
       action: "none",
       showProgress: false,
       tone: "success",
