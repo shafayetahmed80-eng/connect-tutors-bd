@@ -1,4 +1,4 @@
-import { ArrowRight } from "lucide-react";
+import { AlertCircle, ArrowRight } from "lucide-react";
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
@@ -9,6 +9,7 @@ type TutorProfileSectionModalProps = {
   title: string;
   submitting?: boolean;
   notice?: { tone: "error" | "success"; text: string; details?: string[] } | null;
+  reReviewWarning?: string | null;
   onClose: () => void;
   onSubmit: () => void;
   children: React.ReactNode;
@@ -25,11 +26,17 @@ function photoCropperIsOpen(): boolean {
  * Cancel / Submit footer; everything else (surface, motion, focus, scroll
  * lock, the yield to the photo cropper) is the shell's.
  */
-export function TutorProfileSectionModal({ title, submitting = false, notice, onClose, onSubmit, children }: TutorProfileSectionModalProps) {
+export function TutorProfileSectionModal({ title, submitting = false, notice, reReviewWarning, onClose, onSubmit, children }: TutorProfileSectionModalProps) {
   return (
     <Modal size="panel" onClose={onClose} busy={submitting} isSuspended={photoCropperIsOpen}>
       <ModalHeader title={title} eyebrow="Edit section" srPrefix="Edit" />
       <ModalBody className="space-y-3.5">
+        {reReviewWarning ? (
+          <div role="note" className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50/90 p-3 text-xs leading-5 text-amber-900">
+            <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden="true" />
+            <p>{reReviewWarning}</p>
+          </div>
+        ) : null}
         {notice ? <div role={notice.tone === "error" ? "alert" : "status"} aria-live="polite" className={`mb-4 rounded-xl border px-4 py-3 text-sm font-medium ${notice.tone === "error" ? "border-j-err-border bg-j-err-wash text-tp-danger-ink" : "border-j-ok-border bg-j-ok-wash text-j-ok"}`}>
           <p>{notice.text}</p>
           {notice.details?.length ? <ul className="mt-2 list-disc space-y-1 pl-5 font-normal">{notice.details.map(detail => <li key={detail}>{detail}</li>)}</ul> : null}

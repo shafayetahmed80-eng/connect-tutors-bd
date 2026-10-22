@@ -957,7 +957,13 @@ function TutorProfileWorkspaceBody({
       clearTutorOnboardingDraft();
       setSavedDraftFingerprint(getProfileDraftFingerprint(form));
       await Promise.all([utils.tutor.getMyProfile.invalidate(), utils.tutor.getDashboardStats.invalidate()]);
-      setFeedback({ type: "success", message: `${editTargetTitle(target, resolveSlot)} saved. Continue with the next section when ready.` });
+      const wasApproved = profile?.profileStatus === "approved";
+      setFeedback({
+        type: "success",
+        message: wasApproved
+          ? `${editTargetTitle(target, resolveSlot)} saved. Your profile has been re-queued for Admin review.`
+          : `${editTargetTitle(target, resolveSlot)} saved. Continue with the next section when ready.`,
+      });
       setJustSaved(target);
       return true;
     } catch (error) {
@@ -1491,6 +1497,13 @@ function TutorProfileWorkspaceBody({
       title={editTargetTitle(editingGroupId ?? editingSection, resolveSlot)}
       submitting={saveDraftMutation.isPending}
       notice={feedback ? { tone: feedback.type, text: feedback.message, details: feedback.details } : null}
+      reReviewWarning={
+        profile?.profileStatus === "approved"
+          ? "Notice: Saving changes to this section will re-queue your profile for Admin review (Status will return to Pending Review)."
+          : profile?.profileStatus === "pending"
+            ? "Notice: Any updates saved will be included in your pending Admin review."
+            : null
+      }
       onClose={closeSectionEditor}
       onSubmit={() => void submitSectionModal()}
     >{renderEditTargetFields(editingGroupId ?? editingSection)}</TutorProfileSectionModal> : null}
@@ -1537,6 +1550,17 @@ function TutorProfileWorkspaceBody({
           </p>
           <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-j-warn-ink">{profile.moderationNote}</p>
         </section> : null}
+
+        {profile?.profileStatus === "approved" ? (
+          <section role="note" aria-label="Profile re-review notice" className="rounded-xl border border-amber-200/90 bg-amber-50/80 px-4 py-3 text-amber-950">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden="true" />
+              <div className="text-xs leading-5">
+                <span className="font-bold">Profile Edit Notice:</span> Your profile is approved. Any changes you save will automatically be sent to the Admin team for re-review (status will return to Pending Review).
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         {feedback && !editingSection ? <div role={feedback.type === "success" ? "status" : "alert"} aria-live="polite" className={`rounded-xl border px-4 py-3 text-sm font-medium ${feedback.type === "success" ? "border-j-ok-border bg-j-ok-wash text-j-ok" : "border-j-err-border bg-j-err-wash text-tp-danger-ink"}`}>
           <p>{feedback.message}</p>
