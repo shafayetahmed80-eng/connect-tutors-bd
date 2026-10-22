@@ -20,6 +20,15 @@ describe("what an Admin can do from Applied Tutors", () => {
 
   it("holds Appoint for a Tutor whose profile is not approved", () => {
     expect(actions({ tutorApproved: false })).toEqual(["shortlist", "appoint (disabled)"]);
+    const options = applicantActions({
+      tuitionStage: "live",
+      applicationStatus: "interested",
+      holdsTuition: false,
+      tutorApproved: false,
+    });
+    const appoint = options.find(o => o.action === "appoint");
+    expect(appoint?.disabled).toBe(true);
+    expect(appoint?.disabledReason).toBe("Profile is pending review. Approve profile first.");
   });
 
   it("on an Appointed tuition: confirms or removes its Tutor, and still shortlists the rest without appointing them", () => {
