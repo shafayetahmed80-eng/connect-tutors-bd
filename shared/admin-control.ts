@@ -76,3 +76,39 @@ export function newTuitionTutorAlertsEnabledFromStored(value: number | null | un
   if (value === 1) return true;
   return DEFAULT_NEW_TUITION_TUTOR_ALERTS_ENABLED;
 }
+/**
+ * When a Tutor is eligible to send messages in Live Chat to the Admin team.
+ * - "appointed": Tutor has at least one tuition in "matched" (appointed or confirmed) status.
+ * - "approved": Tutor's profile status is "approved".
+ * - "all": Any logged-in registered tutor can chat.
+ * - "disabled": Chat is temporarily disabled for all tutors.
+ */
+export type TutorChatAccessMode = "appointed" | "approved" | "all" | "disabled";
+
+export const tutorChatAccessModeValues = [
+  "appointed",
+  "approved",
+  "all",
+  "disabled",
+] as const satisfies readonly TutorChatAccessMode[];
+
+export const TUTOR_CHAT_ACCESS_MODE_ID = "control.tutorChatAccessMode";
+
+export const DEFAULT_TUTOR_CHAT_ACCESS_MODE: TutorChatAccessMode = "appointed";
+
+export function tutorChatAccessModeFromStored(value: number | null | undefined): TutorChatAccessMode {
+  if (value === 0) return "appointed";
+  if (value === 1) return "approved";
+  if (value === 2) return "all";
+  if (value === 3) return "disabled";
+  return DEFAULT_TUTOR_CHAT_ACCESS_MODE;
+}
+
+export function storedTutorChatAccessMode(mode: TutorChatAccessMode): number {
+  switch (mode) {
+    case "appointed": return 0;
+    case "approved": return 1;
+    case "all": return 2;
+    case "disabled": return 3;
+  }
+}

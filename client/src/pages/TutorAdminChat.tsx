@@ -1,4 +1,6 @@
 import { BrandMark, brandWordmark } from "@/components/BrandMark";
+import { WhatsAppIcon } from "@/components/WhatsAppIcon";
+import type { TutorChatAccessMode } from "@shared/admin-control";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useTutorChatSocket, useOnlineStatus, type ChatConnectionStatus } from "@/hooks/useChatSocket";
@@ -64,6 +66,29 @@ function AttachmentView({ url, contentType, own, onImageClick }: { url: string; 
  * Tutor only ever sees the sender as "Admin" - never a specific person - the
  * same "any Admin" shape as a bulk notice.
  */
+const ineligibleChatNotices: Record<TutorChatAccessMode, { titleBn: string; descBn: string; subtitleEn: string }> = {
+  appointed: {
+    titleBn: "শুধুমাত্র নিয়োগপ্রাপ্ত টিউটরদের জন্য উন্মুক্ত",
+    descBn: "কমপক্ষে একটি টিউশন নিয়োগ (Appointed) হওয়ার পর লাইভ চ্যাটে মেসেজ পাঠানো যাবে।",
+    subtitleEn: "You can message the Admin team once at least one of your tuitions has been appointed.",
+  },
+  approved: {
+    titleBn: "প্রোফাইল অনুমোদনের অপেক্ষায়",
+    descBn: "আপনার টিউটর প্রোফাইল অ্যাডমিন কর্তৃক অনুমোদিত (Approved) হলে লাইভ চ্যাটে মেসেজ পাঠানো যাবে।",
+    subtitleEn: "You can message the Admin team once your tutor profile has been approved.",
+  },
+  all: {
+    titleBn: "লাইভ চ্যাট সাময়িক সীমিত",
+    descBn: "বর্তমানে লাইভ চ্যাটে মেসেজ পাঠানো সীমিত রয়েছে।",
+    subtitleEn: "You can message the Admin team once chat access is enabled.",
+  },
+  disabled: {
+    titleBn: "লাইভ চ্যাট সাময়িকভাবে বন্ধ",
+    descBn: "টিউটর লাইভ চ্যাট বর্তমানে সাময়িকভাবে বন্ধ রয়েছে।",
+    subtitleEn: "Tutor live chat is temporarily disabled by admin.",
+  },
+};
+
 export function TutorAdminChatPanel() {
   const utils = trpc.useUtils();
   const threadQuery = trpc.tutorAdminChat.thread.useQuery(undefined, { refetchInterval: CHAT_POLL_MS });
@@ -156,6 +181,7 @@ export function TutorAdminChatPanel() {
   }, [messages, visibleCount, query]);
 
   const eligible = threadQuery.data?.eligible ?? false;
+  const chatAccessMode: TutorChatAccessMode = threadQuery.data?.mode ?? "appointed";
   const adminLastReadAt = threadQuery.data?.adminLastReadAt ? new Date(threadQuery.data.adminLastReadAt).getTime() : null;
   const lastOwnMessage = [...allMessages].reverse().find(message => message.senderRole === "tutor" && !deletedMessageIds.has(message.id));
   const lastOwnMessageId = lastOwnMessage?.id;
@@ -654,7 +680,37 @@ export function TutorAdminChatPanel() {
             )}
           </form>
         </div>
-      : <p className="border-t border-[#dce9f1] p-4 text-center text-sm text-j-ink-muted">You can message the Admin team once at least one of your tuitions has been appointed.</p>}
+      : <div className="border-t border-[#dce9f1] bg-j-surface-sunken/40 p-4 text-center">
+          <div className="mx-auto max-w-lg space-y-1.5">
+            <p className="text-sm font-bold text-j-ink-strong">
+              {ineligibleChatNotices[chatAccessMode]?.titleBn ?? ineligibleChatNotices.appointed.titleBn}
+            </p>
+            <p className="text-xs leading-relaxed text-j-ink-soft">
+              {ineligibleChatNotices[chatAccessMode]?.descBn ?? ineligibleChatNotices.appointed.descBn}
+            </p>
+            <p className="text-2xs text-j-ink-faint">
+              {ineligibleChatNotices[chatAccessMode]?.subtitleEn ?? ineligibleChatNotices.appointed.subtitleEn}
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+              <a
+                href={contact.whatsapp("আসসালামু আলাইকুম, আমি টিউটর সাপোর্ট চাই।")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 text-xs font-semibold text-emerald-800 transition-colors hover:bg-emerald-100"
+              >
+                <WhatsAppIcon className="size-3.5 fill-emerald-600" />
+                WhatsApp-এ মেসেজ দিন
+              </a>
+              <a
+                href={contact.tel}
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-j-border bg-white px-3 text-xs font-semibold text-j-ink-strong transition-colors hover:bg-j-surface-sunken"
+              >
+                <Phone className="size-3.5 text-j-accent" />
+                হেল্পলাইনে কল করুন ({contact.display})
+              </a>
+            </div>
+          </div>
+        </div>}
     <ImageLightboxModal url={lightboxUrl} onClose={() => setLightboxUrl(null)} title="Attachment Preview" />
     {shareJobModalOpen ? (
       <ShareJobModal

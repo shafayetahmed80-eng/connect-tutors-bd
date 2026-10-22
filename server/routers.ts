@@ -34,7 +34,12 @@ import { LARGE_CATALOG_PAGE_SIZE } from "@shared/option-catalogs";
 import { LOCATION_PAGE_SIZE, cannotSitInsideMessage, type LocationType } from "@shared/location-catalog";
 import { MAX_SALARY_AMOUNT } from "@shared/salary-amount";
 import { siteLimitCeiling, siteLimitIds as siteLimitIdValues, findSiteLimit } from "@shared/site-limits";
-import { guardianApplicantVisibilityValues, TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MAX, TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MIN } from "@shared/admin-control";
+import {
+  guardianApplicantVisibilityValues,
+  tutorChatAccessModeValues,
+  TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MAX,
+  TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MIN,
+} from "@shared/admin-control";
 import { ADMIN_PROFILE_LIMITS, adminNationalityOptions, adminReligionOptions } from "@shared/admin-profile";
 import { getAdminProfileImageUrls, getAdminProfilePhotoUrl } from "./admin-profile-image";
 import { SCHOOL_BULK_IMPORT_MAX, SCHOOL_NAME_MAX, SCHOOL_NAME_MIN, schoolCollegeDivisionValues } from "@shared/school-colleges";
@@ -1948,6 +1953,9 @@ export const appRouter = router({
     setGuardianApplicantVisibility: ownerAdminProcedure
       .input(z.object({ visibility: z.enum(guardianApplicantVisibilityValues) }))
       .mutation(({ input }) => db.setGuardianApplicantVisibility(input)),
+    setTutorChatAccessMode: ownerAdminProcedure
+      .input(z.object({ mode: z.enum(tutorChatAccessModeValues) }))
+      .mutation(({ input }) => db.setTutorChatAccessMode(input.mode)),
     setTutorGuardianLoginOtpEnabled: ownerAdminProcedure
       .input(z.object({ enabled: z.boolean() }))
       .mutation(({ input }) => db.setTutorGuardianLoginOtpEnabled(input.enabled)),

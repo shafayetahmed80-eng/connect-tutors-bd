@@ -4,9 +4,22 @@ import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
-  data: { guardianApplicantVisibility: "all", appointmentRequestsOutsideShortlist: 0, tutorGuardianLoginOtp: { enabled: false, rememberDays: 30 }, newTuitionTutorAlerts: { enabled: true } } as { guardianApplicantVisibility: "all" | "shortlisted"; appointmentRequestsOutsideShortlist: number; tutorGuardianLoginOtp?: { enabled: boolean; rememberDays: number }; newTuitionTutorAlerts?: { enabled: boolean } },
+  data: {
+    guardianApplicantVisibility: "all",
+    appointmentRequestsOutsideShortlist: 0,
+    tutorGuardianLoginOtp: { enabled: false, rememberDays: 30 },
+    newTuitionTutorAlerts: { enabled: true },
+    tutorChatAccessMode: "appointed",
+  } as {
+    guardianApplicantVisibility: "all" | "shortlisted";
+    appointmentRequestsOutsideShortlist: number;
+    tutorGuardianLoginOtp?: { enabled: boolean; rememberDays: number };
+    newTuitionTutorAlerts?: { enabled: boolean };
+    tutorChatAccessMode?: "appointed" | "approved" | "all" | "disabled";
+  },
   mutate: vi.fn(),
   setAlertsEnabled: vi.fn(),
+  setChatAccessMode: vi.fn(),
   setOtpEnabled: vi.fn(),
   setOtpDays: vi.fn(),
   resetTrust: vi.fn(),
@@ -26,6 +39,7 @@ vi.mock("@/lib/trpc", () => ({
       get: { useQuery: () => ({ data: state.data, isLoading: false, isError: false }) },
       setGuardianApplicantVisibility: { useMutation: () => ({ mutate: state.mutate, isPending: false }) },
       setNewTuitionTutorAlertsEnabled: { useMutation: () => ({ mutate: state.setAlertsEnabled, isPending: false }) },
+      setTutorChatAccessMode: { useMutation: () => ({ mutate: state.setChatAccessMode, isPending: false }) },
       setTutorGuardianLoginOtpEnabled: { useMutation: () => ({ mutate: state.setOtpEnabled, isPending: false }) },
       setTutorGuardianLoginOtpDays: { useMutation: () => ({ mutate: state.setOtpDays, isPending: false }) },
       resetTutorGuardianLoginTrust: { useMutation: () => ({ mutate: state.resetTrust, isPending: false }) },
@@ -47,8 +61,50 @@ import AdminControlEditor from "./AdminControlEditor";
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-  state.data = { guardianApplicantVisibility: "all", appointmentRequestsOutsideShortlist: 0, tutorGuardianLoginOtp: { enabled: false, rememberDays: 30 }, newTuitionTutorAlerts: { enabled: true } };
+  state.data = {
+    guardianApplicantVisibility: "all",
+    appointmentRequestsOutsideShortlist: 0,
+    tutorGuardianLoginOtp: { enabled: false, rememberDays: 30 },
+    newTuitionTutorAlerts: { enabled: true },
+    tutorChatAccessMode: "appointed",
+  };
   state.overrides = [];
+});
+
+describe("the Tutor live chat access switch", () => {
+  const group = () => within(screen.getByRole("radiogroup", { name: "Tutor Live Chat Access (টিউটর লাইভ চ্যাট পারমিশন)" }));
+
+  it("marks the mode in force", () => {
+    render(<AdminControlEditor />);
+
+    expect(group().getByRole("radio", { name: "নিয়োগপ্রাপ্ত (Appointed)" }).getAttribute("aria-checked")).toBe("true");
+    expect(group().getByRole("radio", { name: /অনুমোদিত/i }).getAttribute("aria-checked")).toBe("false");
+    expect(group().getByRole("radio", { name: /সকল টিউটর/i }).getAttribute("aria-checked")).toBe("false");
+    expect(group().getByRole("radio", { name: /সাময়িক বন্ধ/i }).getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("changes the mode when another option is picked, and does nothing for the mode already in force", () => {
+    render(<AdminControlEditor />);
+
+    fireEvent.click(group().getByRole("radio", { name: /নিয়োগপ্রাপ্ত/i }));
+    expect(state.setChatAccessMode).not.toHaveBeenCalled();
+
+    fireEvent.click(group().getByRole("radio", { name: /অনুমোদিত/i }));
+    expect(state.setChatAccessMode).toHaveBeenCalledWith({ mode: "approved" });
+
+    fireEvent.click(group().getByRole("radio", { name: /সকল টিউটর/i }));
+    expect(state.setChatAccessMode).toHaveBeenCalledWith({ mode: "all" });
+
+    fireEvent.click(group().getByRole("radio", { name: /সাময়িক বন্ধ/i }));
+    expect(state.setChatAccessMode).toHaveBeenCalledWith({ mode: "disabled" });
+  });
+
+  it("defaults to appointed when the Owner has never set it", () => {
+    state.data = { guardianApplicantVisibility: "all", appointmentRequestsOutsideShortlist: 0 };
+    render(<AdminControlEditor />);
+
+    expect(group().getByRole("radio", { name: /নিয়োগপ্রাপ্ত/i }).getAttribute("aria-checked")).toBe("true");
+  });
 });
 
 describe("the new tuition alerts switch", () => {

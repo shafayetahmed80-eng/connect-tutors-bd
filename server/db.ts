@@ -17,20 +17,25 @@ import { normalizeSchoolName, SCHOOL_CREATE_LIMIT_PER_TUTOR, SCHOOL_SEARCH_LIMIT
 import {
   DEFAULT_GUARDIAN_APPLICANT_VISIBILITY,
   DEFAULT_NEW_TUITION_TUTOR_ALERTS_ENABLED,
+  DEFAULT_TUTOR_CHAT_ACCESS_MODE,
   DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_DAYS,
   DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_ENABLED,
   GUARDIAN_APPLICANT_VISIBILITY_ID,
   NEW_TUITION_TUTOR_ALERTS_ENABLED_ID,
+  TUTOR_CHAT_ACCESS_MODE_ID,
   TUTOR_GUARDIAN_LOGIN_OTP_DAYS_ID,
   TUTOR_GUARDIAN_LOGIN_OTP_ENABLED_ID,
   TUTOR_GUARDIAN_LOGIN_OTP_EPOCH_ID,
   guardianApplicantVisibilityFromStored,
   newTuitionTutorAlertsEnabledFromStored,
   storedGuardianApplicantVisibility,
+  storedTutorChatAccessMode,
+  tutorChatAccessModeFromStored,
   tutorGuardianLoginOtpDaysFromStored,
   tutorGuardianLoginOtpEnabledFromStored,
   tutorGuardianLoginOtpEpochFromStored,
   type GuardianApplicantVisibility,
+  type TutorChatAccessMode,
 } from "@shared/admin-control";
 import {
   defaultTutorProfileFieldConfig,
@@ -6910,10 +6915,56 @@ async function tutorHasAppointedOrLaterTuition(database: NonNullable<Awaited<Ret
   return Boolean(row);
 }
 
+async function tutorHasApprovedProfile(database: NonNullable<Awaited<ReturnType<typeof getDb>>>, tutorId: string) {
+  const [row] = await database
+    .select({ id: tutors.id })
+    .from(tutors)
+    .where(and(eq(tutors.id, tutorId), eq(tutors.profileStatus, "approved")))
+    .limit(1);
+  return Boolean(row);
+}
+
+async function tutorHasAdminInitiatedChatMessage(database: NonNullable<Awaited<ReturnType<typeof getDb>>>, tutorId: string) {
+  const [row] = await database
+    .select({ id: tutorAdminChatMessages.id })
+    .from(tutorAdminChatMessages)
+    .innerJoin(tutorAdminChatThreads, eq(tutorAdminChatThreads.id, tutorAdminChatMessages.threadId))
+    .where(and(
+      eq(tutorAdminChatThreads.tutorId, tutorId),
+      eq(tutorAdminChatMessages.senderRole, "admin"),
+    ))
+    .limit(1);
+  return Boolean(row);
+}
+
+export async function checkTutorAdminChatEligibility(
+  database: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  tutorId: string
+): Promise<{ eligible: boolean; mode: TutorChatAccessMode; adminInitiatedBypass: boolean }> {
+  const mode = await getTutorChatAccessMode();
+  const hasAdminMessage = await tutorHasAdminInitiatedChatMessage(database, tutorId);
+  if (hasAdminMessage) {
+    return { eligible: true, mode, adminInitiatedBypass: true };
+  }
+  if (mode === "disabled") {
+    return { eligible: false, mode, adminInitiatedBypass: false };
+  }
+  if (mode === "all") {
+    return { eligible: true, mode, adminInitiatedBypass: false };
+  }
+  if (mode === "approved") {
+    const isApproved = await tutorHasApprovedProfile(database, tutorId);
+    return { eligible: isApproved, mode, adminInitiatedBypass: false };
+  }
+  const isAppointed = await tutorHasAppointedOrLaterTuition(database, tutorId);
+  return { eligible: isAppointed, mode, adminInitiatedBypass: false };
+}
+
 export async function getTutorAdminChatEligibility(input: { tutorId: string }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  return { eligible: await tutorHasAppointedOrLaterTuition(database, input.tutorId) };
+  const { eligible, mode, adminInitiatedBypass } = await checkTutorAdminChatEligibility(database, input.tutorId);
+  return { eligible, mode, adminInitiatedBypass };
 }
 
 async function resolveChatAttachmentUrl(attachmentKey: string | null) {
@@ -6925,9 +6976,9 @@ async function resolveChatAttachmentUrl(attachmentKey: string | null) {
 export async function getTutorAdminChatThread(input: { tutorId: string }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  const eligible = await tutorHasAppointedOrLaterTuition(database, input.tutorId);
+  const { eligible, mode } = await checkTutorAdminChatEligibility(database, input.tutorId);
   const [thread] = await database.select().from(tutorAdminChatThreads).where(eq(tutorAdminChatThreads.tutorId, input.tutorId));
-  if (!thread) return { messages: [], tutorLastReadAt: null, adminLastReadAt: null, eligible };
+  if (!thread) return { messages: [], tutorLastReadAt: null, adminLastReadAt: null, eligible, mode };
   const cutoff = new Date(Date.now() - TUTOR_ADMIN_CHAT_RETENTION_MS);
   const rows = await database
     .select({
@@ -6948,7 +6999,7 @@ export async function getTutorAdminChatThread(input: { tutorId: string }) {
     const { attachmentKey, tutorReactedAt, adminReactedAt, ...rest } = row;
     return { ...rest, attachmentUrl: await resolveChatAttachmentUrl(attachmentKey), tutorReacted: Boolean(tutorReactedAt), adminReacted: Boolean(adminReactedAt) };
   }));
-  return { messages, tutorLastReadAt: thread.tutorLastReadAt, adminLastReadAt: thread.adminLastReadAt, eligible };
+  return { messages, tutorLastReadAt: thread.tutorLastReadAt, adminLastReadAt: thread.adminLastReadAt, eligible, mode };
 }
 
 /** Toggles one side's 👍 on a message - either side may react to any message in their own thread, own or the other's. */
@@ -6988,7 +7039,8 @@ export async function getTutorAdminChatUnreadCount(input: { tutorId: string }) {
 export async function sendTutorAdminChatMessageFromTutor(input: { tutorId: string; body: string; attachmentKey?: string; attachmentContentType?: string }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
-  if (!(await tutorHasAppointedOrLaterTuition(database, input.tutorId))) return { sent: false as const, reason: "not_eligible" as const };
+  const eligibility = await checkTutorAdminChatEligibility(database, input.tutorId);
+  if (!eligibility.eligible) return { sent: false as const, reason: "not_eligible" as const };
   const threadId = await getOrCreateTutorAdminChatThreadId(database, input.tutorId);
   const now = new Date();
   const preview = input.body || (input.attachmentKey ? "📎 Attachment" : "");
@@ -8503,6 +8555,34 @@ function appointmentRequestOutsideShortlistConditions() {
 }
 
 /** The Admin Control page: the switch, and how many waiting requests turning it to "Shortlisted only" would cancel. */
+let tutorChatAccessModeCache: { mode: TutorChatAccessMode; readAt: number } | null = null;
+
+/**
+ * Which tutors may initiate messages in live chat to the Admin team:
+ * "appointed" (default), "approved", "all", or "disabled".
+ */
+export async function getTutorChatAccessMode(options: { fresh?: boolean } = {}): Promise<TutorChatAccessMode> {
+  if (!options.fresh && tutorChatAccessModeCache && Date.now() - tutorChatAccessModeCache.readAt < SITE_LIMIT_CACHE_MS) {
+    return tutorChatAccessModeCache.mode;
+  }
+  const database = await getDb();
+  if (!database) return DEFAULT_TUTOR_CHAT_ACCESS_MODE;
+  const [row] = await database
+    .select({ value: siteLimitsTable.value })
+    .from(siteLimitsTable)
+    .where(eq(siteLimitsTable.limitId, TUTOR_CHAT_ACCESS_MODE_ID))
+    .limit(1);
+  const mode = tutorChatAccessModeFromStored(row ? Number(row.value) : undefined);
+  tutorChatAccessModeCache = { mode, readAt: Date.now() };
+  return mode;
+}
+
+export async function setTutorChatAccessMode(mode: TutorChatAccessMode) {
+  await upsertSiteLimit(TUTOR_CHAT_ACCESS_MODE_ID, storedTutorChatAccessMode(mode));
+  tutorChatAccessModeCache = null;
+  return { mode };
+}
+
 export async function getAdminControl() {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
@@ -8513,7 +8593,8 @@ export async function getAdminControl() {
     .where(and(...appointmentRequestOutsideShortlistConditions()));
   const tutorGuardianLoginOtp = await getTutorGuardianLoginOtpSettings({ fresh: true });
   const newTuitionTutorAlerts = { enabled: await getNewTuitionTutorAlertsEnabled({ fresh: true }) };
-  return { guardianApplicantVisibility, appointmentRequestsOutsideShortlist: Number(outside?.value ?? 0), tutorGuardianLoginOtp, newTuitionTutorAlerts };
+  const tutorChatAccessMode = await getTutorChatAccessMode({ fresh: true });
+  return { guardianApplicantVisibility, appointmentRequestsOutsideShortlist: Number(outside?.value ?? 0), tutorGuardianLoginOtp, newTuitionTutorAlerts, tutorChatAccessMode };
 }
 
 let newTuitionTutorAlertsCache: { enabled: boolean; readAt: number } | null = null;

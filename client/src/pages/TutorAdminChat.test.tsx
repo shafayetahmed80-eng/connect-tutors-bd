@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   messages: [] as any[],
   isLoading: false,
   eligible: true,
+  mode: "appointed" as "appointed" | "approved" | "all" | "disabled",
   adminLastReadAt: null as string | null,
   send: vi.fn(),
   markRead: vi.fn(),
@@ -27,7 +28,7 @@ vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: () => ({ tutorAdminChat: { thread: { invalidate: vi.fn() }, unreadCount: { invalidate: vi.fn() } } }),
     tutorAdminChat: {
-      thread: { useQuery: () => ({ data: { messages: state.messages, tutorLastReadAt: null, adminLastReadAt: state.adminLastReadAt, eligible: state.eligible }, isLoading: state.isLoading }) },
+      thread: { useQuery: () => ({ data: { messages: state.messages, tutorLastReadAt: null, adminLastReadAt: state.adminLastReadAt, eligible: state.eligible, mode: state.mode }, isLoading: state.isLoading }) },
       send: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.send(input); options.onSuccess?.(); }, isPending: false }) },
       markRead: { useMutation: () => ({ mutate: state.markRead, isPending: false }) },
       react: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.react(input); options.onSuccess?.(); }, isPending: false }) },
@@ -44,6 +45,7 @@ afterEach(() => {
   state.messages = [];
   state.isLoading = false;
   state.eligible = true;
+  state.mode = "appointed";
   state.adminLastReadAt = null;
   state.send.mockReset();
   state.markRead.mockReset();
@@ -95,11 +97,31 @@ describe("the Tutor's Admin chat panel", () => {
     expect(screen.getByRole("button", { name: "Send message" })).toHaveProperty("disabled", true);
   });
 
-  it("locks the composer until a tuition has been appointed", () => {
+  it("locks the composer until a tuition has been appointed, showing Bengali notice and contact fallback links", () => {
     state.eligible = false;
+    state.mode = "appointed";
     render(<TutorAdminChatPanel />);
     expect(screen.getByText("You can message the Admin team once at least one of your tuitions has been appointed.")).toBeTruthy();
+    expect(screen.getByText("শুধুমাত্র নিয়োগপ্রাপ্ত টিউটরদের জন্য উন্মুক্ত")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "WhatsApp-এ মেসেজ দিন" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /হেল্পলাইনে কল করুন/i })).toBeTruthy();
     expect(screen.queryByPlaceholderText("Write a message…")).toBeNull();
+  });
+
+  it("shows approved profile notice when ineligible under approved mode", () => {
+    state.eligible = false;
+    state.mode = "approved";
+    render(<TutorAdminChatPanel />);
+    expect(screen.getByText("প্রোফাইল অনুমোদনের অপেক্ষায়")).toBeTruthy();
+    expect(screen.getByText("You can message the Admin team once your tutor profile has been approved.")).toBeTruthy();
+  });
+
+  it("shows disabled notice when ineligible under disabled mode", () => {
+    state.eligible = false;
+    state.mode = "disabled";
+    render(<TutorAdminChatPanel />);
+    expect(screen.getByText("লাইভ চ্যাট সাময়িকভাবে বন্ধ")).toBeTruthy();
+    expect(screen.getByText("Tutor live chat is temporarily disabled by admin.")).toBeTruthy();
   });
 
   it("still shows an Admin-started conversation even while not yet eligible to reply", () => {
