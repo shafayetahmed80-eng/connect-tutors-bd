@@ -548,3 +548,10 @@
 - **Implementation:** PR #482 - TutorProfileSectionModal.tsx, TutorProfileWorkspace.tsx, TutorProfileStatusCard.ts, and tests updated.
 - **Status:**
 > Re-review alert banner and section modal edit warnings active.
+
+
+### (Task). Admin Direct Approval from Changes-Requested Status [Completed - PR #483]
+- **Summary:** Added 'changes_requested:approved' to ALLOWED_TRANSITIONS in server/admin-monitoring.ts and updated moderationOptions in AdminTutorProfileDetail.tsx to ['approved', 'suspended'], allowing Admins to directly approve a tutor profile whose status is changes_requested without forcing a resubmission cycle.
+- **Implementation:** PR #483 - server/admin-monitoring.ts, client/src/pages/AdminTutorProfileDetail.tsx, and tests updated.
+- **Status:**
+> Admins can now approve profiles directly from changes_requested status.
