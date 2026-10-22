@@ -62,7 +62,7 @@ type ModerationTarget = "approved" | "changes_requested" | "suspended";
 const moderationOptions: Record<string, ModerationTarget[]> = {
   draft: [],
   pending: ["approved", "changes_requested", "suspended"],
-  changes_requested: ["suspended"],
+  changes_requested: ["approved", "suspended"],
   approved: ["changes_requested", "suspended"],
   // A suspension can be lifted: reinstated as it was, or sent back for changes.
   suspended: ["approved", "changes_requested"],
