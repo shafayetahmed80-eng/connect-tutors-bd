@@ -515,3 +515,22 @@
 - **স্ট্যাটাস:** চলমান — `shared/policy-pages.ts` আপডেট ও `shared/policy-pages.test.ts` টেস্ট যুক্ত।
 - **প্রম্পট:**
 > প্ল্যাটফর্ম চার্জ ও রিফান্ড পলিসি দেন /terms-conditions-এ যুক্ত করে দেন।
+
+
+### (Task). Tutor Job Board Eligibility: Pending tutors can apply with status badge [Completed - PR #478]
+- **Summary:** Renamed getApprovedTutorProfileId to getEligibleTutorProfileId. Pending-status tutors can now apply on Job Board and see an amber 'Applied (Profile Pending Review)' badge. Post-login routing for pending tutors goes to /tutor/dashboard/jobs.
+- **Implementation:** PR #478 - server/routers.ts, client/src/pages/JobBoard.tsx, client/src/lib/tutorApplyReturn.ts, tests updated.
+- **Status:**
+> Pending tutors can apply on Job Board and see an informational pending badge.
+
+### (Task). Tutor Submission Success: Show success dialog with job eligibility note after profile submit [Completed - PR #479]
+- **Summary:** After submitting profile for review, tutor sees a Bengali celebratory modal confirming submission and showing job board eligibility. CTA button navigates to Job Board.
+- **Implementation:** PR #479 - client/src/components/TutorSubmissionSuccessModal.tsx (new), client/src/pages/TutorProfileWorkspace.tsx, tests added.
+- **Status:**
+> Success modal shown after profile submit with job board CTA.
+
+### (Task). Tutor Profile Re-review on Edit: Re-queue for admin review when pending/approved tutor edits profile [Completed - PR #480]
+- **Summary:** When a tutor (pending or approved status) saves any draft change, profile status resets to 'pending' and admins receive a push notification for re-review. Draft/changes_requested saves are unaffected.
+- **Implementation:** PR #480 - server/db.ts (saveTutorProfileDraft sets pending inside transaction), server/routers.ts (saveProfileDraft fires notifyTutorRegistrationToAdmins), server/tutor-profile.api.test.ts (4 new tests).
+- **Status:**
+> Profile auto-re-queues for admin review on any edit after submission.
