@@ -42,16 +42,16 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
 }
 
 describe("auth.logout", () => {
-  it("clears the session cookie and reports success", async () => {
+  it("clears the session cookie while keeping trusted device OTP proof intact", async () => {
     const { ctx, clearedCookies } = createAuthContext();
     const caller = appRouter.createCaller(ctx);
 
     const result = await caller.auth.logout();
 
     expect(result).toEqual({ success: true, globalTutorPortalLogout: false });
-    expect(clearedCookies).toHaveLength(2);
+    expect(clearedCookies).toHaveLength(1);
     expect(clearedCookies[0]?.name).toBe(COOKIE_NAME);
-    expect(clearedCookies[1]?.name).toBe(LOGIN_TWO_FACTOR_COOKIE_NAME);
+    expect(clearedCookies.some(c => c.name === LOGIN_TWO_FACTOR_COOKIE_NAME)).toBe(false);
     expect(clearedCookies[0]?.options).toMatchObject({
       maxAge: -1,
       secure: true,
