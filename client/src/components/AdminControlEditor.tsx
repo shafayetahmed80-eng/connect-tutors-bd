@@ -3,11 +3,13 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/moda
 import { trpc } from "@/lib/trpc";
 import {
   DEFAULT_NEW_TUITION_TUTOR_ALERTS_ENABLED,
+  DEFAULT_TUTOR_CHAT_ACCESS_MODE,
   DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_DAYS,
   DEFAULT_TUTOR_GUARDIAN_LOGIN_OTP_ENABLED,
   TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MAX,
   TUTOR_GUARDIAN_LOGIN_OTP_DAYS_MIN,
   type GuardianApplicantVisibility,
+  type TutorChatAccessMode,
 } from "@shared/admin-control";
 import { communityLinkSlotId, communityPanels, DEFAULT_COMMUNITY_LINK, isCommunityLink, type CommunityPanel } from "@shared/community";
 import { paymentAccountMethods, paymentAccountSlotId, tuitionPaymentMethodLabels, type PaymentAccountMethod } from "@shared/platform-charge";
@@ -90,6 +92,96 @@ function CommunityLinks() {
  * Whether a new tuition on the Job Board alerts the Tutors it fits - a notice in
  * their bell and a phone alert. Saves as soon as it is picked.
  */
+
+export const tutorChatAccessOptions: ReadonlyArray<{
+  value: TutorChatAccessMode;
+  label: string;
+  badge?: string;
+  description: string;
+}> = [
+  {
+    value: "appointed",
+    label: "নিয়োগপ্রাপ্ত (Appointed)",
+    badge: "ডিফল্ট",
+    description: "কমপক্ষে একটি টিউশনে নিযুক্ত/ম্যাচড হওয়া টিউটররা মেসেজ দিতে পারবেন",
+  },
+  {
+    value: "approved",
+    label: "অনুমোদিত (Approved)",
+    description: "সকল অনুমোদিত প্রোফাইলধারী টিউটররা লাইভ চ্যাটে মেসেজ দিতে পারবেন",
+  },
+  {
+    value: "all",
+    label: "সকল টিউটর (All)",
+    description: "যেকোনো নিবন্ধিত টিউটর লাইভ চ্যাটে মেসেজ দিতে পারবেন",
+  },
+  {
+    value: "disabled",
+    label: "সাময়িক বন্ধ (Disabled)",
+    description: "সকল টিউটরের জন্য লাইভ চ্যাট সাময়িকভাবে বন্ধ থাকবে",
+  },
+];
+
+/**
+ * Which tutors may initiate messages in live chat to the Admin team:
+ * "appointed" (default), "approved", "all", or "disabled".
+ * Admin-initiated messages can always be replied to by the tutor.
+ */
+function TutorChatAccessSwitch({ mode }: { mode: TutorChatAccessMode }) {
+  const utils = trpc.useUtils();
+  const setMode = trpc.adminControl.setTutorChatAccessMode.useMutation({
+    onSuccess: () => { void utils.adminControl.get.invalidate(); toast.success("Saved."); },
+    onError: error => { toast.error(error.message); },
+  });
+
+  return <section className="mt-3 rounded-xl border border-j-border bg-white p-3 shadow-sm">
+    <h2 id="tutor-chat-access-heading" className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">
+      Tutor Live Chat Access (টিউটর লাইভ চ্যাট পারমিশন)
+    </h2>
+    <p className="mt-1 text-xs text-j-ink-muted">
+      টিউটররা কখন অ্যাডমিন টিমের সাথে লাইভ চ্যাটে যোগাযোগ করতে পারবেন তা নিয়ন্ত্রণ করুন।
+    </p>
+
+    <div role="radiogroup" aria-labelledby="tutor-chat-access-heading" className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+      {tutorChatAccessOptions.map(option => {
+        const selected = option.value === mode;
+        return <button
+          key={option.value}
+          type="button"
+          role="radio"
+          aria-label={option.label}
+          aria-checked={selected}
+          disabled={setMode.isPending}
+          onClick={() => { if (mode !== option.value) setMode.mutate({ mode: option.value }); }}
+          className={`relative flex flex-col items-start rounded-xl border p-3 text-left transition-all disabled:opacity-60 ${
+            selected
+              ? "border-j-accent bg-blue-50/50 shadow-sm ring-1 ring-j-accent"
+              : "border-j-border bg-white hover:border-j-ink-faint hover:bg-j-surface-sunken"
+          }`}
+        >
+          <div className="flex w-full items-center justify-between gap-1.5">
+            <span className={`text-sm font-bold ${selected ? "text-j-accent" : "text-j-ink-strong"}`}>
+              {option.label}
+            </span>
+            {option.badge ? (
+              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-3xs font-semibold text-blue-700">
+                {option.badge}
+              </span>
+            ) : null}
+          </div>
+          <span className="mt-1 text-xs leading-relaxed text-j-ink-soft">
+            {option.description}
+          </span>
+        </button>;
+      })}
+    </div>
+
+    <div className="mt-2.5 rounded-lg border border-sky-100 bg-sky-50/70 p-2 text-xs text-sky-900">
+      <span className="font-semibold">💡 অ্যাডমিন রিপ্লাই বাইপাস:</span> অ্যাডমিন যদি কোনো টিউটরকে আগে মেসেজ পাঠান, তবে মোড যাই থাকুক না কেন টিউটর তাৎক্ষণিকভাবে উত্তর দিতে পারবেন।
+    </div>
+  </section>;
+}
+
 function NewTuitionAlertsSwitch({ enabled }: { enabled: boolean }) {
   const utils = trpc.useUtils();
   const setEnabled = trpc.adminControl.setNewTuitionTutorAlertsEnabled.useMutation({
@@ -312,6 +404,8 @@ export default function AdminControlEditor() {
     </section>
 
     <NewTuitionAlertsSwitch enabled={control.data.newTuitionTutorAlerts?.enabled ?? DEFAULT_NEW_TUITION_TUTOR_ALERTS_ENABLED} />
+
+    <TutorChatAccessSwitch mode={control.data.tutorChatAccessMode ?? DEFAULT_TUTOR_CHAT_ACCESS_MODE} />
 
     <LoginCodeSettings settings={control.data.tutorGuardianLoginOtp} />
 

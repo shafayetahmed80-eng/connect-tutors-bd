@@ -9,6 +9,7 @@ import {
   addTutorAdminChatNote,
   createChatQuickReply,
   deleteChatQuickReply,
+  getAdminControl,
   getDb,
   getTutorAdminChatEligibility,
   getTutorAdminChatStats,
@@ -21,6 +22,7 @@ import {
   reopenTutorAdminChatThread,
   sendTutorAdminChatMessageFromAdmin,
   sendTutorAdminChatMessageFromTutor,
+  setTutorChatAccessMode,
   subscribeAdminToChatPush,
   toggleTutorAdminChatMessageReaction,
   unsubscribeAdminFromChatPush,
@@ -91,6 +93,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await setTutorChatAccessMode("appointed");
   const database = await getDb();
   if (!database) return;
   await database.delete(tutorJobInterests).where(eq(tutorJobInterests.tutorJobId, tutorJobId));
@@ -138,22 +141,29 @@ describe("the Tutor-Admin chat, against the real database", () => {
     await expect(getTutorAdminChatUnreadCount({ tutorId })).resolves.toEqual({ unreadCount: 0 });
   });
 
-  it("only lets a Tutor with an appointed-or-later tuition send", async () => {
-    await expect(getTutorAdminChatEligibility({ tutorId })).resolves.toEqual({ eligible: true });
-    await expect(getTutorAdminChatEligibility({ tutorId: ineligibleTutorId })).resolves.toEqual({ eligible: false });
+  it("only lets a Tutor with an appointed-or-later tuition send under default appointed mode", async () => {
+    await expect(getTutorAdminChatEligibility({ tutorId })).resolves.toEqual({ eligible: true, mode: "appointed", adminInitiatedBypass: false });
+    await expect(getTutorAdminChatEligibility({ tutorId: ineligibleTutorId })).resolves.toEqual({ eligible: false, mode: "appointed", adminInitiatedBypass: false });
 
     await expect(sendTutorAdminChatMessageFromTutor({ tutorId: ineligibleTutorId, body: "Hi" })).resolves.toEqual({ sent: false, reason: "not_eligible" });
     expect(chatWsMocks.notifyAdminsOfChatMessage).not.toHaveBeenCalled();
 
     const thread = await getTutorAdminChatThread({ tutorId: ineligibleTutorId });
     expect(thread.eligible).toBe(false);
+    expect(thread.mode).toBe("appointed");
     expect(thread.messages).toEqual([]);
   });
 
-  it("still lets an Admin message a Tutor first, before any tuition is appointed", async () => {
+  it("still lets an Admin message a Tutor first, and then the Tutor can reply via admin-initiated bypass", async () => {
     await expect(sendTutorAdminChatMessageFromAdmin({ tutorId: ineligibleTutorId, body: "Welcome!", adminUserId })).resolves.toEqual({ sent: true });
     const thread = await getTutorAdminChatThread({ tutorId: ineligibleTutorId });
     expect(thread.messages.map(message => message.body)).toEqual(["Welcome!"]);
+    expect(thread.eligible).toBe(true);
+
+    // Tutor can reply back thanks to the admin-initiated bypass!
+    await expect(getTutorAdminChatEligibility({ tutorId: ineligibleTutorId })).resolves.toEqual({ eligible: true, mode: "appointed", adminInitiatedBypass: true });
+    await expect(sendTutorAdminChatMessageFromTutor({ tutorId: ineligibleTutorId, body: "Thank you!" })).resolves.toEqual({ sent: true });
+
     // Clean up: this test's own thread, on the tutor the other tests never touch.
     const database = await getDb();
     if (database) {
@@ -162,6 +172,26 @@ describe("the Tutor-Admin chat, against the real database", () => {
         await database.delete(tutorAdminChatMessages).where(eq(tutorAdminChatMessages.threadId, ineligibleThread.id));
         await database.delete(tutorAdminChatThreads).where(eq(tutorAdminChatThreads.id, ineligibleThread.id));
       }
+    }
+  });
+
+  it("dynamically honors tutor chat access modes configured in Admin Control", async () => {
+    try {
+      // 1. "all" mode: ineligible tutor can chat
+      await setTutorChatAccessMode("all");
+      await expect(getTutorAdminChatEligibility({ tutorId: ineligibleTutorId })).resolves.toEqual({ eligible: true, mode: "all", adminInitiatedBypass: false });
+
+      // 2. "disabled" mode: even appointed tutor cannot chat (unless admin-initiated)
+      await setTutorChatAccessMode("disabled");
+      await expect(getTutorAdminChatEligibility({ tutorId })).resolves.toEqual({ eligible: false, mode: "disabled", adminInitiatedBypass: false });
+      await expect(sendTutorAdminChatMessageFromTutor({ tutorId, body: "Hello?" })).resolves.toEqual({ sent: false, reason: "not_eligible" });
+
+      // 3. Admin control returns tutorChatAccessMode
+      const control = await getAdminControl();
+      expect(control.tutorChatAccessMode).toBe("disabled");
+    } finally {
+      // Reset back to default
+      await setTutorChatAccessMode("appointed");
     }
   });
 
