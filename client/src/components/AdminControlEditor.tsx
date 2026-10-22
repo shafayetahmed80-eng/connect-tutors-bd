@@ -122,6 +122,46 @@ export const tutorChatAccessOptions: ReadonlyArray<{
   },
 ];
 
+const chatModeConfirmDetails: Record<
+  TutorChatAccessMode,
+  {
+    warningTitle: string;
+    warningDesc: string;
+    warningType: "info" | "warning" | "danger";
+    confirmButtonLabel: string;
+    confirmButtonClass: string;
+  }
+> = {
+  all: {
+    warningTitle: "সতর্কতা: উন্মুক্ত চ্যাট অ্যাক্সেস",
+    warningDesc: "প্ল্যাটফর্মের সকল নিবন্ধিত টিউটর (প্রোফাইল অনুমোদন ছাড়াই) অ্যাডমিন টিমের সাথে চ্যাট করতে পারবেন। এতে মেসেজের পরিমাণ ও ইনবক্সের কাজের চাপ বৃদ্ধি পেতে পারে।",
+    warningType: "warning",
+    confirmButtonLabel: "হ্যাঁ, সকল টিউটরকে চ্যাট অনুমতি দিন",
+    confirmButtonClass: "bg-amber-600 hover:bg-amber-700 text-white",
+  },
+  disabled: {
+    warningTitle: "সতর্কতা: চ্যাট সাময়িক স্থগিত",
+    warningDesc: "সকল টিউটরের জন্য নতুন মেসেজ পাঠানোর ইনপুট বন্ধ হয়ে যাবে। তবে কোনো অ্যাডমিন আগে মেসেজ পাঠালে টিউটর স্বাভাবিকভাবে রিপ্লাই দিতে পারবেন।",
+    warningType: "danger",
+    confirmButtonLabel: "হ্যাঁ, চ্যাট সাময়িক বন্ধ করুন",
+    confirmButtonClass: "bg-red-600 hover:bg-red-700 text-white",
+  },
+  appointed: {
+    warningTitle: "নিয়োগপ্রাপ্ত টিউটর অ্যাক্সেস (ডিফল্ট)",
+    warningDesc: "শুধুমাত্র কমপক্ষে একটি টিউশনে নিযুক্ত (Appointed বা Confirmed) হওয়া টিউটররা লাইভ চ্যাটে মেসেজ পাঠাতে পারবেন। এটি ইনবক্স স্প্যামমুক্ত রাখতে সহায়তা করে।",
+    warningType: "info",
+    confirmButtonLabel: "হ্যাঁ, মোড পরিবর্তন করুন",
+    confirmButtonClass: "bg-j-accent hover:bg-sky-600 text-white",
+  },
+  approved: {
+    warningTitle: "অনুমোদিত প্রোফাইল অ্যাক্সেস",
+    warningDesc: "যেসব টিউটরের প্রোফাইল অ্যাডমিন টিম কর্তৃক ভেরিফায়েড ও অনুমোদিত (Approved) হয়েছে, তারা সবাই সরাসরি লাইভ চ্যাটে যোগাযোগ করতে পারবেন।",
+    warningType: "info",
+    confirmButtonLabel: "হ্যাঁ, মোড পরিবর্তন করুন",
+    confirmButtonClass: "bg-j-accent hover:bg-sky-600 text-white",
+  },
+};
+
 /**
  * Which tutors may initiate messages in live chat to the Admin team:
  * "appointed" (default), "approved", "all", or "disabled".
@@ -129,10 +169,32 @@ export const tutorChatAccessOptions: ReadonlyArray<{
  */
 function TutorChatAccessSwitch({ mode }: { mode: TutorChatAccessMode }) {
   const utils = trpc.useUtils();
+  const [pendingMode, setPendingMode] = useState<TutorChatAccessMode | null>(null);
+
   const setMode = trpc.adminControl.setTutorChatAccessMode.useMutation({
-    onSuccess: () => { void utils.adminControl.get.invalidate(); toast.success("Saved."); },
-    onError: error => { toast.error(error.message); },
+    onSuccess: () => {
+      setPendingMode(null);
+      void utils.adminControl.get.invalidate();
+      toast.success("Saved.");
+    },
+    onError: error => {
+      toast.error(error.message);
+    },
   });
+
+  const handleSelectMode = (target: TutorChatAccessMode) => {
+    if (target === mode || setMode.isPending) return;
+    setPendingMode(target);
+  };
+
+  const handleConfirm = () => {
+    if (!pendingMode || setMode.isPending) return;
+    setMode.mutate({ mode: pendingMode });
+  };
+
+  const currentOption = tutorChatAccessOptions.find(o => o.value === mode);
+  const targetOption = tutorChatAccessOptions.find(o => o.value === pendingMode);
+  const targetDetails = pendingMode ? chatModeConfirmDetails[pendingMode] : null;
 
   return <section className="mt-3 rounded-xl border border-j-border bg-white p-3 shadow-sm">
     <h2 id="tutor-chat-access-heading" className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">
@@ -152,7 +214,7 @@ function TutorChatAccessSwitch({ mode }: { mode: TutorChatAccessMode }) {
           aria-label={option.label}
           aria-checked={selected}
           disabled={setMode.isPending}
-          onClick={() => { if (mode !== option.value) setMode.mutate({ mode: option.value }); }}
+          onClick={() => handleSelectMode(option.value)}
           className={`relative flex flex-col items-start rounded-xl border p-3 text-left transition-all disabled:opacity-60 ${
             selected
               ? "border-j-accent bg-blue-50/50 shadow-sm ring-1 ring-j-accent"
@@ -179,6 +241,70 @@ function TutorChatAccessSwitch({ mode }: { mode: TutorChatAccessMode }) {
     <div className="mt-2.5 rounded-lg border border-sky-100 bg-sky-50/70 p-2 text-xs text-sky-900">
       <span className="font-semibold">💡 অ্যাডমিন রিপ্লাই বাইপাস:</span> অ্যাডমিন যদি কোনো টিউটরকে আগে মেসেজ পাঠান, তবে মোড যাই থাকুক না কেন টিউটর তাৎক্ষণিকভাবে উত্তর দিতে পারবেন।
     </div>
+
+    {pendingMode && targetOption && targetDetails ? (
+      <Modal
+        size="dialog"
+        onClose={() => { if (!setMode.isPending) setPendingMode(null); }}
+        busy={setMode.isPending}
+      >
+        <ModalHeader title="টিউটর লাইভ চ্যাট পারমিশন পরিবর্তন নিশ্চিত করুন" />
+        <ModalBody>
+          <div className="space-y-3.5">
+            <p className="text-xs leading-relaxed text-j-ink-soft">
+              আপনি কি টিউটরদের লাইভ চ্যাট পারমিশন পরিবর্তন করতে চান? এই পরিবর্তনটি পুরো প্ল্যাটফর্মে অবিলম্বে কার্যকর হবে।
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-xl border border-j-border bg-j-surface-sunken p-2.5 text-xs">
+              <div className="rounded-lg border border-j-border bg-white p-2.5">
+                <span className="text-2xs font-semibold uppercase tracking-wider text-j-ink-faint">বর্তমান মোড</span>
+                <p className="mt-0.5 font-bold text-j-ink-strong">{currentOption?.label ?? mode}</p>
+                <p className="mt-0.5 text-3xs text-j-ink-muted">{currentOption?.description}</p>
+              </div>
+              <div className="rounded-lg border border-j-accent/30 bg-blue-50/60 p-2.5">
+                <span className="text-2xs font-semibold uppercase tracking-wider text-j-accent">নতুন নির্বাচিত মোড</span>
+                <p className="mt-0.5 font-bold text-j-accent">{targetOption.label}</p>
+                <p className="mt-0.5 text-3xs text-j-ink-muted">{targetOption.description}</p>
+              </div>
+            </div>
+
+            <div
+              className={`rounded-xl border p-3 text-xs leading-relaxed ${
+                targetDetails.warningType === "danger"
+                  ? "border-red-200 bg-red-50 text-red-900"
+                  : targetDetails.warningType === "warning"
+                  ? "border-amber-200 bg-amber-50 text-amber-900"
+                  : "border-sky-200 bg-sky-50 text-sky-900"
+              }`}
+            >
+              <div className="font-bold flex items-center gap-1.5 mb-1">
+                <span>{targetDetails.warningType === "danger" ? "🛑" : targetDetails.warningType === "warning" ? "⚠️" : "ℹ️"}</span>
+                <span>{targetDetails.warningTitle}</span>
+              </div>
+              <p>{targetDetails.warningDesc}</p>
+            </div>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <button
+            type="button"
+            disabled={setMode.isPending}
+            onClick={() => setPendingMode(null)}
+            className="h-control rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-40"
+          >
+            বাতিল করুন
+          </button>
+          <button
+            type="button"
+            disabled={setMode.isPending}
+            onClick={handleConfirm}
+            className={`h-control rounded-xl px-4 text-sm font-bold transition-all disabled:opacity-50 ${targetDetails.confirmButtonClass}`}
+          >
+            {setMode.isPending ? "সংরক্ষণ হচ্ছে…" : targetDetails.confirmButtonLabel}
+          </button>
+        </ModalFooter>
+      </Modal>
+    ) : null}
   </section>;
 }
 
