@@ -37,7 +37,7 @@ import {
   sidebarTabsSlotId,
   type SidebarPanelId,
 } from "@shared/sidebar-tabs";
-import { Bell, ChevronDown, ChevronsLeft, LayoutDashboard, LoaderCircle, LogOut, Settings, Users, type LucideIcon } from "lucide-react";
+import { BadgeCheck, Bell, BriefcaseBusiness, CalendarCheck2, ChevronDown, ChevronsLeft, FileText, LayoutDashboard, LoaderCircle, LogOut, Menu, MessageCircle, Settings, UserRound, Users, type LucideIcon } from "lucide-react";
 import React, { CSSProperties, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useBellSwing, usePushBellBounce } from "@/lib/bellSwing";
@@ -55,6 +55,7 @@ import {
   AlertDialogTitle,
 } from "./ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
 
 export type DashboardNavigationItem = {
   icon: LucideIcon;
@@ -321,6 +322,180 @@ export function getMobileWorkspaceContext(workspace: string, destination?: strin
   return { workspace, destination: destination ?? "Menu" };
 }
 
+export type MobileBottomNavItem = {
+  key: string;
+  label: string;
+  icon: LucideIcon;
+  path?: string;
+  badge?: number | string;
+  isMenuToggle?: boolean;
+};
+
+export function isBottomNavActive(currentLocation: string, itemPath: string): boolean {
+  if (currentLocation === itemPath) return true;
+  if (
+    itemPath === "/admin/dashboard" ||
+    itemPath === "/tutor/dashboard" ||
+    itemPath === "/guardian/dashboard"
+  ) {
+    return currentLocation === itemPath;
+  }
+  return currentLocation.startsWith(itemPath);
+}
+
+export function getMobileBottomNavItems(
+  sidebarPanel?: SidebarPanelId,
+  navigationItems: DashboardNavigationItem[] = []
+): MobileBottomNavItem[] {
+  const findItem = (pattern: string) => {
+    return navigationItems.find(it => it.path === pattern || it.path.startsWith(pattern));
+  };
+
+  const menuToggleItem: MobileBottomNavItem = {
+    key: "menu",
+    label: "Menu",
+    icon: Menu,
+    isMenuToggle: true,
+  };
+
+  if (sidebarPanel === "tutor") {
+    const dashboard = findItem("/tutor/dashboard") ?? { path: "/tutor/dashboard", label: "Home", icon: LayoutDashboard };
+    const jobs = findItem("/tutor/dashboard/jobs") ?? { path: "/tutor/dashboard/jobs", label: "Jobs", icon: BriefcaseBusiness };
+    const status = findItem("/tutor/dashboard/status") ?? { path: "/tutor/dashboard/status", label: "Status", icon: BadgeCheck };
+    const profile = findItem("/tutor/dashboard/profile") ?? { path: "/tutor/dashboard/profile", label: "Profile", icon: UserRound };
+    return [
+      { key: "home", label: "Home", icon: dashboard.icon, path: dashboard.path, badge: dashboard.badge },
+      { key: "jobs", label: "Jobs", icon: jobs.icon, path: jobs.path, badge: jobs.badge },
+      { key: "status", label: "Status", icon: status.icon, path: status.path, badge: status.badge },
+      { key: "profile", label: "Profile", icon: profile.icon, path: profile.path, badge: profile.badge },
+      menuToggleItem,
+    ];
+  }
+
+  if (sidebarPanel === "guardian") {
+    const dashboard = findItem("/guardian/dashboard") ?? { path: "/guardian/dashboard", label: "Home", icon: LayoutDashboard };
+    const postedJobs = findItem("/guardian/dashboard/posted-jobs") ?? { path: "/guardian/dashboard/posted-jobs", label: "Jobs", icon: FileText };
+    const appliedTutors = findItem("/guardian/dashboard/applied-tutors") ?? { path: "/guardian/dashboard/applied-tutors", label: "Applied", icon: Users };
+    const profile = findItem("/guardian/dashboard/profile") ?? { path: "/guardian/dashboard/profile", label: "Profile", icon: UserRound };
+    return [
+      { key: "home", label: "Home", icon: dashboard.icon, path: dashboard.path, badge: dashboard.badge },
+      { key: "jobs", label: "Jobs", icon: postedJobs.icon, path: postedJobs.path, badge: postedJobs.badge },
+      { key: "applied", label: "Applied", icon: appliedTutors.icon, path: appliedTutors.path, badge: appliedTutors.badge },
+      { key: "profile", label: "Profile", icon: profile.icon, path: profile.path, badge: profile.badge },
+      menuToggleItem,
+    ];
+  }
+
+  // Admin Panel (or default)
+  const postedJobs = findItem("/admin/posted-jobs") ?? { path: "/admin/posted-jobs", label: "Jobs", icon: FileText };
+  const appliedTutors = findItem("/admin/applied-tutors") ?? { path: "/admin/applied-tutors", label: "Applied", icon: Users };
+  const tutorChats = findItem("/admin/tutor-chats") ?? { path: "/admin/tutor-chats", label: "Chats", icon: MessageCircle };
+  const appointedJobs = findItem("/admin/appointed-jobs") ?? { path: "/admin/appointed-jobs", label: "Appointed", icon: CalendarCheck2 };
+
+  return [
+    { key: "jobs", label: "Jobs", icon: postedJobs.icon, path: postedJobs.path, badge: postedJobs.badge },
+    { key: "applied", label: "Applied", icon: appliedTutors.icon, path: appliedTutors.path, badge: appliedTutors.badge },
+    { key: "chats", label: "Chats", icon: tutorChats.icon, path: tutorChats.path, badge: tutorChats.badge },
+    { key: "appointed", label: "Appointed", icon: appointedJobs.icon, path: appointedJobs.path, badge: appointedJobs.badge },
+    menuToggleItem,
+  ];
+}
+
+function DashboardMobileBottomNav({
+  items,
+  location,
+  onNavigate,
+  onToggleMenu,
+  isMenuOpen,
+  themed,
+  colours,
+}: {
+  items: MobileBottomNavItem[];
+  location: string;
+  onNavigate: (item: DashboardNavigationItem) => void;
+  onToggleMenu: () => void;
+  isMenuOpen?: boolean;
+  themed?: boolean;
+  colours?: CSSProperties;
+}) {
+  return (
+    <nav
+      aria-label="Mobile bottom quick navigation"
+      className="fixed bottom-0 inset-x-0 z-30 flex h-[58px] items-stretch justify-around border-t bg-white/95 backdrop-blur supports-[backdrop-filter]:backdrop-blur border-j-border shadow-[0_-2px_12px_rgba(0,0,0,0.04)] md:hidden pb-[env(safe-area-inset-bottom)]"
+      style={themed ? colours : undefined}
+    >
+      {items.map(item => {
+        const isMenu = item.isMenuToggle;
+        const isActive = isMenu
+          ? Boolean(isMenuOpen)
+          : Boolean(item.path && isBottomNavActive(location, item.path));
+        const Icon = item.icon;
+
+        return (
+          <button
+            key={item.key}
+            type="button"
+            aria-label={item.label}
+            aria-current={isActive && !isMenu ? "page" : undefined}
+            onClick={() => {
+              if (isMenu) {
+                onToggleMenu();
+              } else if (item.path) {
+                onNavigate({
+                  icon: item.icon,
+                  label: item.label,
+                  path: item.path,
+                });
+              }
+            }}
+            className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1 transition-all active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-j-accent select-none ${
+              isActive
+                ? themed
+                  ? "text-[var(--sb-accent,#1677c8)] font-bold"
+                  : "text-j-accent font-bold"
+                : themed
+                  ? "text-[var(--sb-soft,#658092)] hover:text-[var(--sb-text,#1a2b38)] font-medium"
+                  : "text-[#658092] hover:text-j-ink font-medium"
+            }`}
+          >
+            {isActive && !isMenu ? (
+              <span
+                className={`absolute top-0 h-0.5 w-6 rounded-full transition-all ${
+                  themed ? "bg-[var(--sb-accent,#1677c8)]" : "bg-j-accent"
+                }`}
+                aria-hidden="true"
+              />
+            ) : null}
+
+            <div className="relative grid size-6 place-items-center">
+              <Icon
+                className={`size-5 transition-transform ${
+                  isActive ? "scale-110" : ""
+                }`}
+                aria-hidden="true"
+              />
+              {item.badge ? (
+                <span
+                  aria-label={`${item.badge} unread`}
+                  className="absolute -top-1 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white shadow-xs"
+                >
+                  {typeof item.badge === "number" && item.badge > 99
+                    ? "99+"
+                    : item.badge}
+                </span>
+              ) : null}
+            </div>
+
+            <span className="truncate text-3xs tracking-tight">
+              {item.label}
+            </span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
 export default function DashboardLayout({
   children,
   navigationItems = defaultMenuItems,
@@ -333,6 +508,7 @@ export default function DashboardLayout({
   onTutorSignOutSuccess,
   sidebarPanel,
   homePath,
+  hideBottomNav,
 }: {
   children: React.ReactNode;
   navigationItems?: DashboardNavigationItem[];
@@ -346,6 +522,7 @@ export default function DashboardLayout({
   sidebarPanel?: SidebarPanelId;
   /** Where the sidebar's own logo takes this panel back to. Left out, the logo stays a plain, unclickable lockup (Admin). */
   homePath?: string;
+  hideBottomNav?: boolean;
 }) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
@@ -414,6 +591,7 @@ export default function DashboardLayout({
         onTutorSignOutSuccess={onTutorSignOutSuccess}
         sidebarPanel={sidebarPanel}
         homePath={homePath}
+        hideBottomNav={hideBottomNav}
       >
         {children}
       </DashboardLayoutContent>
@@ -439,6 +617,7 @@ type DashboardLayoutContentProps = {
   /** Which sidebar this is, so its labels and sizes can be Admin-edited. */
   sidebarPanel?: SidebarPanelId;
   homePath?: string;
+  hideBottomNav?: boolean;
 };
 
 function DashboardLayoutContent({
@@ -454,6 +633,7 @@ function DashboardLayoutContent({
   onTutorSignOutSuccess,
   sidebarPanel,
   homePath,
+  hideBottomNav,
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
   const resolveSlot = useSiteContentResolver();
@@ -473,7 +653,7 @@ function DashboardLayoutContent({
     pillText: useSiteContentColour(sidebarPanel ? sidebarColourSlotId(sidebarPanel, "pill-text") : ""),
   });
   const [location, setLocation] = useLocation();
-  const { state, toggleSidebar, setOpenMobile } = useSidebar();
+  const { state, toggleSidebar, setOpenMobile, openMobile } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const [pendingPanelExit, setPendingPanelExit] = useState<DashboardNavigationItem | null>(null);
@@ -483,6 +663,10 @@ function DashboardLayoutContent({
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const sidebarRef = useRef<HTMLDivElement>(null);
   const activeMenuItem = getActiveNavigationItem(navigationItems, location);
+  const bottomNavItems = useMemo(
+    () => getMobileBottomNavItems(sidebarPanel, navigationItems),
+    [sidebarPanel, navigationItems]
+  );
 
   // One pill glides from the page you left to the page you opened. It is
   // measured from the real button, so it follows rows that open and close, and
@@ -807,7 +991,21 @@ function DashboardLayoutContent({
             </div>
           </div>
         ) : null}
-        <main className="min-w-0 flex-1 overflow-x-clip p-4">{children}</main>
+        <main className={`min-w-0 flex-1 overflow-x-clip p-4 ${!hideBottomNav ? "pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-4" : ""}`}>{children}</main>
+        {!hideBottomNav ? (
+          <DashboardMobileBottomNav
+            items={bottomNavItems}
+            location={location}
+            onNavigate={handleNavigation}
+            onToggleMenu={() => {
+              triggerMobileHapticFeedback();
+              toggleSidebar();
+            }}
+            isMenuOpen={openMobile}
+            themed={isCommunityPanel(sidebarPanel)}
+            colours={sidebarColours}
+          />
+        ) : null}
       </SidebarInset>
       <AlertDialog
         open={Boolean(pendingPanelExit)}
@@ -854,6 +1052,7 @@ function WorkspaceHeader({
   themed: boolean;
   colours: CSSProperties;
 }) {
+  const isMobile = useIsMobile();
   const initials = getDashboardAvatarInitials(identity.name);
   const unread = identity.notifications?.unreadCount;
   const bell = useBellSwing(identity.portal, unread);
@@ -862,6 +1061,25 @@ function WorkspaceHeader({
   const iconButton = themed
     ? "text-[var(--sb-icon)] hover:bg-[var(--sb-hover-bg)] hover:text-[var(--sb-text)] focus-visible:ring-[var(--sb-text)]"
     : "text-[#527086] hover:bg-[#eef8ff] hover:text-j-accent focus-visible:ring-j-accent";
+
+  const bellTriggerButton = (
+    <button
+      type="button"
+      aria-label={unread ? `Open notifications, ${unread} unread` : "Open notifications"}
+      className={`relative grid size-10 place-items-center rounded-xl transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${iconButton}`}
+    >
+      <span
+        className="header-bell grid place-items-center"
+        data-swinging={bell.swinging ? "" : undefined}
+        data-bouncing={pushBounce.bouncing ? "" : undefined}
+        onAnimationEnd={() => { bell.stop(); pushBounce.stop(); }}
+      >
+        <Bell className="size-[19px]" aria-hidden="true" />
+      </span>
+      {unread ? <span aria-hidden="true" className="header-bell-count">{unread > 99 ? "99+" : unread}</span> : null}
+      {identity.notificationsIndicator}
+    </button>
+  );
 
   return (
     <header
@@ -877,47 +1095,82 @@ function WorkspaceHeader({
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-        <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              aria-label={unread ? `Open notifications, ${unread} unread` : "Open notifications"}
-              className={`relative grid size-10 place-items-center rounded-xl transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${iconButton}`}
+        {isMobile ? (
+          <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+            <SheetTrigger asChild>
+              {bellTriggerButton}
+            </SheetTrigger>
+            <SheetContent
+              side="bottom"
+              aria-label="Notifications drawer"
+              className="max-h-[85dvh] w-full gap-0 rounded-t-3xl border-t border-j-border bg-white p-0 shadow-2xl sm:max-w-none"
             >
-              <span
-                className="header-bell grid place-items-center"
-                data-swinging={bell.swinging ? "" : undefined}
-                data-bouncing={pushBounce.bouncing ? "" : undefined}
-                onAnimationEnd={() => { bell.stop(); pushBounce.stop(); }}
-              >
-                <Bell className="size-[19px]" aria-hidden="true" />
-              </span>
-              {unread ? <span aria-hidden="true" className="header-bell-count">{unread > 99 ? "99+" : unread}</span> : null}
-              {identity.notificationsIndicator}
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className={identity.customNotificationsContent ? "w-80 rounded-xl p-4 shadow-xl border border-j-border bg-white" : "w-64 rounded-xl p-3"}>
-            {identity.customNotificationsContent ? (
-              identity.customNotificationsContent
-            ) : (
-              <>
-                <p className="text-sm font-semibold text-j-ink">Notifications</p>
-                {identity.notifications ? <>
-                  <p className="mt-1 text-sm leading-6 text-[#587489]">
-                    {unread ? `You have ${unread} unread notification${unread === 1 ? "" : "s"}.` : "No new notifications."}
-                  </p>
-                  {onOpenNotifications ? <button
-                    type="button"
-                    onClick={() => { setNotificationsOpen(false); onOpenNotifications(); }}
-                    className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-lg bg-j-accent px-3 text-sm font-bold text-white transition hover:bg-j-accent-hover"
-                  >
-                    View all notifications
-                  </button> : null}
-                </> : <p className="mt-1 text-sm leading-6 text-[#587489]">No notifications yet.</p>}
-              </>
-            )}
-          </PopoverContent>
-        </Popover>
+              <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-slate-300" aria-hidden="true" />
+              <SheetHeader className="border-b border-[#eef4f9] px-5 pb-3 pt-2 text-left">
+                <SheetTitle className="text-base font-bold text-j-ink">
+                  {identity.customNotificationsContent ? "ব্রাউজার অ্যালার্ট" : "Notifications"}
+                </SheetTitle>
+              </SheetHeader>
+              <div className="max-h-[65dvh] overflow-y-auto p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+                {identity.customNotificationsContent ? (
+                  identity.customNotificationsContent
+                ) : (
+                  <>
+                    <p className="text-sm font-semibold text-j-ink">Notifications</p>
+                    {identity.notifications ? (
+                      <>
+                        <p className="mt-1 text-sm leading-6 text-[#587489]">
+                          {unread ? `You have ${unread} unread notification${unread === 1 ? "" : "s"}.` : "No new notifications."}
+                        </p>
+                        {onOpenNotifications ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNotificationsOpen(false);
+                              onOpenNotifications();
+                            }}
+                            className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl bg-j-accent px-4 text-sm font-bold text-white transition hover:bg-j-accent-hover shadow-sm"
+                          >
+                            View all notifications
+                          </button>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p className="mt-1 text-sm leading-6 text-[#587489]">No notifications yet.</p>
+                    )}
+                  </>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
+        ) : (
+          <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+            <PopoverTrigger asChild>
+              {bellTriggerButton}
+            </PopoverTrigger>
+            <PopoverContent align="end" className={identity.customNotificationsContent ? "w-80 rounded-xl p-4 shadow-xl border border-j-border bg-white" : "w-64 rounded-xl p-3"}>
+              {identity.customNotificationsContent ? (
+                identity.customNotificationsContent
+              ) : (
+                <>
+                  <p className="text-sm font-semibold text-j-ink">Notifications</p>
+                  {identity.notifications ? <>
+                    <p className="mt-1 text-sm leading-6 text-[#587489]">
+                      {unread ? `You have ${unread} unread notification${unread === 1 ? "" : "s"}.` : "No new notifications."}
+                    </p>
+                    {onOpenNotifications ? <button
+                      type="button"
+                      onClick={() => { setNotificationsOpen(false); onOpenNotifications(); }}
+                      className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-lg bg-j-accent px-3 text-sm font-bold text-white transition hover:bg-j-accent-hover"
+                    >
+                      View all notifications
+                    </button> : null}
+                  </> : <p className="mt-1 text-sm leading-6 text-[#587489]">No notifications yet.</p>}
+                </>
+              )}
+            </PopoverContent>
+          </Popover>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button type="button" aria-label={`Open ${identity.portal} account menu`} className={`rounded-full p-0.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${themed ? "hover:bg-[var(--sb-hover-bg)] focus-visible:ring-[var(--sb-text)]" : "hover:bg-[#eef8ff] focus-visible:ring-j-accent"}`}>

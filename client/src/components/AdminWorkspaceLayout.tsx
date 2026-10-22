@@ -162,7 +162,7 @@ function AdminSidebarIdentity({ photoUrl }: { photoUrl: string | null }) {
   </div>;
 }
 
-export default function AdminWorkspaceLayout({ children, title = "Admin workspace" }: { children: ReactNode; title?: string }) {
+export default function AdminWorkspaceLayout({ children, title = "Admin workspace", hideBottomNav }: { children: ReactNode; title?: string; hideBottomNav?: boolean }) {
   const { user, loading } = useAuth();
   const [, navigate] = useLocation();
   const isAdmin = user?.role === "admin";
@@ -226,6 +226,7 @@ export default function AdminWorkspaceLayout({ children, title = "Admin workspac
     title={title}
     loginPath="/admin/login"
     sidebarPanel="admin"
+    hideBottomNav={hideBottomNav}
     sidebarIdentity={<AdminSidebarIdentity photoUrl={photoUrl} />}
     workspaceHeader={{
       portal: "Admin Panel",
