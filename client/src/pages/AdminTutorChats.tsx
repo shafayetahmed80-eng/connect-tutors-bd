@@ -39,7 +39,7 @@ import {
   useChatKeyboardShortcuts,
 } from "@/components/chat/ChatProductivityShortcuts";
 import { motion } from "framer-motion";
-import { ArchiveRestore, ArrowLeft, BookmarkPlus, Briefcase, Clock, CornerUpLeft, ListPlus, Loader2, Maximize2, Mic, Paperclip, RotateCcw, Search, Send, Square, StickyNote, ThumbsUp, UserCheck, UserRound, UserRoundCheck, UserRoundX, WifiOff, X } from "lucide-react";
+import { ArchiveRestore, ArrowLeft, BookmarkPlus, Briefcase, Clock, CornerUpLeft, ListPlus, Loader2, Maximize2, Mic, Paperclip, Plus, RotateCcw, Search, Send, Square, StickyNote, ThumbsUp, UserCheck, UserRound, UserRoundCheck, UserRoundX, WifiOff, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSearch } from "wouter";
 import { toast } from "sonner";
@@ -58,9 +58,9 @@ function formatChatTime(value: string | Date) {
   return new Date(value).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-function AttachmentView({ url, contentType, own, onImageClick }: { url: string; contentType: string | null; own?: boolean; onImageClick?: (url: string) => void }) {
+function AttachmentView({ url, contentType, own, onImageClick, onImageLoad }: { url: string; contentType: string | null; own?: boolean; onImageClick?: (url: string) => void; onImageLoad?: () => void }) {
   if (contentType?.startsWith("image/") || url.match(/\.(jpeg|jpg|gif|png|webp)/i)) {
-    return <ChatMediaGallery urls={parseImageUrls(url)} onImageClick={onImageClick} own={own} />;
+    return <ChatMediaGallery urls={parseImageUrls(url)} onImageClick={onImageClick} own={own} onImageLoad={onImageLoad} />;
   }
   if (contentType?.startsWith("audio/")) {
     return <ChatVoiceNotePlayer url={url} dark={own} />;
@@ -466,6 +466,7 @@ function ThreadPanel({
   const [pastedImageFile, setPastedImageFile] = useState<File | null>(null);
   const [shareJobModalOpen, setShareJobModalOpen] = useState(false);
   const [forwardMessageBody, setForwardMessageBody] = useState<string | null>(null);
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const [pinnedJobId, setPinnedJobId] = useState<string | null>(() => {
     try {
       return localStorage.getItem(`chat_pinned_job_admin_${tutorId}`) || null;
@@ -732,7 +733,7 @@ function ThreadPanel({
     className="relative flex h-full min-h-0 flex-col"
   >
     <ChatDropzoneOverlay isDragging={isDraggingOver} />
-    <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-[#dce9f1] px-4 py-3">
+    <header className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 border-b border-[#dce9f1] px-3 py-2 sm:px-4 sm:py-3">
       <div className="flex min-w-0 items-center gap-2.5">
         {onBack ? <button type="button" onClick={onBack} aria-label="Back to Tutor list" className="grid size-8 shrink-0 place-items-center rounded-lg text-j-ink-soft hover:bg-j-surface-sunken max-sm:size-10"><ArrowLeft size={18} /></button> : null}
         <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full border border-dashed border-sky-200 bg-[#f4f9fd] text-j-ink-faint">
@@ -743,7 +744,7 @@ function ThreadPanel({
         <div className="min-w-0">
           <p className="text-2xs font-bold text-j-ink-faint">Tutor ID {tutor?.tutorNumber ?? "—"}</p>
           <p className="truncate text-sm font-bold text-j-ink">{tutor?.tutorName ?? "Loading…"}</p>
-          {tutor?.phone ? <p className="truncate text-2xs font-semibold text-j-ink-soft">{tutor.phone}</p> : null}
+          {tutor?.phone ? <p className="max-w-[120px] truncate text-2xs font-semibold text-j-ink-soft sm:max-w-none">{tutor.phone}</p> : null}
         </div>
         {tutor?.instituteName || tutor?.departmentName
           ? <div className="hidden min-w-0 border-l border-[#dce9f1] pl-3 sm:block">
@@ -767,7 +768,7 @@ function ThreadPanel({
             type="button"
             onClick={() => setProfileDrawerOpen(true)}
             aria-label="View Tutor Profile"
-            className="flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-2 py-1 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken"
+            className="flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-1.5 py-1 text-3xs font-bold text-j-ink-soft hover:bg-j-surface-sunken sm:px-2 sm:text-2xs"
           >
             <UserCheck size={13} /> Profile
           </button>
@@ -778,15 +779,15 @@ function ThreadPanel({
             onSelectTag={onSetPriorityTag}
           />
         ) : null}
-        <button type="button" onClick={() => { setNotesOpen(true); onNotesViewed(); }} aria-label="Private notes" className="relative flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-2 py-1 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken">
+        <button type="button" onClick={() => { setNotesOpen(true); onNotesViewed(); }} aria-label="Private notes" className="relative flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-1.5 py-1 text-3xs font-bold text-j-ink-soft hover:bg-j-surface-sunken sm:px-2 sm:text-2xs">
           <StickyNote size={13} /> Notes
           {hasNoteAlert ? <span aria-label="New note" className="absolute -right-1 -top-1 size-2 rounded-full bg-j-accent" /> : null}
         </button>
         {claimedByAdminName
-          ? <button type="button" onClick={() => release.mutate({ tutorId })} className="flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-2 py-1 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken">
-              <UserRoundX size={13} /> Claimed by {claimedByAdminName}
+          ? <button type="button" onClick={() => release.mutate({ tutorId })} className="flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-1.5 py-1 text-3xs font-bold text-j-ink-soft hover:bg-j-surface-sunken sm:px-2 sm:text-2xs">
+              <UserRoundX size={13} /> <span className="max-w-[90px] truncate sm:max-w-none">Claimed by {claimedByAdminName}</span>
             </button>
-          : <button type="button" onClick={() => claim.mutate({ tutorId })} className="flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-2 py-1 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken">
+          : <button type="button" onClick={() => claim.mutate({ tutorId })} className="flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-1.5 py-1 text-3xs font-bold text-j-ink-soft hover:bg-j-surface-sunken sm:px-2 sm:text-2xs">
               <UserRoundCheck size={13} /> Claim
             </button>}
         <div className="hidden shrink-0 sm:block">
@@ -886,6 +887,7 @@ function ThreadPanel({
                         contentType={message.attachmentContentType}
                         own={own}
                         onImageClick={setLightboxUrl}
+                        onImageLoad={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })}
                       />
                     ) : null}
                   </>
@@ -1045,7 +1047,99 @@ function ThreadPanel({
           <VoiceRecordingBar onStop={handleMic} onCancel={voiceRecorder.cancel} />
         ) : (
           <>
-            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadProgress !== null} aria-label="Attach a file" className="grid h-control w-control shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50">
+            {/* Mobile action drawer toggle button */}
+            <div className="relative sm:hidden">
+              <button
+                type="button"
+                onClick={() => setMobileActionsOpen(prev => !prev)}
+                aria-label={mobileActionsOpen ? "Close actions menu" : "More attachment and chat actions"}
+                aria-expanded={mobileActionsOpen}
+                className={`grid h-control w-10 shrink-0 place-items-center rounded-xl border transition-colors ${
+                  mobileActionsOpen
+                    ? "border-j-accent bg-j-accent-wash text-j-accent"
+                    : "border-j-border text-j-ink-soft hover:bg-j-surface-sunken"
+                }`}
+              >
+                <Plus className={`size-4 transition-transform duration-200 ${mobileActionsOpen ? "rotate-45" : ""}`} />
+              </button>
+
+              {mobileActionsOpen ? (
+                <>
+                  <div
+                    className="fixed inset-0 z-30 bg-black/20 backdrop-blur-[1px]"
+                    onClick={() => setMobileActionsOpen(false)}
+                    aria-hidden="true"
+                  />
+                  <div className="fixed inset-x-3 bottom-18 z-40 flex items-center justify-around gap-2 rounded-2xl border border-j-border bg-white p-3 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-150">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileActionsOpen(false);
+                        fileInputRef.current?.click();
+                      }}
+                      disabled={uploadProgress !== null}
+                      aria-label="Attach a file"
+                      className="flex flex-col items-center gap-1 text-2xs font-semibold text-j-ink-soft"
+                    >
+                      <span className="grid size-10 place-items-center rounded-xl border border-j-border bg-j-surface-sunken text-j-ink">
+                        <Paperclip className="size-4" />
+                      </span>
+                      <span>ফাইল/ছবি</span>
+                    </button>
+
+                    {voiceRecorder.supported ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileActionsOpen(false);
+                          void handleMic();
+                        }}
+                        disabled={uploadProgress !== null}
+                        aria-label="Record a voice note"
+                        className="flex flex-col items-center gap-1 text-2xs font-semibold text-j-ink-soft"
+                      >
+                        <span className="grid size-10 place-items-center rounded-xl border border-j-border bg-j-surface-sunken text-j-ink">
+                          <Mic className="size-4" />
+                        </span>
+                        <span>ভয়েস</span>
+                      </button>
+                    ) : null}
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileActionsOpen(false);
+                        setShareJobModalOpen(true);
+                      }}
+                      disabled={uploadProgress !== null}
+                      aria-label="টিউশন জব কার্ড শেয়ার করুন"
+                      title="টিউশন শেয়ার করুন"
+                      className="flex flex-col items-center gap-1 text-2xs font-semibold text-j-ink-soft"
+                    >
+                      <span className="grid size-10 place-items-center rounded-xl border border-j-border bg-j-surface-sunken text-j-ink">
+                        <Briefcase className="size-4" />
+                      </span>
+                      <span>টিউশন কার্ড</span>
+                    </button>
+
+                    <div className="flex flex-col items-center gap-1 text-2xs font-semibold text-j-ink-soft">
+                      <QuickRepliesMenu
+                        onInsert={text => {
+                          setBody(current => (current ? `${current} ${text}` : text));
+                          setMobileActionsOpen(false);
+                        }}
+                        currentDraft={body}
+                      />
+                      <span>টেমপ্লেট</span>
+                    </div>
+                  </div>
+                </>
+              ) : null}
+            </div>
+
+            {/* Desktop Action Buttons */}
+            <div className="hidden sm:flex sm:items-center sm:gap-2">
+              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploadProgress !== null} aria-label="Attach a file" className="grid h-control w-control shrink-0 place-items-center rounded-xl border border-j-border text-j-ink-soft hover:bg-j-surface-sunken disabled:opacity-50">
               <Paperclip className="size-4" />
             </button>
             {voiceRecorder.supported ? (
@@ -1070,15 +1164,17 @@ function ThreadPanel({
               <Briefcase className="size-4" />
             </button>
             <QuickRepliesMenu onInsert={text => setBody(current => (current ? `${current} ${text}` : text))} currentDraft={body} />
+            </div>
             <Textarea
               value={body}
               onChange={event => { setBody(event.target.value); onTyping(); }}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
               maxLength={CHAT_MESSAGE_MAX}
-              rows={2}
+              rows={1}
+              enterKeyHint="send"
               placeholder="Reply as Admin…"
-              className="min-h-9 flex-1 resize-none"
+              className="min-h-9 flex-1 resize-none py-2 text-xs sm:text-sm"
             />
             <ChatSendButton ariaLabel="Send reply" disabled={(!body.trim() && !pastedImageFile) || send.isPending || uploadProgress !== null} isPending={send.isPending} />
           </>
@@ -1145,7 +1241,7 @@ export function AdminTutorChatsContent() {
   const [now, setNow] = useState(() => Date.now());
   // On a phone an open conversation has the screen to itself: the card and its panel are for the list, and the room they take goes to the thread.
   const threadOpenOnPhone = isMobile && selectedTutorId !== null;
-  const frameClassName = `${threadOpenOnPhone ? "h-[calc(100vh-236px)]" : "h-[calc(100vh-340px)]"} min-h-[420px] overflow-hidden rounded-xl border border-j-border bg-white shadow-[0_10px_26px_-18px_rgba(38,83,117,0.5)]`;
+  const frameClassName = `${threadOpenOnPhone ? "h-[calc(100dvh-180px)] sm:h-[calc(100vh-236px)]" : "h-[calc(100dvh-260px)] sm:h-[calc(100vh-340px)]"} min-h-[340px] sm:min-h-[420px] overflow-hidden rounded-xl border border-j-border bg-white shadow-[0_10px_26px_-18px_rgba(38,83,117,0.5)]`;
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);

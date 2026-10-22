@@ -87,4 +87,15 @@ describe("ChatRealtimeUX components", () => {
   it("safely invokes playMessageChime without throw even in simulated browser environment", () => {
     expect(() => playMessageChime()).not.toThrow();
   });
+
+  it("renders voice note player with disabled progress slider before audio duration is loaded", () => {
+    render(<ChatVoiceNotePlayer url="/uploads/voice.mp3" />);
+    const slider = screen.getByLabelText("Audio progress slider") as HTMLInputElement;
+    expect(slider).toBeTruthy();
+    expect(slider.disabled).toBe(true);
+    expect(slider.max).toBe("1");
+
+    const speedBtn = screen.getByLabelText(/Playback speed: 1x/i);
+    expect(speedBtn.className).toContain("whitespace-nowrap");
+  });
 });

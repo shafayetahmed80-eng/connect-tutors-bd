@@ -384,6 +384,22 @@ describe("the Tutor's Admin chat panel", () => {
     const textarea = screen.getByPlaceholderText("Write a message…") as HTMLTextAreaElement;
     expect(textarea.value).toContain("Your tuition has been confirmed for tomorrow");
   });
+
+  it("supports mobile action drawer toggle and reveals attachment actions in tutor composer", () => {
+    state.messages = [message()];
+    render(<TutorAdminChatPanel />);
+
+    const plusBtn = screen.getByRole("button", { name: "More attachment and chat actions" });
+    expect(plusBtn).toBeTruthy();
+
+    fireEvent.click(plusBtn);
+    expect(screen.getByText("ফাইল/ছবি")).toBeTruthy();
+    expect(screen.getByText("টিউশন কার্ড")).toBeTruthy();
+
+    const closeBtn = screen.getByRole("button", { name: "Close actions menu" });
+    fireEvent.click(closeBtn);
+    expect(screen.queryByText("ফাইল/ছবি")).toBeNull();
+  });
 });
 
 

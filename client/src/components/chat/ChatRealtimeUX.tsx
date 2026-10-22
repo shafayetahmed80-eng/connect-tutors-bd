@@ -158,12 +158,13 @@ export function ChatVoiceNotePlayer({
       </button>
 
       {/* Scrubber & Waveform track */}
-      <div className="flex flex-1 flex-col justify-center gap-1 min-w-[120px]">
+      <div className="flex flex-1 flex-col justify-center gap-1 min-w-0 sm:min-w-[120px]">
         <div className="relative flex items-center">
           <input
             type="range"
             min={0}
-            max={duration || 100}
+            max={duration > 0 ? duration : 1}
+            disabled={duration <= 0}
             step={0.1}
             value={currentTime}
             onChange={handleSeek}
@@ -183,7 +184,7 @@ export function ChatVoiceNotePlayer({
         onClick={handleSpeedToggle}
         title={`Playback speed: ${speed}x`}
         aria-label={`Playback speed: ${speed}x`}
-        className={`rounded-md px-1.5 py-0.5 text-3xs font-bold transition-colors ${
+        className={`shrink-0 whitespace-nowrap rounded-md px-1.5 py-0.5 text-3xs font-bold transition-colors ${
           dark
             ? "border border-white/30 hover:bg-white/20 text-white"
             : "border border-j-border bg-white text-j-ink-soft hover:bg-j-surface-sunken"
@@ -216,7 +217,8 @@ export function ScrollToBottomFloatingButton({
 
     const handleScroll = () => {
       const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
-      setVisible(distance > 180);
+      const threshold = Math.min(180, el.clientHeight * 0.25);
+      setVisible(distance > threshold);
     };
 
     el.addEventListener("scroll", handleScroll, { passive: true });
@@ -231,7 +233,7 @@ export function ScrollToBottomFloatingButton({
       initial={{ opacity: 0, scale: 0.8, y: 10 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.8, y: 10 }}
-      className="absolute bottom-18 right-4 z-20 flex flex-col items-center"
+      className="absolute bottom-16 right-3 sm:bottom-18 sm:right-4 z-20 flex flex-col items-center"
     >
       <button
         type="button"
