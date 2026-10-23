@@ -111,7 +111,7 @@ export function ChatMessageActionMenu({
             </button>
           </>
         ) : isOwn ? (
-          <span className="px-1.5 py-0.5 text-3xs font-medium text-j-ink-faint">
+          <span className="px-1.5 py-0.5 text-2xs font-medium text-j-ink-faint">
             ৫ মিনিট অতিক্রান্ত
           </span>
         ) : null}
@@ -195,7 +195,7 @@ export function DeletedMessagePlaceholder({ own }: { own?: boolean }) {
 export function EditedMessageBadge({ own }: { own?: boolean }) {
   return (
     <span
-      className={`ml-1 inline-flex items-center text-3xs font-medium ${
+      className={`ml-1 inline-flex items-center text-2xs font-medium ${
         own ? "text-white/60" : "text-j-ink-faint"
       }`}
       title="এই মেসেজটি ৫ মিনিটের মধ্যে সম্পাদিত হয়েছে"
@@ -234,7 +234,7 @@ export function InlineMessageEditor({
         onChange={e => setText(e.target.value)}
         rows={2}
         aria-label="Edit message"
-        className="w-full rounded-lg border border-j-border bg-white px-2.5 py-1.5 text-xs text-j-ink shadow-xs outline-none focus:border-j-accent focus:ring-1 focus:ring-j-accent"
+        className="w-full rounded-lg border border-j-border bg-white px-2.5 py-1.5 text-sm leading-relaxed text-j-ink shadow-xs outline-none focus:border-j-accent focus:ring-1 focus:ring-j-accent"
         autoFocus
       />
       <div className="flex items-center justify-end gap-1.5">

@@ -101,7 +101,7 @@ export function ChatDraftRestoredIndicator({
       <button
         type="button"
         onClick={onClear}
-        className="font-bold text-sky-700 hover:text-sky-900 underline text-3xs"
+        className="font-bold text-sky-700 hover:text-sky-900 underline text-2xs"
       >
         খসড়া মুছুন
       </button>
@@ -192,25 +192,25 @@ export function ChatShortcutsHelpPill() {
   return (
     <div
       data-testid="chat-shortcuts-help-pill"
-      className="hidden lg:flex items-center gap-2 text-3xs font-semibold text-j-ink-faint select-none"
+      className="hidden lg:flex items-center gap-2 text-2xs font-medium text-j-ink-faint select-none"
     >
       <span className="flex items-center gap-0.5">
-        <kbd className="rounded bg-slate-100 border border-slate-300 px-1 py-0.2 text-3xs font-mono">Esc</kbd>
+        <kbd className="rounded bg-slate-100 border border-slate-300 px-1 py-0.2 text-2xs font-mono">Esc</kbd>
         <span>বাতিল</span>
       </span>
       <span>·</span>
       <span className="flex items-center gap-0.5">
-        <kbd className="rounded bg-slate-100 border border-slate-300 px-1 py-0.2 text-3xs font-mono">↑</kbd>
+        <kbd className="rounded bg-slate-100 border border-slate-300 px-1 py-0.2 text-2xs font-mono">↑</kbd>
         <span>পূর্বের মেসেজ</span>
       </span>
       <span>·</span>
       <span className="flex items-center gap-0.5">
-        <kbd className="rounded bg-slate-100 border border-slate-300 px-1 py-0.2 text-3xs font-mono">Ctrl+F</kbd>
+        <kbd className="rounded bg-slate-100 border border-slate-300 px-1 py-0.2 text-2xs font-mono">Ctrl+F</kbd>
         <span>সার্চ</span>
       </span>
       <span>·</span>
       <span className="flex items-center gap-0.5">
-        <kbd className="rounded bg-slate-100 border border-slate-300 px-1 py-0.2 text-3xs font-mono">/</kbd>
+        <kbd className="rounded bg-slate-100 border border-slate-300 px-1 py-0.2 text-2xs font-mono">/</kbd>
         <span>কুইক রিপ্লাই</span>
       </span>
     </div>

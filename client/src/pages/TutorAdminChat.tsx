@@ -388,11 +388,11 @@ export function TutorAdminChatPanel() {
       </div>
       <div className="flex items-center gap-2.5">
         {!isOnline ? (
-          <span className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-3xs font-bold text-amber-800">
+          <span className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-2xs font-bold text-amber-800">
             <WifiOff className="size-2.5" /> Offline
           </span>
         ) : connectionStatus === "connected" ? (
-          <span className="flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-3xs font-bold text-emerald-700" title="Connected in real-time">
+          <span className="flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-2xs font-bold text-emerald-700" title="Connected in real-time">
             <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
           </span>
         ) : null}
@@ -579,7 +579,7 @@ export function TutorAdminChatPanel() {
       {outbox.map(item => (
         <ChatAnimatedBubble key={item.tempId} own={true} className="flex flex-col items-end">
           <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl rounded-tr-xs shadow-xs ${item.status === "failed" ? "border border-red-300 bg-red-50 text-red-900" : "bg-gradient-to-br from-j-accent/90 to-[#156cb6]/90 text-white"}`}>
-            <p className="whitespace-pre-wrap text-sm leading-6">{item.body}</p>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed">{item.body}</p>
             <div className="mt-1 flex items-center justify-end gap-1 text-2xs font-medium opacity-80">
               {item.status === "sending" ? (
                 <>
@@ -669,7 +669,7 @@ export function TutorAdminChatPanel() {
                       return clean ? `${topic.prefix} ${clean}` : `${topic.prefix} `;
                     });
                   }}
-                  className={`inline-flex items-center rounded-lg border px-2 py-0.5 text-3xs font-bold transition-colors ${
+                  className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-2xs font-semibold transition-colors ${
                     isSelected
                       ? "border-sky-300 bg-sky-100 text-[#1267c8] shadow-xs"
                       : "border-slate-200 bg-white text-j-ink-soft hover:border-sky-200 hover:bg-sky-50/50 hover:text-[#1267c8]"
@@ -801,7 +801,7 @@ export function TutorAdminChatPanel() {
                   rows={1}
                   enterKeyHint="send"
                   placeholder="Write a message…"
-                  className="min-h-9 flex-1 resize-none py-2 text-xs sm:text-sm"
+                  className="min-h-9 flex-1 resize-none py-2 text-sm leading-relaxed"
                 />
                 <ChatSendButton ariaLabel="Send message" disabled={(!body.trim() && !pastedImageFile) || send.isPending || uploadProgress !== null} isPending={send.isPending} />
               </>

@@ -108,4 +108,22 @@ describe("ChatProductivity components", () => {
     fireEvent.click(screen.getByRole("button", { name: "Close profile drawer" }));
     expect(onClose).toHaveBeenCalled();
   });
+
+  it("applies standardized typography classes (text-sm leading-relaxed for body and text-2xs for reply header)", () => {
+    const { container } = render(
+      <ChatMessageBody text="Standardized font size test" />
+    );
+    const bodyContainer = container.querySelector(".text-sm.leading-relaxed");
+    expect(bodyContainer).toBeTruthy();
+
+    render(
+      <ReplyPreviewBar
+        replyingTo={{ id: 10, body: "Sample message", senderRole: "tutor" }}
+        onCancel={() => {}}
+        currentRole="admin"
+      />
+    );
+    const replyHeader = screen.getByText(/Replying to Tutor/);
+    expect(replyHeader.className).toContain("text-2xs");
+  });
 });

@@ -113,7 +113,7 @@ export function ChatTuitionJobCard({
         <p className="font-semibold text-j-ink">
           কানেক্ট টিউটরস ভেরিফাইড টিউশন অফার
         </p>
-        <p className="text-3xs text-j-ink-faint">
+        <p className="text-2xs text-j-ink-faint">
           কারিকুলাম, বিষয়, লোকেশন এবং সম্মানী (BDT) দেখতে নিচে ক্লিক করুন।
         </p>
       </div>
@@ -128,7 +128,7 @@ export function ChatTuitionJobCard({
           <span>বিস্তারিত ও আবেদন দেখুন</span>
           <ExternalLink className="size-3" />
         </a>
-        <span className="text-3xs font-semibold text-sky-800">
+        <span className="text-2xs font-semibold text-sky-800">
           Member: BTPA - 077
         </span>
       </div>
@@ -342,7 +342,7 @@ export function ChatPriorityFilterBar({
           >
             {opt.label}
             {count !== undefined && count > 0 ? (
-              <span className={`ml-1 text-3xs ${isSelected ? "text-white" : "text-j-ink-faint"}`}>
+              <span className={`ml-1 text-2xs ${isSelected ? "text-white" : "text-j-ink-faint"}`}>
                 ({count})
               </span>
             ) : null}
@@ -403,7 +403,7 @@ export function ChatPriorityTagSelector({
                   }`}
                 >
                   <span>{cfg.label}</span>
-                  {isSelected ? <span className="text-3xs">✓</span> : null}
+                  {isSelected ? <span className="text-2xs">✓</span> : null}
                 </button>
               );
             })}
@@ -459,7 +459,7 @@ export function ChatOutOfOfficeBanner({
             <span className="text-xs font-bold text-amber-300">
               আমাদের সাপোর্ট টিম বর্তমানে অফলাইনে আছেন
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-indigo-800/80 px-1.5 py-0.2 text-3xs font-semibold text-indigo-200">
+            <span className="inline-flex items-center gap-1 rounded-full bg-indigo-800/80 px-1.5 py-0.2 text-2xs font-medium text-indigo-200">
               <Clock className="size-2.5" /> রাত ১১টা – সকাল ৯টা
             </span>
           </div>
@@ -545,7 +545,7 @@ export function ChatEmergencyCallWhatsAppActions({
 
       <div
         title="বাংলাদেশ টিউশন প্রোভাইডার্স অ্যাসোসিয়েশন অনুমোদিত (Member: BTPA - 077)"
-        className="hidden md:inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50 px-2 py-0.8 text-3xs font-extrabold text-sky-800"
+        className="hidden md:inline-flex items-center gap-1 rounded-lg border border-sky-200 bg-sky-50 px-2 py-0.8 text-2xs font-bold text-sky-800"
       >
         <ShieldCheck className="size-3 text-sky-600" />
         <span>BTPA - 077</span>

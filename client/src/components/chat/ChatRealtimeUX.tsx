@@ -15,7 +15,7 @@ export function MessageStatusTicks({
 }) {
   if (status === "sending") {
     return (
-      <span className={`inline-flex items-center gap-1 text-3xs font-medium opacity-80 ${className}`} title="Sending…">
+      <span className={`inline-flex items-center gap-1 text-2xs font-medium opacity-80 ${className}`} title="Sending…">
         <Clock className="size-2.5 animate-spin" />
         <span className="sr-only">Sending…</span>
       </span>
@@ -24,7 +24,7 @@ export function MessageStatusTicks({
 
   if (status === "sent") {
     return (
-      <span className={`inline-flex items-center text-3xs font-medium opacity-75 ${className}`} title="Sent">
+      <span className={`inline-flex items-center text-2xs font-medium opacity-75 ${className}`} title="Sent">
         <Check className="size-3" />
         <span className="sr-only">Sent</span>
       </span>
@@ -33,7 +33,7 @@ export function MessageStatusTicks({
 
   if (status === "delivered") {
     return (
-      <span className={`inline-flex items-center text-3xs font-medium opacity-85 ${className}`} title="Delivered">
+      <span className={`inline-flex items-center text-2xs font-medium opacity-85 ${className}`} title="Delivered">
         <CheckCheck className="size-3.5" />
         <span className="sr-only">Delivered</span>
       </span>
@@ -172,7 +172,7 @@ export function ChatVoiceNotePlayer({
             className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-black/20 accent-j-accent outline-hidden"
           />
         </div>
-        <div className="flex items-center justify-between text-3xs font-semibold tabular-nums opacity-80">
+        <div className="flex items-center justify-between text-2xs font-medium tabular-nums opacity-80">
           <span>{formatAudioTime(currentTime)}</span>
           <span>{formatAudioTime(duration || 0)}</span>
         </div>
@@ -184,7 +184,7 @@ export function ChatVoiceNotePlayer({
         onClick={handleSpeedToggle}
         title={`Playback speed: ${speed}x`}
         aria-label={`Playback speed: ${speed}x`}
-        className={`shrink-0 whitespace-nowrap rounded-md px-1.5 py-0.5 text-3xs font-bold transition-colors ${
+        className={`shrink-0 whitespace-nowrap rounded-md px-1.5 py-0.5 text-2xs font-bold transition-colors ${
           dark
             ? "border border-white/30 hover:bg-white/20 text-white"
             : "border border-j-border bg-white text-j-ink-soft hover:bg-j-surface-sunken"
@@ -243,7 +243,7 @@ export function ScrollToBottomFloatingButton({
       >
         <ChevronDown className="size-5 text-j-accent" />
         {unreadCount > 0 ? (
-          <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-j-accent px-1 text-3xs font-bold text-white shadow-xs">
+          <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-j-accent px-1 text-2xs font-bold text-white shadow-xs">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         ) : null}

@@ -238,7 +238,7 @@ export default function AdminSlashPresetsManager() {
               কাস্টম প্রিসেট ({filteredCustom.length})
             </h3>
             {filteredCustom.length > 0 ? (
-              <span className="text-3xs text-j-ink-muted">অ্যাডমিন কর্তৃক সংরক্ষিত</span>
+              <span className="text-2xs text-j-ink-muted">অ্যাডমিন কর্তৃক সংরক্ষিত</span>
             ) : null}
           </div>
 
@@ -270,11 +270,11 @@ export default function AdminSlashPresetsManager() {
                           {item.command}
                         </span>
                       ) : (
-                        <span className="rounded-md border border-j-border bg-j-surface-sunken px-2 py-0.5 text-3xs font-medium text-j-ink-muted">
+                        <span className="rounded-md border border-j-border bg-j-surface-sunken px-2 py-0.5 text-2xs font-medium text-j-ink-muted">
                           কমান্ডবিহীন
                         </span>
                       )}
-                      <span className="rounded bg-sky-50 px-1.5 py-0.5 text-3xs font-bold text-sky-700">
+                      <span className="rounded bg-sky-50 px-1.5 py-0.5 text-2xs font-bold text-sky-700">
                         কাস্টম
                       </span>
                     </div>
@@ -285,7 +285,7 @@ export default function AdminSlashPresetsManager() {
                     </p>
                   </div>
 
-                  <div className="mt-3 flex items-center justify-between border-t border-j-border/60 pt-2 text-3xs text-j-ink-muted">
+                  <div className="mt-3 flex items-center justify-between border-t border-j-border/60 pt-2 text-2xs text-j-ink-muted">
                     <button
                       type="button"
                       onClick={() => copyToClipboard(item.body, `custom-${item.id}`)}
@@ -337,7 +337,7 @@ export default function AdminSlashPresetsManager() {
             <h3 className="text-2xs font-bold uppercase tracking-wider text-j-ink-faint">
               সিস্টেম বিল্ট-ইন প্রিসেট ({filteredSystem.length})
             </h3>
-            <span className="text-3xs text-j-ink-muted">প্ল্যাটফর্ম স্ট্যান্ডার্ড টেমপ্লেট</span>
+            <span className="text-2xs text-j-ink-muted">প্ল্যাটফর্ম স্ট্যান্ডার্ড টেমপ্লেট</span>
           </div>
 
           <div className="mt-2 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
@@ -351,7 +351,7 @@ export default function AdminSlashPresetsManager() {
                     <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 font-mono text-xs font-bold text-slate-800">
                       {item.command}
                     </span>
-                    <span className="rounded bg-slate-200/80 px-1.5 py-0.5 text-3xs font-medium text-slate-600">
+                    <span className="rounded bg-slate-200/80 px-1.5 py-0.5 text-2xs font-medium text-slate-600">
                       সিস্টেম ডিফল্ট
                     </span>
                   </div>
@@ -362,7 +362,7 @@ export default function AdminSlashPresetsManager() {
                   </p>
                 </div>
 
-                <div className="mt-3 flex items-center justify-between border-t border-j-border/60 pt-2 text-3xs text-j-ink-muted">
+                <div className="mt-3 flex items-center justify-between border-t border-j-border/60 pt-2 text-2xs text-j-ink-muted">
                   <button
                     type="button"
                     onClick={() => copyToClipboard(item.body, `sys-${item.id}`)}
@@ -422,7 +422,7 @@ export default function AdminSlashPresetsManager() {
                       className="h-control w-full rounded-xl border border-j-border bg-j-surface-sunken pl-7 pr-3 font-mono text-xs outline-none focus:border-j-accent focus:bg-white focus:ring-2 focus:ring-sky-100"
                     />
                   </div>
-                  <p className="mt-1 text-3xs text-j-ink-muted">
+                  <p className="mt-1 text-2xs text-j-ink-muted">
                     লাইভ চ্যাটে বা নোটিফিকেশনে এই শর্টকাট লিখলেই মেসেজ ড্রপডাউনে পাওয়া যাবে।
                   </p>
                 </div>
@@ -450,7 +450,7 @@ export default function AdminSlashPresetsManager() {
                     <label htmlFor="preset-title-input" className="block text-xs font-bold text-j-ink">
                       শিরোনাম / প্রিসেট নাম (Title)
                     </label>
-                    <span className="text-3xs text-j-ink-muted">{draftTitle.length}/120</span>
+                    <span className="text-2xs text-j-ink-muted">{draftTitle.length}/120</span>
                   </div>
                   <input
                     id="preset-title-input"
@@ -470,7 +470,7 @@ export default function AdminSlashPresetsManager() {
                     <label htmlFor="preset-body-textarea" className="block text-xs font-bold text-j-ink">
                       মেসেজের পূর্ণ বিবরণ (Message Body)
                     </label>
-                    <span className="text-3xs text-j-ink-muted">{draftBody.length}/2000</span>
+                    <span className="text-2xs text-j-ink-muted">{draftBody.length}/2000</span>
                   </div>
                   <textarea
                     id="preset-body-textarea"

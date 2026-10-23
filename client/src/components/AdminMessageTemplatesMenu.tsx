@@ -171,7 +171,7 @@ export function AdminMessageTemplatesMenu({
           <FileText className="size-3.5 text-j-accent" />
           <span>{buttonLabel}</span>
           {allTemplates.length > 0 ? (
-            <span className="rounded-full bg-sky-50 px-1.5 py-0.2 text-3xs font-bold text-j-accent">
+            <span className="rounded-full bg-sky-50 px-1.5 py-0.2 text-2xs font-bold text-j-accent">
               {allTemplates.length}
             </span>
           ) : null}
@@ -194,7 +194,7 @@ export function AdminMessageTemplatesMenu({
               <div className="flex items-center gap-1.5">
                 <BookmarkPlus className="size-4 text-j-accent" />
                 <p className="text-xs font-bold text-j-ink">Saved Templates</p>
-                <span className="rounded-full bg-j-surface-muted px-1.5 py-0.2 text-3xs font-semibold tabular-nums text-j-ink-muted">
+                <span className="rounded-full bg-j-surface-muted px-1.5 py-0.2 text-2xs font-semibold tabular-nums text-j-ink-muted">
                   {allTemplates.length}
                 </span>
               </div>
@@ -295,7 +295,7 @@ export function AdminMessageTemplatesMenu({
                     <div className="flex items-center gap-1.5">
                       <p className="truncate text-xs font-bold text-j-ink group-hover:text-j-accent">{item.title}</p>
                       {item.command ? (
-                        <span className="shrink-0 rounded bg-sky-50 px-1.5 py-0.2 font-mono text-3xs font-semibold text-sky-700">
+                        <span className="shrink-0 rounded bg-sky-50 px-1.5 py-0.2 font-mono text-2xs font-semibold text-sky-700">
                           {item.command}
                         </span>
                       ) : null}
@@ -303,7 +303,7 @@ export function AdminMessageTemplatesMenu({
                     <p className="line-clamp-2 text-2xs leading-relaxed text-j-ink-soft">{item.body}</p>
                   </button>
                   {item.isBuiltIn ? (
-                    <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-3xs font-medium text-j-ink-muted">
+                    <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-2xs font-medium text-j-ink-muted">
                       ডিফল্ট
                     </span>
                   ) : (
