@@ -980,6 +980,40 @@ function TutorProfileWorkspaceBody({
     }
   };
 
+  const handleInlineSaveField = async (fieldId: string, value: string): Promise<boolean> => {
+    let nextForm = { ...form };
+    if (fieldId.startsWith("privateDetails.")) {
+      const key = fieldId.slice("privateDetails.".length) as keyof TeachingProfileState["privateDetails"];
+      nextForm = { ...nextForm, privateDetails: { ...nextForm.privateDetails, [key]: value } };
+      updatePrivateDetail(key, value);
+    } else {
+      const key = fieldId as keyof TeachingProfileState;
+      nextForm = { ...nextForm, [key]: value };
+      update(key, value as any);
+    }
+
+    const meta = findTutorProfileFieldMeta(fieldId);
+    const target = (meta?.subGroup ?? meta?.section ?? "a") as TutorProfileEditTarget;
+    try {
+      const draft = createTutorProfileSectionDraftPayload(target, nextForm, fieldConfig);
+      await saveDraftMutation.mutateAsync(draft);
+      clearTutorOnboardingDraft();
+      setSavedDraftFingerprint(getProfileDraftFingerprint(nextForm));
+      await Promise.all([utils.tutor.getMyProfile.invalidate(), utils.tutor.getDashboardStats.invalidate()]);
+      const wasApproved = profile?.profileStatus === "approved";
+      setFeedback({
+        type: "success",
+        message: wasApproved
+          ? `${editTargetTitle(target, resolveSlot)} updated. Your profile has been re-queued for Admin review.`
+          : `${editTargetTitle(target, resolveSlot)} saved.`,
+      });
+      setJustSaved(target);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   // The section popup edits the shared `form` directly. Reset any catalog search
   // typed inside it on close, otherwise `*.data` stays narrowed to the last
   // search and the read view shows raw ids for names that fell out of it.
@@ -1595,6 +1629,7 @@ function TutorProfileWorkspaceBody({
           onTabChange={setActiveTab}
           onEditSection={openSectionEditor}
           justSaved={justSaved}
+          onInlineSaveField={handleInlineSaveField}
         />}
 
         {statusCard.action === "submit" || statusCard.action === "complete" || statusCard.action === "save" ? <div id="profile-section-review" className="flex justify-end border-t border-tp-border pt-4">

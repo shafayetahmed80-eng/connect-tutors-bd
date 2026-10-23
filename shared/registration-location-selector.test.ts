@@ -112,4 +112,24 @@ describe("buildCombinedCityLocationOptions", () => {
       "2 No Gate",
     ]);
   });
+  it("resolves Phase 2 tuition locations under Dhaka, Chattogram, and Narayanganj", () => {
+    const rows = [
+      { id: "dhaka-city", label: "Dhaka", type: "city", parentId: "bd" },
+      { id: "dhaka-area-lalmatia", label: "Lalmatia", type: "area", parentId: "dhaka-city" },
+      { id: "dhaka-area-segunbagicha", label: "Segunbagicha", type: "area", parentId: "dhaka-city" },
+      { id: "chattogram-city", label: "Chattogram", type: "city", parentId: "bd" },
+      { id: "chattogram-area-cheragi-pahar", label: "Cheragi Pahar", type: "area", parentId: "chattogram-city" },
+      { id: "narayanganj-district", label: "Narayanganj", type: "district", parentId: "bd" },
+      { id: "narayanganj-area-chashara-more", label: "Chashara More", type: "area", parentId: "narayanganj-district" },
+    ] as const;
+
+    const dhakaOpts = buildCombinedCityLocationOptions("dhaka-city", rows);
+    expect(dhakaOpts.map(o => o.label)).toEqual(["Lalmatia", "Segunbagicha"]);
+
+    const ctgOpts = buildCombinedCityLocationOptions("chattogram-city", rows);
+    expect(ctgOpts.map(o => o.label)).toEqual(["Cheragi Pahar"]);
+
+    const ngOpts = buildCombinedCityLocationOptions("narayanganj-district", rows);
+    expect(ngOpts.map(o => o.label)).toEqual(["Chashara More"]);
+  });
 });
