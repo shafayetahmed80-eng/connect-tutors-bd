@@ -113,6 +113,10 @@
 - **বিবরণ:** টিউটর প্রথম মেসেজ পাঠানোর আগে বিষয় (টপিক) নির্বাচন করতে পারবেন (টিউশন আবেদন, পেমেন্ট ও ফি, প্রোফাইল ভেরিফিকেশন, ডেমো ক্লাস, সাধারণ জিজ্ঞাসা), যা কম্পোজারে `[বিষয়: ...]` প্রিফিক্স যুক্ত করে এবং অ্যাডমিন থ্রেড লিস্ট ও চ্যাট হেডারে কালার-কোডেড টপিক ব্যাজ আকারে দৃশ্যমান হয়।
 - **স্ট্যাটাস:** ✅ সম্পন্ন (PR #490) — `shared/admin-control.ts`, `TutorAdminChat.tsx`, `AdminTutorChats.tsx` এবং ইউনিট টেস্টসমূহ ভেরিফাইড।
 
+### ১৪.৫ সেন্ট্রাল স্ল্যাশ কমান্ড ও মেসেজ প্রিসেট ম্যানেজার (Central Slash Command & Message Presets Manager) [✅ সম্পন্ন - PR #493]
+- **বিবরণ:** অ্যাডমিন কন্ট্রোল (`/admin/dynamic/admin-control`) থেকে কাস্টম স্ল্যাশ কমান্ড তৈরি, সম্পাদনা ও মুছে ফেলার সেন্ট্রাল ম্যানেজমেন্ট ইন্টারফেস (`<AdminSlashPresetsManager />`), `adminMessageTemplates` স্কিমায় `command` কলাম ও ইনডেক্স মাইগ্রেশন, ক্যাটাগরি ট্যাব (`tutor_chat`, `tutor_notify`, `guardian_notify`), সিস্টেম ডিফল্ট প্রিসেট ক্লোনিং ও ১-ক্লিক কপি সুবিধা, এবং অ্যাডমিন লাইভ চ্যাট কম্পোজার ও বাল্ক নোটিফাই ড্রপডাউনে স্বয়ংক্রিয় কমান্ড ইন্টিগ্রেশন।
+- **স্ট্যাটাস:** ✅ সম্পন্ন (PR #493) — `drizzle/schema.ts`, `drizzle/0130_custom_slash_command_presets.sql`, `shared/message-presets.ts`, `server/db.ts`, `server/routers.ts`, `AdminSlashPresetsManager.tsx`, `AdminControlEditor.tsx`, `AdminTutorChats.tsx`, `AdminMessageTemplatesMenu.tsx` এবং ইউনিট টেস্টসমূহ ভেরিফাইড।
+
 ---
 
 ## 🌐 সেকশন ৪: সম্মিলিত ও প্ল্যাটফর্ম-ওয়াইড ফিচার (Cross-Panel & Platform-Wide)
