@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-export type ChatSocketFrame = { type: "message" | "typing" | "note" | "ping" | "pong"; tutorId?: string };
+export type ChatSocketFrame = { type: "message" | "typing" | "note" | "ping" | "pong" | "access_mode"; tutorId?: string };
 
 export type ChatConnectionStatus = "connecting" | "connected" | "disconnected" | "reconnecting";
 

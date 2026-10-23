@@ -155,7 +155,7 @@ import {
   DEFAULT_SINGLE_HEADER,
   type FacebookPostCustomTemplate,
 } from "@shared/facebook-post";
-import { notifyAdminsOfChatMessage, notifyAdminsOfNewNote, notifyTutorOfChatMessage } from "./chat-ws";
+import { notifyAdminsOfChatMessage, notifyAdminsOfNewNote, notifyAllTutorsOfChatAccessModeChange, notifyTutorOfChatMessage } from "./chat-ws";
 import { getWebPushPublicKey, sendWebPushNotification } from "./chat-push";
 import {
   notifyAdminsOfEvent,
@@ -6951,9 +6951,10 @@ async function tutorHasAdminInitiatedChatMessage(database: NonNullable<Awaited<R
 
 export async function checkTutorAdminChatEligibility(
   database: NonNullable<Awaited<ReturnType<typeof getDb>>>,
-  tutorId: string
+  tutorId: string,
+  options: { fresh?: boolean } = {}
 ): Promise<{ eligible: boolean; mode: TutorChatAccessMode; adminInitiatedBypass: boolean }> {
-  const mode = await getTutorChatAccessMode();
+  const mode = await getTutorChatAccessMode({ fresh: options.fresh ?? true });
   const hasAdminMessage = await tutorHasAdminInitiatedChatMessage(database, tutorId);
   if (hasAdminMessage) {
     return { eligible: true, mode, adminInitiatedBypass: true };
@@ -8668,6 +8669,7 @@ export async function getTutorChatAccessMode(options: { fresh?: boolean } = {}):
 export async function setTutorChatAccessMode(mode: TutorChatAccessMode) {
   await upsertSiteLimit(TUTOR_CHAT_ACCESS_MODE_ID, storedTutorChatAccessMode(mode));
   tutorChatAccessModeCache = null;
+  notifyAllTutorsOfChatAccessModeChange();
   return { mode };
 }
 

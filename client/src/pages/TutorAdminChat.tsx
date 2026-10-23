@@ -91,7 +91,11 @@ const ineligibleChatNotices: Record<TutorChatAccessMode, { titleBn: string; desc
 
 export function TutorAdminChatPanel() {
   const utils = trpc.useUtils();
-  const threadQuery = trpc.tutorAdminChat.thread.useQuery(undefined, { refetchInterval: CHAT_POLL_MS });
+  const threadQuery = trpc.tutorAdminChat.thread.useQuery(undefined, {
+    refetchInterval: CHAT_POLL_MS,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  });
   const [body, setBody] = useState("");
   const [query, setQuery] = useState("");
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -159,7 +163,7 @@ export function TutorAdminChatPanel() {
   const sendFrame = useTutorChatSocket(
     portalToken,
     frame => {
-      if (frame.type === "message") void utils.tutorAdminChat.thread.invalidate();
+      if (frame.type === "message" || frame.type === "access_mode") void utils.tutorAdminChat.thread.invalidate();
       else if (frame.type === "typing") setAdminTypingUntil(Date.now() + TYPING_EXPIRES_MS);
     },
     setConnectionStatus
@@ -620,8 +624,28 @@ export function TutorAdminChatPanel() {
       <div ref={bottomRef} />
     </div>
 
-    {eligible
-      ? <div className="border-t border-[#dce9f1]">
+    {threadQuery.isLoading ? (
+      <div className="border-t border-[#dce9f1] bg-j-surface-sunken/30 p-4 text-center">
+        <div className="mx-auto flex items-center justify-center gap-2 text-xs text-j-ink-muted">
+          <div className="size-3.5 animate-spin rounded-full border-2 border-j-accent border-t-transparent" />
+          <span>লাইভ চ্যাট তথ্য যাচাই করা হচ্ছে…</span>
+        </div>
+      </div>
+    ) : threadQuery.isError ? (
+      <div className="border-t border-[#dce9f1] bg-red-50/50 p-4 text-center">
+        <div className="mx-auto max-w-sm space-y-1">
+          <p className="text-xs font-semibold text-red-600">চ্যাট তথ্য লোড হতে সমস্যা হয়েছে।</p>
+          <button
+            type="button"
+            onClick={() => void threadQuery.refetch()}
+            className="text-xs font-bold text-j-accent underline hover:text-sky-700"
+          >
+            পুনরায় চেষ্টা করুন (Retry)
+          </button>
+        </div>
+      </div>
+    ) : eligible ? (
+      <div className="border-t border-[#dce9f1]">
           {uploadProgress !== null
             ? <div className="h-0.5 w-full bg-j-surface-muted">
                 <div className="h-full bg-j-accent transition-[width]" style={{ width: `${uploadProgress}%` }} />
@@ -808,7 +832,8 @@ export function TutorAdminChatPanel() {
             )}
           </form>
         </div>
-      : <div className="border-t border-[#dce9f1] bg-j-surface-sunken/40 p-4 text-center">
+    ) : (
+      <div className="border-t border-[#dce9f1] bg-j-surface-sunken/40 p-4 text-center">
           <div className="mx-auto max-w-lg space-y-1.5">
             <p className="text-sm font-bold text-j-ink-strong">
               {ineligibleChatNotices[chatAccessMode]?.titleBn ?? ineligibleChatNotices.appointed.titleBn}
@@ -838,7 +863,8 @@ export function TutorAdminChatPanel() {
               </a>
             </div>
           </div>
-        </div>}
+        </div>
+    )}
     <ImageLightboxModal url={lightboxUrl} onClose={() => setLightboxUrl(null)} title="Attachment Preview" />
     {shareJobModalOpen ? (
       <ShareJobModal
