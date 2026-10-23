@@ -4,7 +4,7 @@ import { BookmarkPlus, FileText, ListPlus, Plus, Trash2, X } from "lucide-react"
 import React, { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { getPresetsByCategory, type MessagePresetCategory } from "@shared/message-presets";
+import { getPresetsByCategory, normalizeSlashCommand, type MessagePresetCategory } from "@shared/message-presets";
 
 export type MessageTemplateCategory = MessagePresetCategory;
 
@@ -32,6 +32,7 @@ export function AdminMessageTemplatesMenu({
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
+  const [newCommand, setNewCommand] = useState("");
   const [newBody, setNewBody] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -46,6 +47,7 @@ export function AdminMessageTemplatesMenu({
     onSuccess: () => {
       toast.success("Template saved.");
       setNewTitle("");
+      setNewCommand("");
       setNewBody("");
       setCreating(false);
       void utils?.admin?.listMessageTemplates?.invalidate?.();
@@ -117,7 +119,7 @@ export function AdminMessageTemplatesMenu({
     }));
 
   const allTemplates = [
-    ...serverTemplates.map(st => ({ ...st, isBuiltIn: false as const, command: undefined as string | undefined })),
+    ...serverTemplates.map(st => ({ ...st, isBuiltIn: false as const, command: st.command ?? undefined })),
     ...legacyQuickReplies.map(lq => ({ ...lq, isBuiltIn: false as const, command: undefined as string | undefined })),
     ...defaultPresets,
   ];
@@ -133,7 +135,15 @@ export function AdminMessageTemplatesMenu({
     const title = newTitle.trim();
     const body = newBody.trim();
     if (!title || !body) return;
-    create.mutate({ category, title, body });
+    const payload: { category: MessageTemplateCategory; title: string; body: string; command?: string | null } = {
+      category,
+      title,
+      body,
+    };
+    if (newCommand.trim()) {
+      payload.command = normalizeSlashCommand(newCommand);
+    }
+    create.mutate(payload);
   };
 
   const hasDraft = Boolean(currentDraft?.body?.trim());
@@ -218,6 +228,13 @@ export function AdminMessageTemplatesMenu({
                 maxLength={120}
                 required
                 className="h-control w-full rounded-xl border border-j-border px-2.5 text-xs outline-none focus:border-j-accent"
+              />
+              <input
+                value={newCommand}
+                onChange={e => setNewCommand(e.target.value)}
+                placeholder="Optional /command (e.g. /discount)"
+                maxLength={40}
+                className="h-control w-full rounded-xl border border-j-border px-2.5 font-mono text-xs outline-none focus:border-j-accent"
               />
               <textarea
                 value={newBody}

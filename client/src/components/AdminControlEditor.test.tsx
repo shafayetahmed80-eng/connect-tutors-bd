@@ -55,6 +55,7 @@ vi.mock("@/lib/trpc", () => ({
   },
 }));
 // The rates are the limit editor's own concern and have their own tests.
+vi.mock("@/components/AdminSlashPresetsManager", () => ({ default: () => <div data-testid="slash-presets-manager">Slash Presets Manager</div> }));
 vi.mock("@/components/SiteLimitEditor", () => ({ default: ({ groups }: { groups?: string[] }) => <div data-testid="limit-editor">{groups?.join(",")}</div> }));
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
 
@@ -385,5 +386,10 @@ describe("Live chat business hours and auto-responder", () => {
       startMinutes: 600,
       endMinutes: 1200,
     });
+  });
+
+  it("renders the Slash Presets Manager component", () => {
+    render(<AdminControlEditor />);
+    expect(screen.getByTestId("slash-presets-manager")).toBeTruthy();
   });
 });

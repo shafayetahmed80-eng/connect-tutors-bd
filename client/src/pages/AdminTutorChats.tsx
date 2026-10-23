@@ -121,7 +121,7 @@ function QuickRepliesMenu({ onInsert, currentDraft }: { onInsert: (body: string)
     ...rawQuickReplies.map(item => ({ id: `qr-${item.id}`, numId: item.id, isTemplate: false, isBuiltIn: false, label: item.label, body: item.body, command: undefined as string | undefined })),
     ...rawTemplates
       .filter(t => !rawQuickReplies.some(q => q.label === t.title && q.body === t.body))
-      .map(t => ({ id: `tpl-${t.id}`, numId: t.id, isTemplate: true, isBuiltIn: false, label: t.title, body: t.body, command: undefined as string | undefined })),
+      .map(t => ({ id: `tpl-${t.id}`, numId: t.id, isTemplate: true, isBuiltIn: false, label: t.title, body: t.body, command: t.command ?? undefined })),
     ...defaultPresets
       .filter(p => !rawQuickReplies.some(q => q.label === p.title) && !rawTemplates.some(t => t.title === p.title))
       .map(p => ({ id: `preset-${p.id}`, numId: -1, isTemplate: false, isBuiltIn: true, label: p.title, body: p.body, command: p.command })),
@@ -590,7 +590,7 @@ function ThreadPanel({
         .filter(t => !customReplies.some(r => r.label === t.title))
         .map(t => ({
           id: `tpl-${t.id}`,
-          command: `/${t.title.replace(/\s+/g, "-").toLowerCase()}`,
+          command: t.command ? (t.command.startsWith("/") ? t.command : `/${t.command}`) : `/${t.title.replace(/\s+/g, "-").toLowerCase()}`,
           label: t.title,
           body: t.body,
           isBuiltIn: false,
