@@ -4,6 +4,7 @@ import type { TrpcContext } from "./_core/context";
 const dbMocks = vi.hoisted(() => ({
   listAdminMessageTemplates: vi.fn(),
   createAdminMessageTemplate: vi.fn(),
+  updateAdminMessageTemplate: vi.fn(),
   deleteAdminMessageTemplate: vi.fn(),
 }));
 
@@ -40,10 +41,10 @@ function createCaller(user: TrpcContext["user"] = adminUser) {
 afterEach(() => vi.clearAllMocks());
 
 describe("admin message templates router", () => {
-  it("lists templates filtered by category", async () => {
+  it("lists templates filtered by category including slash command", async () => {
     dbMocks.listAdminMessageTemplates.mockResolvedValue({
       items: [
-        { id: 1, category: "tutor_notify", title: "Document reminder", body: "Please upload your student ID." },
+        { id: 1, category: "tutor_notify", command: "/verify-id", title: "Document reminder", body: "Please upload your student ID." },
       ],
     });
 
@@ -52,24 +53,46 @@ describe("admin message templates router", () => {
     expect(dbMocks.listAdminMessageTemplates).toHaveBeenCalledWith("tutor_notify");
     expect(result.items).toHaveLength(1);
     expect(result.items[0].title).toBe("Document reminder");
+    expect(result.items[0].command).toBe("/verify-id");
   });
 
-  it("creates a new message template with admin author id", async () => {
+  it("creates a new message template with slash command and admin author id", async () => {
     dbMocks.createAdminMessageTemplate.mockResolvedValue({ id: 10, created: true });
 
     const result = await createCaller().admin.createMessageTemplate({
       category: "guardian_notify",
+      command: "/special-offer",
       title: "Tuition status update",
       body: "We have appointed a top tutor for your request.",
     });
 
     expect(dbMocks.createAdminMessageTemplate).toHaveBeenCalledWith({
       category: "guardian_notify",
+      command: "/special-offer",
       title: "Tuition status update",
       body: "We have appointed a top tutor for your request.",
       createdByAdminId: 42,
     });
     expect(result).toEqual({ id: 10, created: true });
+  });
+
+  it("updates an existing message template", async () => {
+    dbMocks.updateAdminMessageTemplate.mockResolvedValue({ updated: true });
+
+    const result = await createCaller().admin.updateMessageTemplate({
+      id: 10,
+      command: "/interview",
+      title: "Updated Interview Call",
+      body: "Please attend the interview tomorrow.",
+    });
+
+    expect(dbMocks.updateAdminMessageTemplate).toHaveBeenCalledWith({
+      id: 10,
+      command: "/interview",
+      title: "Updated Interview Call",
+      body: "Please attend the interview tomorrow.",
+    });
+    expect(result).toEqual({ updated: true });
   });
 
   it("deletes a template by id", async () => {
