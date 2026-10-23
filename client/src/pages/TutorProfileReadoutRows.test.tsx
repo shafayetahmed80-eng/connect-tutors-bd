@@ -132,4 +132,47 @@ describe("tutor profile readout rows", () => {
     renderRows();
     expect(screen.queryByRole("button", { name: /^Add / })).toBeNull();
   });
+
+  it("allows inline editing and saves on Enter or Save button click", async () => {
+    const onInlineSave = vi.fn().mockResolvedValue(true);
+    const testRows = [
+      { label: "Profile Headline", value: "Experienced Math Tutor", missing: false, fieldId: "headline" },
+    ];
+    render(
+      <SiteContentProvider page="tutor-profile">
+        <TutorProfileReadoutRows rows={testRows} onInlineSave={onInlineSave} />
+      </SiteContentProvider>,
+    );
+
+    const editBtn = screen.getByRole("button", { name: "Edit Profile Headline inline" });
+    expect(editBtn).toBeTruthy();
+    fireEvent.click(editBtn);
+
+    const input = screen.getByDisplayValue("Experienced Math Tutor");
+    expect(input).toBeTruthy();
+    fireEvent.change(input, { target: { value: "Senior Physics and Math Tutor" } });
+
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onInlineSave).toHaveBeenCalledWith("headline", "Senior Physics and Math Tutor");
+  });
+
+  it("cancels inline editing on Escape key without saving", () => {
+    const onInlineSave = vi.fn();
+    const testRows = [
+      { label: "Profile Headline", value: "Experienced Math Tutor", missing: false, fieldId: "headline" },
+    ];
+    render(
+      <SiteContentProvider page="tutor-profile">
+        <TutorProfileReadoutRows rows={testRows} onInlineSave={onInlineSave} />
+      </SiteContentProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit Profile Headline inline" }));
+    const input = screen.getByDisplayValue("Experienced Math Tutor");
+    fireEvent.change(input, { target: { value: "Changed text" } });
+    fireEvent.keyDown(input, { key: "Escape" });
+
+    expect(onInlineSave).not.toHaveBeenCalled();
+    expect(screen.getByText("Experienced Math Tutor")).toBeTruthy();
+  });
 });

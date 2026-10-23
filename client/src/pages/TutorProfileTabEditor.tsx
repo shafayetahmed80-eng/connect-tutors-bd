@@ -17,13 +17,14 @@ import { ORDERED_PROFILE_SECTION_IDS } from "@/components/TutorProfileBottomNav"
  * Supports fluid horizontal touch swipe navigation on mobile between sections,
  * tactile touch-friendly edit buttons, and group completion status badges.
  */
-export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEditSection, justSaved = null }: {
+export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEditSection, justSaved = null, onInlineSaveField }: {
   sections: TutorProfileReadoutSection[];
   activeTab: TutorProfileSectionId;
   onTabChange: (id: TutorProfileSectionId) => void;
   onEditSection: (id: TutorProfileSectionId, groupId?: TutorProfileSectionGroupId) => void;
   /** The section or card saved a moment ago, marked Saved for a few seconds. */
   justSaved?: TutorProfileSectionId | TutorProfileSectionGroupId | null;
+  onInlineSaveField?: (fieldId: string, value: string) => Promise<boolean>;
 }) {
   const active = sections.find(section => section.id === activeTab) ?? sections[0];
   const sectionPadding = useSiteContentSpacingClass("tutor-profile.spacing.section-card");
@@ -116,7 +117,7 @@ export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEdit
           <div className="mt-3">
             {group.rows.length > 0 && group.rows.every(row => row.missing)
               ? <EmptyCard heading={heading} fields={group.rows.map(row => row.label)} onAdd={() => onEditSection(active.id, groupTarget)} />
-              : <TutorProfileReadoutRows rows={group.rows} onAdd={() => onEditSection(active.id, groupTarget)} />}
+              : <TutorProfileReadoutRows rows={group.rows} onAdd={() => onEditSection(active.id, groupTarget)} onInlineSave={onInlineSaveField} />}
           </div>
         </section>;
       })}
