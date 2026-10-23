@@ -1417,11 +1417,12 @@ export function AdminTutorChatsContent() {
   }, []);
 
   const sendFrame = useAdminChatSocket(frame => {
-    if (frame.type === "message") {
+    if (frame.type === "message" || frame.type === "access_mode") {
       void utils.admin.listTutorChatThreads.invalidate();
       void utils.admin.tutorChatUnreadThreadCount.invalidate();
       void utils.admin.getTutorChatStats.invalidate();
       if (frame.tutorId && frame.tutorId === selectedTutorId) void utils.admin.getTutorChatThread.invalidate({ tutorId: frame.tutorId });
+      else if (selectedTutorId) void utils.admin.getTutorChatThread.invalidate({ tutorId: selectedTutorId });
     } else if (frame.type === "typing" && frame.tutorId) {
       setTypingTutorId(frame.tutorId);
       setTypingUntil(Date.now() + TYPING_EXPIRES_MS);
