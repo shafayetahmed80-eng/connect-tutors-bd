@@ -1,3 +1,4 @@
+import AdminSlashPresetsManager from "@/components/AdminSlashPresetsManager";
 import SiteLimitEditor from "@/components/SiteLimitEditor";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/modal";
 import { trpc } from "@/lib/trpc";
@@ -522,6 +523,8 @@ export default function AdminControlEditor() {
     <TutorChatAccessSwitch mode={control.data.tutorChatAccessMode ?? DEFAULT_TUTOR_CHAT_ACCESS_MODE} />
 
     <ChatBusinessHoursSettings settings={control.data.chatBusinessHours} />
+
+    <AdminSlashPresetsManager />
 
     <LoginCodeSettings settings={control.data.tutorGuardianLoginOtp} />
 

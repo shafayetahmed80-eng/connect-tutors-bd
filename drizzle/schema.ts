@@ -1832,6 +1832,7 @@ export const adminMessageTemplates = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     category: mysqlEnum("category", adminMessageTemplateCategoryValues).notNull(),
+    command: varchar("command", { length: 40 }),
     title: varchar("title", { length: 120 }).notNull(),
     body: varchar("body", { length: 2000 }).notNull(),
     createdByAdminId: int("createdByAdminId"),
@@ -1841,6 +1842,7 @@ export const adminMessageTemplates = mysqlTable(
   table => [
     foreignKey({ columns: [table.createdByAdminId], foreignColumns: [users.id], name: "amt_created_by_fk" }),
     index("admin_message_templates_category_idx").on(table.category, table.createdAt),
+    index("admin_message_templates_command_idx").on(table.command),
   ]
 );
 
