@@ -103,6 +103,8 @@ describe("the Tutor live chat access switch", () => {
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText("টিউটর লাইভ চ্যাট পারমিশন পরিবর্তন নিশ্চিত করুন")).toBeTruthy();
     expect(within(dialog).getByText(/অনুমোদিত প্রোফাইল অ্যাক্সেস/i)).toBeTruthy();
+    expect(within(dialog).getByText("বর্তমান মোড")).toBeTruthy();
+    expect(within(dialog).getByText("নতুন নির্বাচিত মোড")).toBeTruthy();
 
     // Cancelling closes modal without saving
     fireEvent.click(within(dialog).getByRole("button", { name: "বাতিল করুন" }));
@@ -384,6 +386,26 @@ describe("Live chat business hours and auto-responder", () => {
     expect(state.setChatBusinessHours).toHaveBeenCalledWith({
       enabled: false,
       startMinutes: 600,
+      endMinutes: 1200,
+    });
+  });
+
+  it("allows updating start and end times and saves them when clicked", () => {
+    render(<AdminControlEditor />);
+
+    expect(screen.queryByRole("button", { name: "Save Times" })).toBeNull();
+
+    const startInput = screen.getByLabelText(/শুরু \(Start\):/i) as HTMLInputElement;
+    fireEvent.change(startInput, { target: { value: "09:00" } });
+
+    const saveBtn = screen.getByRole("button", { name: "Save Times" });
+    expect(saveBtn).toBeTruthy();
+
+    fireEvent.click(saveBtn);
+
+    expect(state.setChatBusinessHours).toHaveBeenCalledWith({
+      enabled: true,
+      startMinutes: 540,
       endMinutes: 1200,
     });
   });
