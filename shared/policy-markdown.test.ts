@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parsePolicyInline, parsePolicyMarkdown, policyPlainText } from "./policy-markdown";
+import { extractPolicyToc, parsePolicyInline, parsePolicyMarkdown, policyInlineText, policyPlainText, slugifyHeading } from "./policy-markdown";
 
 describe("policy markdown", () => {
   it("joins wrapped lines into one paragraph and separates on a blank line", () => {
@@ -100,5 +100,53 @@ Connect Tutors একটি প্ল্যাটফর্ম।
   it("returns nothing for an empty document rather than an empty paragraph", () => {
     expect(parsePolicyMarkdown("")).toEqual([]);
     expect(parsePolicyMarkdown("   \n\n  ")).toEqual([]);
+  });
+  describe("heading anchors, slugs, and table of contents", () => {
+    it("generates url-safe slugs from english and bangla text", () => {
+      expect(slugifyHeading("Who can use Connect Tutors")).toBe("who-can-use-connect-tutors");
+      expect(slugifyHeading("Platform charge for Tutors")).toBe("platform-charge-for-tutors");
+      expect(slugifyHeading("সেবার উদ্দেশ্য ও বিবরণ")).toBe("সেবার-উদ্দেশ্য-ও-বিবরণ");
+      expect(slugifyHeading("Special #1 ($100 Discount!) & Fees")).toBe("special-1-100-discount-fees");
+      expect(slugifyHeading("   ---   ")).toBe("section");
+      expect(slugifyHeading("")).toBe("section");
+    });
+
+    it("ensures unique slugs for repeated heading titles", () => {
+      const seen = new Set<string>();
+      expect(slugifyHeading("Overview", seen)).toBe("overview");
+      expect(slugifyHeading("Overview", seen)).toBe("overview-2");
+      expect(slugifyHeading("Overview", seen)).toBe("overview-3");
+    });
+
+    it("assigns unique anchor IDs to headings during parsing", () => {
+      const doc = `## Who can use Connect Tutors
+Some text.
+
+### Payment schedule
+Some detail.
+
+## Who can use Connect Tutors
+Second block.`;
+
+      const blocks = parsePolicyMarkdown(doc);
+      expect(blocks[0]).toMatchObject({ kind: "heading", level: 2, id: "who-can-use-connect-tutors" });
+      expect(blocks[2]).toMatchObject({ kind: "heading", level: 3, id: "payment-schedule" });
+      expect(blocks[4]).toMatchObject({ kind: "heading", level: 2, id: "who-can-use-connect-tutors-2" });
+    });
+
+    it("extracts table of contents items from blocks", () => {
+      const blocks = parsePolicyMarkdown(`## First Section\nText\n### Sub 1\nText\n## Second Section`);
+      const toc = extractPolicyToc(blocks);
+      expect(toc).toEqual([
+        { id: "first-section", level: 2, text: "First Section" },
+        { id: "sub-1", level: 3, text: "Sub 1" },
+        { id: "second-section", level: 2, text: "Second Section" },
+      ]);
+    });
+
+    it("extracts inline text cleanly", () => {
+      const inlines = parsePolicyInline("Notice **bold** and *italic* plus [link](/path)");
+      expect(policyInlineText(inlines)).toBe("Notice bold and italic plus link");
+    });
   });
 });
