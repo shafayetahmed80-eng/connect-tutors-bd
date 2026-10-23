@@ -1492,7 +1492,9 @@ function TutorProfileWorkspaceBody({
     </div>;
   };
 
-  return <form onSubmit={event => event.preventDefault()} className={tutorProfileResponsiveClasses.workspace}>
+  return (
+    <>
+      <form onSubmit={event => event.preventDefault()} className={tutorProfileResponsiveClasses.workspace}>
     {selectedPhotoPreview ? <TutorProfilePhotoEditor imageUrl={selectedPhotoPreview} isSubmitting={uploadingPhoto} onCancel={closePhotoEditor} onConfirm={photo => void uploadPhoto(photo)} /> : null}
     {editingSection ? <TutorProfileSectionModal
       title={editTargetTitle(editingGroupId ?? editingSection, resolveSlot)}
@@ -1622,15 +1624,17 @@ function TutorProfileWorkspaceBody({
       }}
       ctaLabel={tutorApplyReturnTo ? "নির্বাচিত টিউশনে যান ও আবেদন করুন" : undefined}
     />
-      <TutorProfileBottomNav
-      sections={readoutSections}
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
-      completionPercentage={completionPercentage}
-      requiredLeft={requiredLeft}
-      onBackToDashboard={() => navigate("/tutor/dashboard")}
-    />
-  </form>;
+  </form>
+  <TutorProfileBottomNav
+    sections={readoutSections}
+    activeTab={activeTab}
+    onTabChange={setActiveTab}
+    completionPercentage={completionPercentage}
+    requiredLeft={requiredLeft}
+    onBackToDashboard={() => navigate("/tutor/dashboard")}
+  />
+  </>
+  );
 }
 
 /**

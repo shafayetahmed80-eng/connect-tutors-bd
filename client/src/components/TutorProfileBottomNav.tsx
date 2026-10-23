@@ -172,8 +172,7 @@ export function TutorProfileBottomNav({
               <button
                 key={id}
                 type="button"
-                role="tab"
-                aria-selected={isActive}
+                aria-current={isActive ? "page" : undefined}
                 aria-label={`${meta.englishLabel} section (${status.complete ? "Completed" : `${status.missing} required fields left`})`}
                 onClick={() => handleSelectTab(id)}
                 className={`relative flex flex-col items-center justify-center gap-0.5 rounded-lg py-1 transition-all focus-visible:outline-none ${

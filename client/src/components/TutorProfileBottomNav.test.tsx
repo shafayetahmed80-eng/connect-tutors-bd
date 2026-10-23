@@ -123,11 +123,11 @@ describe("TutorProfileBottomNav Component", () => {
       />
     );
 
-    const educationButton = screen.getByRole("tab", { name: /Education section/i });
-    expect(educationButton.getAttribute("aria-selected")).toBe("true");
+    const educationButton = screen.getByRole("button", { name: /Education section/i });
+    expect(educationButton.getAttribute("aria-current")).toBe("page");
 
-    const personalButton = screen.getByRole("tab", { name: /Personal section/i });
-    expect(personalButton.getAttribute("aria-selected")).toBe("false");
+    const personalButton = screen.getByRole("button", { name: /Personal section/i });
+    expect(personalButton.getAttribute("aria-current")).toBeNull();
   });
 
   it("displays completion checkmark for completed sections and alert for incomplete sections", () => {
@@ -162,7 +162,7 @@ describe("TutorProfileBottomNav Component", () => {
       />
     );
 
-    const tuitionButton = screen.getByRole("tab", { name: /Tuition section/i });
+    const tuitionButton = screen.getByRole("button", { name: /Tuition section/i });
     fireEvent.click(tuitionButton);
 
     expect(onTabChange).toHaveBeenCalledWith("d");
