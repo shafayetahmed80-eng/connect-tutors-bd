@@ -118,8 +118,37 @@ export function getPresetsByCategory(category: MessagePresetCategory): MessagePr
   return DEFAULT_MESSAGE_PRESETS.filter(p => p.category === category);
 }
 
+/**
+ * Normalizes a raw slash command string:
+ * - Trims and lowercases
+ * - Strips leading slashes
+ * - Converts spaces and special characters to hyphens
+ * - Ensures a single leading slash (e.g. "discount" -> "/discount")
+ */
+export function normalizeSlashCommand(cmd: string): string {
+  if (!cmd) return "/";
+  const trimmed = cmd.trim().toLowerCase().replace(/^\/+/, "");
+  const slug = trimmed
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9_-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return `/${slug}`;
+}
+
+/**
+ * Validates whether a command string is an acceptable slash command.
+ * Must start with optional `/` followed by 1 to 34 alphanumeric/dash/underscore characters.
+ */
+export function isValidSlashCommand(cmd: string): boolean {
+  if (!cmd) return false;
+  const trimmed = cmd.trim();
+  const withoutSlash = trimmed.startsWith("/") ? trimmed.slice(1) : trimmed;
+  if (!withoutSlash || withoutSlash.length > 34) return false;
+  return /^[a-z0-9][a-z0-9_-]{0,33}$/i.test(withoutSlash);
+}
+
 export function findPresetByCommand(command: string): MessagePreset | undefined {
-  const normalized = command.trim().toLowerCase();
-  const search = normalized.startsWith("/") ? normalized : `/${normalized}`;
-  return DEFAULT_MESSAGE_PRESETS.find(p => p.command.toLowerCase() === search);
+  const normalized = normalizeSlashCommand(command);
+  return DEFAULT_MESSAGE_PRESETS.find(p => p.command.toLowerCase() === normalized);
 }

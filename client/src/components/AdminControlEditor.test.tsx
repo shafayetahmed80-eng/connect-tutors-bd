@@ -55,6 +55,7 @@ vi.mock("@/lib/trpc", () => ({
   },
 }));
 // The rates are the limit editor's own concern and have their own tests.
+vi.mock("@/components/AdminSlashPresetsManager", () => ({ default: () => <div data-testid="slash-presets-manager">Slash Presets Manager</div> }));
 vi.mock("@/components/SiteLimitEditor", () => ({ default: ({ groups }: { groups?: string[] }) => <div data-testid="limit-editor">{groups?.join(",")}</div> }));
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn() }) }));
 
@@ -102,6 +103,8 @@ describe("the Tutor live chat access switch", () => {
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText("টিউটর লাইভ চ্যাট পারমিশন পরিবর্তন নিশ্চিত করুন")).toBeTruthy();
     expect(within(dialog).getByText(/অনুমোদিত প্রোফাইল অ্যাক্সেস/i)).toBeTruthy();
+    expect(within(dialog).getByText("বর্তমান মোড")).toBeTruthy();
+    expect(within(dialog).getByText("নতুন নির্বাচিত মোড")).toBeTruthy();
 
     // Cancelling closes modal without saving
     fireEvent.click(within(dialog).getByRole("button", { name: "বাতিল করুন" }));
@@ -385,5 +388,30 @@ describe("Live chat business hours and auto-responder", () => {
       startMinutes: 600,
       endMinutes: 1200,
     });
+  });
+
+  it("allows updating start and end times and saves them when clicked", () => {
+    render(<AdminControlEditor />);
+
+    expect(screen.queryByRole("button", { name: "Save Times" })).toBeNull();
+
+    const startInput = screen.getByLabelText(/শুরু \(Start\):/i) as HTMLInputElement;
+    fireEvent.change(startInput, { target: { value: "09:00" } });
+
+    const saveBtn = screen.getByRole("button", { name: "Save Times" });
+    expect(saveBtn).toBeTruthy();
+
+    fireEvent.click(saveBtn);
+
+    expect(state.setChatBusinessHours).toHaveBeenCalledWith({
+      enabled: true,
+      startMinutes: 540,
+      endMinutes: 1200,
+    });
+  });
+
+  it("renders the Slash Presets Manager component", () => {
+    render(<AdminControlEditor />);
+    expect(screen.getByTestId("slash-presets-manager")).toBeTruthy();
   });
 });

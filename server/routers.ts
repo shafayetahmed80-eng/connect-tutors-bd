@@ -2515,10 +2515,20 @@ export const appRouter = router({
     createMessageTemplate: adminProcedure
       .input(z.object({
         category: z.enum(["tutor_chat", "tutor_notify", "guardian_notify"]),
+        command: z.string().trim().max(40).optional().nullable(),
         title: z.string().trim().min(1).max(120),
         body: z.string().trim().min(1).max(2000),
       }))
       .mutation(({ ctx, input }) => db.createAdminMessageTemplate({ ...input, createdByAdminId: ctx.user.id })),
+    updateMessageTemplate: adminProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        category: z.enum(["tutor_chat", "tutor_notify", "guardian_notify"]).optional(),
+        command: z.string().trim().max(40).optional().nullable(),
+        title: z.string().trim().min(1).max(120),
+        body: z.string().trim().min(1).max(2000),
+      }))
+      .mutation(({ input }) => db.updateAdminMessageTemplate(input)),
     deleteMessageTemplate: adminProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(({ input }) => db.deleteAdminMessageTemplate(input)),

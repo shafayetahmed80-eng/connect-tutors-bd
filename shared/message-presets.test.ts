@@ -3,6 +3,8 @@ import {
   DEFAULT_MESSAGE_PRESETS,
   findPresetByCommand,
   getPresetsByCategory,
+  isValidSlashCommand,
+  normalizeSlashCommand,
 } from "./message-presets";
 
 describe("message presets", () => {
@@ -34,5 +36,22 @@ describe("message presets", () => {
       expect(preset.title.trim().length).toBeGreaterThan(0);
       expect(preset.body.trim().length).toBeGreaterThan(0);
     }
+  });
+
+  it("normalizes slash commands properly", () => {
+    expect(normalizeSlashCommand("discount")).toBe("/discount");
+    expect(normalizeSlashCommand("/Discount ")).toBe("/discount");
+    expect(normalizeSlashCommand("///special_offer")).toBe("/special_offer");
+    expect(normalizeSlashCommand("special offer now")).toBe("/special-offer-now");
+    expect(normalizeSlashCommand("")).toBe("/");
+  });
+
+  it("validates slash commands correctly", () => {
+    expect(isValidSlashCommand("/discount")).toBe(true);
+    expect(isValidSlashCommand("interview-call")).toBe(true);
+    expect(isValidSlashCommand("/promo_10")).toBe(true);
+    expect(isValidSlashCommand("/")).toBe(false);
+    expect(isValidSlashCommand("")).toBe(false);
+    expect(isValidSlashCommand("!invalid?")).toBe(false);
   });
 });

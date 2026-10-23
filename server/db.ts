@@ -48,6 +48,7 @@ import {
   type GuardianApplicantVisibility,
   type TutorChatAccessMode,
 } from "@shared/admin-control";
+import { normalizeSlashCommand } from "@shared/message-presets";
 import {
   defaultTutorProfileFieldConfig,
   resolveTutorProfileFieldConfig,
@@ -7467,6 +7468,7 @@ async function ensureAdminMessageTemplatesTable(database: NonNullable<Awaited<Re
     CREATE TABLE IF NOT EXISTS \`admin_message_templates\` (
       \`id\` int AUTO_INCREMENT NOT NULL,
       \`category\` enum('tutor_chat','tutor_notify','guardian_notify') NOT NULL,
+      \`command\` varchar(40),
       \`title\` varchar(120) NOT NULL,
       \`body\` varchar(2000) NOT NULL,
       \`createdByAdminId\` int,
@@ -7474,9 +7476,15 @@ async function ensureAdminMessageTemplatesTable(database: NonNullable<Awaited<Re
       \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       CONSTRAINT \`admin_message_templates_id\` PRIMARY KEY(\`id\`),
       KEY \`admin_message_templates_category_idx\` (\`category\`,\`createdAt\`),
+      KEY \`admin_message_templates_command_idx\` (\`command\`),
       KEY \`admin_message_templates_created_by_idx\` (\`createdByAdminId\`)
     )
   `);
+  try {
+    await database.execute(sql.raw("ALTER TABLE `admin_message_templates` ADD COLUMN `command` varchar(40)"));
+  } catch {
+    // Column already exists
+  }
   adminMessageTemplatesTableReady = true;
 }
 
@@ -7490,6 +7498,7 @@ export async function listAdminMessageTemplates(category?: AdminMessageTemplateC
     .select({
       id: adminMessageTemplates.id,
       category: adminMessageTemplates.category,
+      command: adminMessageTemplates.command,
       title: adminMessageTemplates.title,
       body: adminMessageTemplates.body,
       createdAt: adminMessageTemplates.createdAt,
@@ -7500,17 +7509,51 @@ export async function listAdminMessageTemplates(category?: AdminMessageTemplateC
   return { items: rows };
 }
 
-export async function createAdminMessageTemplate(input: { category: AdminMessageTemplateCategory; title: string; body: string; createdByAdminId?: number }) {
+export async function createAdminMessageTemplate(input: {
+  category: AdminMessageTemplateCategory;
+  command?: string | null;
+  title: string;
+  body: string;
+  createdByAdminId?: number;
+}) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   await ensureAdminMessageTemplatesTable(database);
   const [result] = await database.insert(adminMessageTemplates).values({
     category: input.category,
+    command: input.command ? normalizeSlashCommand(input.command) : null,
     title: input.title,
     body: input.body,
     createdByAdminId: input.createdByAdminId ?? null,
   });
   return { id: Number(result.insertId), created: true as const };
+}
+
+export async function updateAdminMessageTemplate(input: {
+  id: number;
+  category?: AdminMessageTemplateCategory;
+  command?: string | null;
+  title: string;
+  body: string;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await ensureAdminMessageTemplatesTable(database);
+  const values: {
+    title: string;
+    body: string;
+    command: string | null;
+    category?: AdminMessageTemplateCategory;
+  } = {
+    title: input.title,
+    body: input.body,
+    command: input.command ? normalizeSlashCommand(input.command) : null,
+  };
+  if (input.category) {
+    values.category = input.category;
+  }
+  await database.update(adminMessageTemplates).set(values).where(eq(adminMessageTemplates.id, input.id));
+  return { updated: true as const };
 }
 
 export async function deleteAdminMessageTemplate(input: { id: number }) {
