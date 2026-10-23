@@ -2,7 +2,12 @@ import { eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { adminPushSubscriptions, chatQuickReplies, tutorAdminChatMessages, tutorAdminChatNotes, tutorAdminChatThreads, tutorJobInterests, tutorJobs, tutorRequests, users } from "../drizzle/schema";
 
-const chatWsMocks = vi.hoisted(() => ({ notifyAdminsOfChatMessage: vi.fn(), notifyTutorOfChatMessage: vi.fn(), notifyAdminsOfNewNote: vi.fn() }));
+const chatWsMocks = vi.hoisted(() => ({
+  notifyAdminsOfChatMessage: vi.fn(),
+  notifyTutorOfChatMessage: vi.fn(),
+  notifyAdminsOfNewNote: vi.fn(),
+  notifyAllTutorsOfChatAccessModeChange: vi.fn(),
+}));
 vi.mock("./chat-ws", () => chatWsMocks);
 
 import {
@@ -90,6 +95,7 @@ beforeAll(async () => {
   tutorJobId = jobResult.insertId as number;
 
   await database.insert(tutorJobInterests).values({ tutorJobId, tutorId, status: "matched" });
+  await setTutorChatAccessMode("appointed");
 });
 
 afterAll(async () => {
@@ -105,12 +111,15 @@ afterAll(async () => {
 
 afterEach(async () => {
   vi.clearAllMocks();
+  await setTutorChatAccessMode("appointed");
   const database = await getDb();
   if (!database) return;
-  const [thread] = await database.select({ id: tutorAdminChatThreads.id }).from(tutorAdminChatThreads).where(eq(tutorAdminChatThreads.tutorId, tutorId));
-  if (thread) {
-    await database.delete(tutorAdminChatMessages).where(eq(tutorAdminChatMessages.threadId, thread.id));
-    await database.delete(tutorAdminChatThreads).where(eq(tutorAdminChatThreads.id, thread.id));
+  for (const tid of [tutorId, ineligibleTutorId]) {
+    const [thread] = await database.select({ id: tutorAdminChatThreads.id }).from(tutorAdminChatThreads).where(eq(tutorAdminChatThreads.tutorId, tid));
+    if (thread) {
+      await database.delete(tutorAdminChatMessages).where(eq(tutorAdminChatMessages.threadId, thread.id));
+      await database.delete(tutorAdminChatThreads).where(eq(tutorAdminChatThreads.id, thread.id));
+    }
   }
 });
 

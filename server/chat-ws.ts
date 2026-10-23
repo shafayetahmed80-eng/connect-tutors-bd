@@ -84,6 +84,17 @@ function notifyTutorOfTyping(tutorId: string) {
 }
 
 /**
+ * When an Admin changes the Tutor live chat access mode in Admin Control, broadcast to all
+ * connected Tutors and Admins so open panels re-sync eligibility and status immediately.
+ */
+export function notifyAllTutorsOfChatAccessModeChange() {
+  for (const socketSet of Array.from(tutorSockets.values())) {
+    for (const socket of Array.from(socketSet)) send(socket, { type: "access_mode" });
+  }
+  for (const socket of Array.from(adminSockets)) send(socket, { type: "access_mode" });
+}
+
+/**
  * The one piece of this module that needs `server/db.ts` - passed in rather
  * than imported, so this file (which `db.ts` itself calls into to push a
  * just-sent message) never imports `db.ts` back.

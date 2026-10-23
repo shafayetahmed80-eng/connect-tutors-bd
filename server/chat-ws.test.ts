@@ -6,7 +6,7 @@ const sdkMocks = vi.hoisted(() => ({ authenticateRequest: vi.fn() }));
 
 vi.mock("./_core/sdk", () => ({ sdk: { authenticateRequest: sdkMocks.authenticateRequest } }));
 
-import { attachChatWebSocketServer, notifyAdminsOfChatMessage, notifyTutorOfChatMessage } from "./chat-ws";
+import { attachChatWebSocketServer, notifyAdminsOfChatMessage, notifyAllTutorsOfChatAccessModeChange, notifyTutorOfChatMessage } from "./chat-ws";
 
 const deps = {
   renewTutorPortalSession: vi.fn(),
@@ -153,5 +153,25 @@ describe("pushing a chat event", () => {
     await new Promise(resolve => setTimeout(resolve, 50));
     expect(received).toBe(false);
     socket.close();
+  });
+it("broadcasts access_mode to every connected Tutor and Admin when chat access mode changes", async () => {
+    sdkMocks.authenticateRequest.mockResolvedValueOnce({ id: 101, role: "tutor" }).mockResolvedValueOnce({ id: 42, role: "admin" });
+    deps.renewTutorPortalSession.mockResolvedValue(true);
+    deps.getTutorAccountStatusByUserId.mockResolvedValue("active");
+    deps.getTutorProfileByUserId.mockResolvedValue({ tutorId: "tutor-1503" });
+
+    const tutorSocket = new WebSocket(socketUrl("?token=proof"));
+    await waitFor(tutorSocket, "open");
+    const adminSocket = new WebSocket(socketUrl());
+    await waitFor(adminSocket, "open");
+
+    const tutorMessage = waitFor(tutorSocket, "message");
+    const adminMessage = waitFor(adminSocket, "message");
+    notifyAllTutorsOfChatAccessModeChange();
+
+    expect(JSON.parse((await tutorMessage).toString())).toEqual({ type: "access_mode" });
+    expect(JSON.parse((await adminMessage).toString())).toEqual({ type: "access_mode" });
+    tutorSocket.close();
+    adminSocket.close();
   });
 });

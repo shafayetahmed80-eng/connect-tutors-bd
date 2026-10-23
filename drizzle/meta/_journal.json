@@ -918,6 +918,13 @@
       "when": 1796000000000,
       "tag": "0130_custom_slash_command_presets",
       "breakpoints": true
+    },
+    {
+      "idx": 131,
+      "version": "5",
+      "when": 1796100000000,
+      "tag": "0131_expand_bangladesh_location_catalog",
+      "breakpoints": true
     }
   ]
 }

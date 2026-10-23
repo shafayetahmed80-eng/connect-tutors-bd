@@ -83,6 +83,39 @@ describe("TutorProfileTabEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit University Section" }));
     expect(onEditSection).toHaveBeenCalledWith("c", "c-university");
   });
+
+  it("navigates to next section on horizontal swipe left", () => {
+    const onTabChange = vi.fn();
+    render(<TutorProfileTabEditor sections={sections} activeTab="a" onTabChange={onTabChange} onEditSection={vi.fn()} />);
+
+    const panel = screen.getByRole("tabpanel");
+    fireEvent.touchStart(panel, { touches: [{ clientX: 200, clientY: 100 }] });
+    fireEvent.touchEnd(panel, { changedTouches: [{ clientX: 120, clientY: 100 }] });
+
+    expect(onTabChange).toHaveBeenCalledWith("c");
+  });
+
+  it("navigates to previous section on horizontal swipe right", () => {
+    const onTabChange = vi.fn();
+    render(<TutorProfileTabEditor sections={sections} activeTab="c" onTabChange={onTabChange} onEditSection={vi.fn()} />);
+
+    const panel = screen.getByRole("tabpanel");
+    fireEvent.touchStart(panel, { touches: [{ clientX: 100, clientY: 100 }] });
+    fireEvent.touchEnd(panel, { changedTouches: [{ clientX: 180, clientY: 100 }] });
+
+    expect(onTabChange).toHaveBeenCalledWith("a");
+  });
+
+  it("does not trigger navigation when vertical scroll dominates horizontal movement", () => {
+    const onTabChange = vi.fn();
+    render(<TutorProfileTabEditor sections={sections} activeTab="a" onTabChange={onTabChange} onEditSection={vi.fn()} />);
+
+    const panel = screen.getByRole("tabpanel");
+    fireEvent.touchStart(panel, { touches: [{ clientX: 100, clientY: 100 }] });
+    fireEvent.touchEnd(panel, { changedTouches: [{ clientX: 80, clientY: 300 }] });
+
+    expect(onTabChange).not.toHaveBeenCalled();
+  });
 });
 
 describe("TutorProfileTabEditor states", () => {
@@ -110,5 +143,22 @@ describe("TutorProfileTabEditor states", () => {
     const identity = screen.getByRole("heading", { name: "Identity and contact" }).closest("section")!;
     expect(within(identity).queryByText("Nothing added here yet")).toBeNull();
     expect(within(identity).getByText("Sojib")).toBeTruthy();
+  });
+
+  it("renders tactile Edit button with visible text and icon", () => {
+    render(<TutorProfileTabEditor sections={sections} activeTab="a" onTabChange={vi.fn()} onEditSection={vi.fn()} />);
+    const editBtn = screen.getByRole("button", { name: "Edit Identity and contact" });
+    expect(editBtn.textContent).toContain("Edit");
+  });
+
+  it("displays completion status badges on section group cards", () => {
+    render(<TutorProfileTabEditor sections={sections} activeTab="c" onTabChange={vi.fn()} onEditSection={vi.fn()} />);
+    // "University Section" has Institute filled and 0 missing -> Complete
+    const uniSection = screen.getByRole("heading", { name: "University Section" }).closest("section")!;
+    expect(within(uniSection).getByText("Complete")).toBeTruthy();
+
+    // "Higher Secondary" has Institute Name missing (1 required) -> 1 required left
+    const hscSection = screen.getByRole("heading", { name: "Higher Secondary" }).closest("section")!;
+    expect(within(hscSection).getByText("1 required left")).toBeTruthy();
   });
 });

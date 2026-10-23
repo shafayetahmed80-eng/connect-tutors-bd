@@ -112,4 +112,27 @@ describe("TutorProfileSectionModal", () => {
     expect(screen.getByText("Please fix the required fields")).toBeTruthy();
     expect(screen.getByText("Passing year is required")).toBeTruthy();
   });
+
+  it("renders mobile drawer pull handle for bottom sheet ergonomics", () => {
+    renderModal();
+    const handle = screen.getByTestId("bottom-drawer-pull-handle");
+    expect(handle).toBeTruthy();
+    expect(handle.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("triggers safe haptic feedback when submit button is clicked", () => {
+    const vibrateMock = vi.fn();
+    Object.defineProperty(navigator, "vibrate", {
+      value: vibrateMock,
+      writable: true,
+      configurable: true,
+    });
+
+    const { onSubmit } = renderModal();
+    const submitBtn = screen.getByRole("button", { name: /Submit/ });
+    fireEvent.click(submitBtn);
+
+    expect(vibrateMock).toHaveBeenCalledWith(10);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
 });
