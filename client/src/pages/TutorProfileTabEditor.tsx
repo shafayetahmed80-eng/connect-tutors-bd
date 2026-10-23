@@ -14,7 +14,8 @@ import { ORDERED_PROFILE_SECTION_IDS } from "@/components/TutorProfileBottomNav"
  * at a time. Each section's panel lists its sub-groups as ruled sub-cards;
  * every sub-card's pencil opens that sub-group's edit popup.
  *
- * Supports fluid horizontal touch swipe navigation on mobile between sections.
+ * Supports fluid horizontal touch swipe navigation on mobile between sections,
+ * tactile touch-friendly edit buttons, and group completion status badges.
  */
 export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEditSection, justSaved = null }: {
   sections: TutorProfileReadoutSection[];
@@ -79,23 +80,37 @@ export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEdit
       {active.groups.map((group, groupIndex) => {
         const heading = group.heading ?? active.title;
         const groupTarget = group.editTarget;
+        const missingRequiredCount = group.rows.filter(r => r.missing && !r.optional).length;
+        const isGroupComplete = group.rows.length > 0 && missingRequiredCount === 0;
+
         return <section key={groupIndex} className={`${tp.card} ${sectionPadding}`}>
           <div className="flex items-center justify-between gap-3 border-b border-tp-border pb-3">
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
               <h3 className={tp.heading}>
                 {groupTarget ? <SiteText slotId={`tutor-profile.group.${groupTarget}`} fallback={heading} className="text-sm" /> : <span className="text-sm">{heading}</span>}
               </h3>
-              {justSaved != null && justSaved === (groupTarget ?? active.id)
-                ? <span role="status" className="inline-flex items-center gap-1 rounded-full bg-j-ok-wash px-2 py-0.5 text-2xs font-semibold text-j-ok-ink motion-safe:animate-in motion-safe:fade-in"><Check size={12} aria-hidden={true} />Saved</span>
-                : null}
+              {justSaved != null && justSaved === (groupTarget ?? active.id) ? (
+                <span role="status" className="inline-flex items-center gap-1 rounded-full bg-j-ok-wash px-2 py-0.5 text-2xs font-semibold text-j-ok-ink motion-safe:animate-in motion-safe:fade-in">
+                  <Check size={12} aria-hidden={true} />Saved
+                </span>
+              ) : isGroupComplete ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-2xs font-semibold text-emerald-700 border border-emerald-200/70">
+                  <Check size={10} className="stroke-[3]" aria-hidden={true} />Complete
+                </span>
+              ) : missingRequiredCount > 0 ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-2xs font-semibold text-amber-700 border border-amber-200/70">
+                  {missingRequiredCount} required left
+                </span>
+              ) : null}
             </div>
             <button
               type="button"
               aria-label={`Edit ${heading}`}
               onClick={() => onEditSection(active.id, groupTarget)}
-              className={`-my-1 shrink-0 gap-1.5 sm:inline-flex sm:items-center sm:border sm:border-tp-border sm:px-2.5 sm:text-xs sm:font-semibold ${tp.ghostIconButton}`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50/90 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition-all hover:border-blue-300 hover:bg-blue-50/70 hover:text-blue-700 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30"
             >
-              <PencilLine size={15} aria-hidden={true} /><span className="max-sm:hidden">Edit</span>
+              <PencilLine size={13} className="stroke-[2.2]" aria-hidden={true} />
+              <span>Edit</span>
             </button>
           </div>
           <div className="mt-3">
@@ -125,7 +140,7 @@ function EmptyCard({ heading, fields, onAdd }: { heading: string; fields: string
       type="button"
       onClick={onAdd}
       aria-label={`Add ${heading}`}
-      className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 px-3.5 text-xs max-sm:min-h-control max-sm:w-full max-sm:justify-center ${tp.primaryButton}`}
+      className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 px-3.5 text-xs max-sm:min-h-control max-sm:w-full max-sm:justify-center active:scale-[0.98] transition-all ${tp.primaryButton}`}
     ><Plus size={14} aria-hidden={true} />Add</button>
   </div>;
 }

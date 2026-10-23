@@ -144,4 +144,21 @@ describe("TutorProfileTabEditor states", () => {
     expect(within(identity).queryByText("Nothing added here yet")).toBeNull();
     expect(within(identity).getByText("Sojib")).toBeTruthy();
   });
+
+  it("renders tactile Edit button with visible text and icon", () => {
+    render(<TutorProfileTabEditor sections={sections} activeTab="a" onTabChange={vi.fn()} onEditSection={vi.fn()} />);
+    const editBtn = screen.getByRole("button", { name: "Edit Identity and contact" });
+    expect(editBtn.textContent).toContain("Edit");
+  });
+
+  it("displays completion status badges on section group cards", () => {
+    render(<TutorProfileTabEditor sections={sections} activeTab="c" onTabChange={vi.fn()} onEditSection={vi.fn()} />);
+    // "University Section" has Institute filled and 0 missing -> Complete
+    const uniSection = screen.getByRole("heading", { name: "University Section" }).closest("section")!;
+    expect(within(uniSection).getByText("Complete")).toBeTruthy();
+
+    // "Higher Secondary" has Institute Name missing (1 required) -> 1 required left
+    const hscSection = screen.getByRole("heading", { name: "Higher Secondary" }).closest("section")!;
+    expect(within(hscSection).getByText("1 required left")).toBeTruthy();
+  });
 });
