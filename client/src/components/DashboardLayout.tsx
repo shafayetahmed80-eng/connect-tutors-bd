@@ -37,7 +37,7 @@ import {
   sidebarTabsSlotId,
   type SidebarPanelId,
 } from "@shared/sidebar-tabs";
-import { BadgeCheck, Bell, BriefcaseBusiness, CalendarCheck2, ChevronDown, ChevronsLeft, FileText, LayoutDashboard, LoaderCircle, LogOut, Menu, MessageCircle, Settings, UserRound, Users, type LucideIcon } from "lucide-react";
+import { BadgeCheck, Bell, BookOpen, BriefcaseBusiness, CalendarCheck2, ChevronDown, ChevronsLeft, FileText, LayoutDashboard, LoaderCircle, LogOut, Menu, MessageCircle, Settings, UserRound, Users, type LucideIcon } from "lucide-react";
 import React, { CSSProperties, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useBellSwing, usePushBellBounce } from "@/lib/bellSwing";
@@ -155,6 +155,14 @@ export async function completeDashboardSignOut(
  * at the login screen plus whether they are the Owner. One shaped list covers
  * all three without the header needing to know which panel it is in.
  */
+export type WorkspaceHeaderQuickLink = {
+  label: string;
+  href: string;
+  icon?: LucideIcon;
+  external?: boolean;
+  onSelect?: () => void;
+};
+
 export type WorkspaceHeaderIdentity = {
   /** The eyebrow above the page heading: "Tutor Portal", "Guardian Portal", "Admin Panel". */
   portal: string;
@@ -163,6 +171,8 @@ export type WorkspaceHeaderIdentity = {
   details?: Array<{ label: string; value: string }>;
   /** The panel's Settings page, offered in the avatar menu too. */
   settingsPath?: string;
+  /** Quick access links for the avatar menu (e.g. Terms, Privacy, Profile, Support). */
+  quickLinks?: WorkspaceHeaderQuickLink[];
   /**
    * The header bell's unread count (`undefined` while it loads) and the
    * panel's Notifications page. A panel with no inbox - Admin - leaves it out.
@@ -1197,6 +1207,39 @@ function WorkspaceHeader({
               <Settings className="mr-2 size-4" aria-hidden="true" />
               <span>Settings</span>
             </DropdownMenuItem> : null}
+            {(identity.quickLinks ?? []).length > 0 ? (
+              <>
+                <DropdownMenuSeparator />
+                {identity.quickLinks!.map(link => {
+                  const LinkIcon = link.icon ?? BookOpen;
+                  return (
+                    <DropdownMenuItem
+                      key={link.label}
+                      asChild={!link.onSelect}
+                      onSelect={link.onSelect ? () => link.onSelect!() : undefined}
+                      className="cursor-pointer text-j-ink-strong transition-colors hover:bg-[#eef8ff] focus:bg-[#eef8ff] data-[highlighted]:bg-[#eef8ff]"
+                    >
+                      {link.onSelect ? (
+                        <div className="flex w-full items-center">
+                          <LinkIcon className="mr-2 size-4 text-[#607b8e]" aria-hidden="true" />
+                          <span>{link.label}</span>
+                        </div>
+                      ) : (
+                        <a
+                          href={link.href}
+                          target={link.external ? "_blank" : undefined}
+                          rel={link.external ? "noreferrer" : undefined}
+                          className="flex w-full items-center"
+                        >
+                          <LinkIcon className="mr-2 size-4 text-[#607b8e]" aria-hidden="true" />
+                          <span>{link.label}</span>
+                        </a>
+                      )}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </>
+            ) : null}
             <DropdownMenuItem
               disabled={isSigningOut}
               onSelect={event => {

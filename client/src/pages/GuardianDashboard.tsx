@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GuardianRequestTracking } from "@/pages/GuardianRequestTracking";
 import GuardianRequestJourney from "@/pages/GuardianRequestJourney";
 import { GuardianWorkspaceState } from "@/components/GuardianWorkspaceState";
-import { Bell, Clock3, Download, FileText, HelpCircle, KeyRound, LayoutDashboard, LogOut, MessageCircle, Plus, Settings, ShieldCheck, UserRound, Users } from "lucide-react";
+import { Bell, BookOpen, Clock3, Download, FileText, HelpCircle, KeyRound, LayoutDashboard, LogOut, MessageCircle, Plus, Settings, ShieldCheck, UserRound, Users } from "lucide-react";
 import { ConfirmationLetterViewButton } from "@/components/ConfirmationLetterPreview";
 import { NOTIFICATION_CHECK_MS } from "@/lib/bellSwing";
 import { Link, useLocation, useRoute } from "wouter";
@@ -256,6 +256,11 @@ function useGuardianWorkspaceHeader() {
     profilePhotoUrl: photoQuery.data?.photoUrl ?? null,
     details: profile?.guardianId ? [{ label: "Guardian ID", value: profile.guardianId }] : [],
     settingsPath: GUARDIAN_SETTINGS_PATH,
+    quickLinks: [
+      { label: "Terms & Conditions", href: "/terms-conditions", icon: BookOpen, external: true },
+      { label: "Privacy Policy", href: "/privacy-policy", icon: ShieldCheck, external: true },
+      { label: "Help & Support", href: "/contact", icon: HelpCircle, external: true },
+    ],
     notifications: { unreadCount: unreadNotificationsQuery.data?.unreadCount, path: "/guardian/dashboard/notifications" },
   };
 }

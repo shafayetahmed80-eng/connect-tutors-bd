@@ -28,7 +28,7 @@ import { TutorProfileWorkspace } from "./TutorProfileWorkspace";
 import { TutorProfileSkeleton } from "./TutorProfileSkeleton";
 import { shouldAllowTutorProfileNavigation } from "./TutorProfileNavigationGuard";
 import { JobBoardContent } from "./JobBoard";
-import { BadgeCheck, Bell, BookOpenCheck, BriefcaseBusiness, CircleHelp, ClipboardList, CreditCard, Download, FileCheck2, FilePenLine, GraduationCap, HeartHandshake, IdCard, LayoutDashboard, LogOut, Mail, MapPin, MessageCircle, Settings, Share2, Sparkles, UserRound, UsersRound } from "lucide-react";
+import { BadgeCheck, Bell, BookOpen, BookOpenCheck, BriefcaseBusiness, CircleHelp, ClipboardList, CreditCard, Download, FileCheck2, FilePenLine, GraduationCap, HeartHandshake, IdCard, LayoutDashboard, LogOut, Mail, MapPin, MessageCircle, Settings, Share2, ShieldCheck, Sparkles, UserRound, UsersRound } from "lucide-react";
 import { ConfirmationLetterViewButton } from "@/components/ConfirmationLetterPreview";
 import { NOTIFICATION_CHECK_MS } from "@/lib/bellSwing";
 import { LoadingCradle } from "@/components/BrandMark";
@@ -288,7 +288,20 @@ export default function TutorDashboard() {
 
   const identity = stats?.tutorRegistration;
   const sidebarIdentity = getTutorSidebarIdentity({ user, profile, registration: identity });
-  return <DashboardLayout navigationItems={navigationItems} title="Tutor Portal" loginPath="/tutor/login" signOutPath="/tutor/login" onBeforeNavigation={confirmProfileNavigation} sidebarIdentity={<TutorSidebarIdentity identity={sidebarIdentity} />} workspaceHeader={{ portal: "Tutor Portal", name: sidebarIdentity.name, profilePhotoUrl: sidebarIdentity.profilePhotoUrl, details: [{ label: "Tutor ID", value: sidebarIdentity.tutorNumber }], settingsPath: TUTOR_SETTINGS_PATH, notifications: { unreadCount: unreadNotificationsQuery.data?.unreadCount, path: "/tutor/dashboard/notifications" } }} onTutorSignOutSuccess={markCurrentTutorSignedOutNotice} sidebarPanel="tutor" homePath="/tutor/dashboard">
+  return <DashboardLayout navigationItems={navigationItems} title="Tutor Portal" loginPath="/tutor/login" signOutPath="/tutor/login" onBeforeNavigation={confirmProfileNavigation} sidebarIdentity={<TutorSidebarIdentity identity={sidebarIdentity} />} workspaceHeader={{
+    portal: "Tutor Portal",
+    name: sidebarIdentity.name,
+    profilePhotoUrl: sidebarIdentity.profilePhotoUrl,
+    details: [{ label: "Tutor ID", value: sidebarIdentity.tutorNumber }],
+    settingsPath: TUTOR_SETTINGS_PATH,
+    quickLinks: [
+      { label: "My Profile", href: "/tutor/dashboard/profile", icon: UserRound, onSelect: () => navigate("/tutor/dashboard/profile") },
+      { label: "Terms & Conditions", href: "/terms-conditions", icon: BookOpen, external: true },
+      { label: "Privacy Policy", href: "/privacy-policy", icon: ShieldCheck, external: true },
+      { label: "Help & Support", href: "/contact", icon: CircleHelp, external: true },
+    ],
+    notifications: { unreadCount: unreadNotificationsQuery.data?.unreadCount, path: "/tutor/dashboard/notifications" },
+  }} onTutorSignOutSuccess={markCurrentTutorSignedOutNotice} sidebarPanel="tutor" homePath="/tutor/dashboard">
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 pb-10">
       {section === "dashboard" && <TutorDashboardStageNav />}
       {section === "dashboard" && (profileQuery.isLoading || statsQuery.isLoading) && <TutorDashboardDataSkeleton />}
