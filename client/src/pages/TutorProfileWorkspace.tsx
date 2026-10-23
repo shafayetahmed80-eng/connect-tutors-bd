@@ -61,6 +61,7 @@ import { guardianReadableFields, projectTutorProfileForGuardian } from "@shared/
 import { GuardianTutorProfileHeader } from "@/components/GuardianTutorProfileHeader";
 import { TutorProfileSectionModal } from "@/components/TutorProfileSectionModal";
 import { TutorProfileTabEditor } from "./TutorProfileTabEditor";
+import { TutorProfileBottomNav } from "@/components/TutorProfileBottomNav";
 
 const fieldClassName = "modal-field-profile input-text-profile mt-1 w-full rounded-xl border border-tp-border bg-white px-2.5 py-1.5 text-tp-heading outline-none transition placeholder:text-tp-label-faint focus:border-tp-accent focus:ring-2 focus:ring-tp-accent-wash disabled:cursor-not-allowed disabled:bg-j-surface-sunken";
 
@@ -1620,6 +1621,14 @@ function TutorProfileWorkspaceBody({
         }
       }}
       ctaLabel={tutorApplyReturnTo ? "নির্বাচিত টিউশনে যান ও আবেদন করুন" : undefined}
+    />
+      <TutorProfileBottomNav
+      sections={readoutSections}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      completionPercentage={completionPercentage}
+      requiredLeft={requiredLeft}
+      onBackToDashboard={() => navigate("/tutor/dashboard")}
     />
   </form>;
 }

@@ -301,7 +301,7 @@ export default function TutorDashboard() {
       { label: "Help & Support", href: "/contact", icon: CircleHelp, external: true },
     ],
     notifications: { unreadCount: unreadNotificationsQuery.data?.unreadCount, path: "/tutor/dashboard/notifications" },
-  }} onTutorSignOutSuccess={markCurrentTutorSignedOutNotice} sidebarPanel="tutor" homePath="/tutor/dashboard">
+  }} onTutorSignOutSuccess={markCurrentTutorSignedOutNotice} sidebarPanel="tutor" homePath="/tutor/dashboard" hideBottomNav={section === "profile"}>
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 pb-10">
       {section === "dashboard" && <TutorDashboardStageNav />}
       {section === "dashboard" && (profileQuery.isLoading || statsQuery.isLoading) && <TutorDashboardDataSkeleton />}

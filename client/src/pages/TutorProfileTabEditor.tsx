@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import { Check, PencilLine, Plus } from "lucide-react";
 import { SiteBlocks, SiteText, useSiteContentSpacingClass } from "@/lib/siteContent";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
@@ -7,11 +7,14 @@ import { TutorProfileSectionTabs } from "./TutorProfileSectionTabs";
 import type { TutorProfileSectionGroupId } from "./TutorProfileSectionDraft";
 import type { TutorProfileReadoutSection } from "./TutorProfileSectionReadout";
 import type { TutorProfileSectionId } from "./TutorProfileSectionDraft";
+import { ORDERED_PROFILE_SECTION_IDS } from "@/components/TutorProfileBottomNav";
 
 /**
  * The Tutor Profile body: a segmented-control tab bar over one read-out panel
  * at a time. Each section's panel lists its sub-groups as ruled sub-cards;
  * every sub-card's pencil opens that sub-group's edit popup.
+ *
+ * Supports fluid horizontal touch swipe navigation on mobile between sections.
  */
 export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEditSection, justSaved = null }: {
   sections: TutorProfileReadoutSection[];
@@ -24,11 +27,55 @@ export function TutorProfileTabEditor({ sections, activeTab, onTabChange, onEdit
   const active = sections.find(section => section.id === activeTab) ?? sections[0];
   const sectionPadding = useSiteContentSpacingClass("tutor-profile.spacing.section-card");
 
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+    touchStartX.current = null;
+    touchStartY.current = null;
+
+    // Minimum 50px horizontal swipe with horizontal delta dominating vertical delta
+    if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3) {
+      const currentIndex = ORDERED_PROFILE_SECTION_IDS.indexOf(activeTab);
+      if (currentIndex === -1) return;
+
+      if (deltaX < 0 && currentIndex < ORDERED_PROFILE_SECTION_IDS.length - 1) {
+        // Swipe left -> Next tab
+        const nextTab = ORDERED_PROFILE_SECTION_IDS[currentIndex + 1];
+        if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+          try { navigator.vibrate(10); } catch {}
+        }
+        onTabChange(nextTab);
+      } else if (deltaX > 0 && currentIndex > 0) {
+        // Swipe right -> Previous tab
+        const prevTab = ORDERED_PROFILE_SECTION_IDS[currentIndex - 1];
+        if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+          try { navigator.vibrate(10); } catch {}
+        }
+        onTabChange(prevTab);
+      }
+    }
+  };
+
   return <div className={tp.stack}>
     <SiteBlocks anchorId="tutor-profile.top" />
     <TutorProfileSectionTabs sections={sections} activeTab={activeTab} onTabChange={onTabChange} />
 
-    <div role="tabpanel" aria-label={active.title} className="space-y-4">
+    <div
+      role="tabpanel"
+      aria-label={active.title}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      className="space-y-4 touch-pan-y"
+    >
       {active.groups.map((group, groupIndex) => {
         const heading = group.heading ?? active.title;
         const groupTarget = group.editTarget;
