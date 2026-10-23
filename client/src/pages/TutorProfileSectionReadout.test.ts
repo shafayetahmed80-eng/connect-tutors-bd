@@ -78,7 +78,7 @@ describe("getTutorProfileReadoutSections", () => {
   it("marks an empty required value as missing and shows 'Not given'", () => {
     const sections = getTutorProfileReadoutSections(baseForm(), resolvers);
     const nameRow = sections[0].groups[0].rows.find(row => row.label === "Full name");
-    expect(nameRow).toEqual({ label: "Full name", value: "Not given", missing: true });
+    expect(nameRow).toEqual({ fieldId: "name", label: "Full name", value: "Not given", missing: true });
   });
 
   it("says 'Not given' on every empty field, and still flags which ones are optional", () => {
@@ -88,7 +88,7 @@ describe("getTutorProfileReadoutSections", () => {
     // An em dash left the tutor guessing; the wording is now the same
     // everywhere and only the `optional` flag (and so the colour) differs.
     const additionalPhone = rows.find(row => row.label === "Additional phone");
-    expect(additionalPhone).toEqual({ label: "Additional phone", value: "Not given", missing: true, optional: true });
+    expect(additionalPhone).toEqual({ fieldId: "privateDetails.additionalPhone", label: "Additional phone", value: "Not given", missing: true, optional: true });
 
     // Every "Introduction and review" field is optional for submission.
     const sectionE = sections[4].groups.flatMap(group => group.rows);
@@ -99,7 +99,7 @@ describe("getTutorProfileReadoutSections", () => {
     expect(rows.filter(row => row.missing).every(row => row.value === "Not given")).toBe(true);
 
     // Required rows keep the plain shape with no `optional` flag.
-    expect(rows.find(row => row.label === "Father's name")).toEqual({ label: "Father's name", value: "Not given", missing: true });
+    expect(rows.find(row => row.label === "Father's name")).toEqual({ fieldId: "privateDetails.fatherName", label: "Father's name", value: "Not given", missing: true });
   });
 
   it("falls back to 'Not given' rather than a raw id when a catalog value does not resolve", () => {
@@ -108,7 +108,7 @@ describe("getTutorProfileReadoutSections", () => {
       { ...resolvers, university: () => "", subject: id => (id === "1" ? "Mathematics" : "") },
     );
     const education = sections[1].groups.flatMap(group => group.rows);
-    expect(education.find(row => row.label === "Institute")).toEqual({ label: "Institute", value: "Not given", missing: true });
+    expect(education.find(row => row.label === "Institute")).toEqual({ fieldId: "universityId", label: "Institute", value: "Not given", missing: true });
     // Subjects live in Tuition & location now, not with the Tutor's own degree.
     const tuition = sections[2].groups.flatMap(group => group.rows);
     expect(tuition.find(row => row.label === "Primary subjects")?.value).toBe("Mathematics");
@@ -129,7 +129,7 @@ describe("getTutorProfileReadoutSections", () => {
     );
 
     const identityRows = sections[0].groups[0].rows;
-    expect(identityRows.find(row => row.label === "Full name")).toEqual({ label: "Full name", value: "Rahim", missing: false });
+    expect(identityRows.find(row => row.label === "Full name")).toEqual({ fieldId: "name", label: "Full name", value: "Rahim", missing: false });
 
     const education = sections[1].groups.flatMap(group => group.rows);
     const tuition = sections[2].groups.flatMap(group => group.rows);

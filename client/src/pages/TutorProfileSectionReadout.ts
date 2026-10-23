@@ -43,7 +43,7 @@ export type TutorProfileReadoutResolvers = {
  * decides the colour, so an optional blank stays muted rather than red, and it
  * is still left out of the per-section filled/total count.
  */
-export type TutorProfileReadoutRow = { label: string; value: string; missing: boolean; optional?: boolean };
+export type TutorProfileReadoutRow = { fieldId?: string; label: string; value: string; missing: boolean; optional?: boolean };
 export type TutorProfileReadoutGroup = {
   heading?: string;
   rows: TutorProfileReadoutRow[];
@@ -240,7 +240,7 @@ const rowBuilders: Record<string, ReadoutRowBuilder> = {
 
 function toRow(field: ResolvedTutorProfileField, content: ReadoutRowContent): TutorProfileReadoutRow {
   const missing = content.value.trim().length === 0;
-  const base: TutorProfileReadoutRow = { label: content.label, value: content.value || NOT_GIVEN, missing };
+  const base: TutorProfileReadoutRow = { fieldId: field.id, label: content.label, value: content.value || NOT_GIVEN, missing };
   return field.required && !content.optional ? base : { ...base, optional: true };
 }
 
