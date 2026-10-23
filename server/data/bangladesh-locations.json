@@ -6292,6 +6292,1287 @@
       "type": "area",
       "country": "Bangladesh",
       "parentId": "narayanganj-district"
+    },
+    {
+      "id": "dhaka-area-tolarbagh",
+      "label": "Tolarbagh",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-ansar-camp-mirpur",
+      "label": "Ansar Camp Mirpur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-mirpur-10-golchattar",
+      "label": "Mirpur 10 Golchattar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-mirpur-11-5",
+      "label": "Mirpur 11.5",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-eastern-housing-mirpur",
+      "label": "Eastern Housing Mirpur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-benaroshi-polli",
+      "label": "Benaroshi Polli",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-paikpara-govt-colony",
+      "label": "Paikpara Govt Colony",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-pisciculture-housing",
+      "label": "Pisciculture Housing",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-kalyanpur-housing",
+      "label": "Kalyanpur Housing",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-chandrima-housing",
+      "label": "Chandrima Housing",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-banshbari-mohammadpur",
+      "label": "Banshbari Mohammadpur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-dhanmondi-32",
+      "label": "Dhanmondi 32",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-dhanmondi-27",
+      "label": "Dhanmondi 27",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-dhanmondi-15",
+      "label": "Dhanmondi 15",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-satmasjid-road",
+      "label": "Satmasjid Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-dhanmondi-lake-area",
+      "label": "Dhanmondi Lake Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-sobhanbagh-mosque-area",
+      "label": "Sobhanbagh Mosque Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-north-south-university-area",
+      "label": "North South University Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-independent-university-area",
+      "label": "Independent University Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-apollo-evercare-area",
+      "label": "Apollo Evercare Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-bashundhara-block-c",
+      "label": "Bashundhara Block C",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-bashundhara-block-d",
+      "label": "Bashundhara Block D",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-bashundhara-block-e",
+      "label": "Bashundhara Block E",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-bashundhara-block-f",
+      "label": "Bashundhara Block F",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-bashundhara-block-g",
+      "label": "Bashundhara Block G",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-bashundhara-block-i",
+      "label": "Bashundhara Block I",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-east-west-university-area",
+      "label": "East West University Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-aftabnagar-block-a",
+      "label": "Aftabnagar Block A",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-aftabnagar-block-b",
+      "label": "Aftabnagar Block B",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-aftabnagar-block-c",
+      "label": "Aftabnagar Block C",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-mahanagar-project",
+      "label": "Mahanagar Project",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-wapda-road-rampura",
+      "label": "Wapda Road Rampura",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-ulon-rampura",
+      "label": "Ulon Rampura",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-dit-project-merul-badda",
+      "label": "DIT Project Merul Badda",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-rabindra-sarani-uttara",
+      "label": "Rabindra Sarani Uttara",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-gausul-azam-avenue",
+      "label": "Gausul Azam Avenue",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-sonargaon-janapath",
+      "label": "Sonargaon Janapath",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-shahjalal-avenue",
+      "label": "Shahjalal Avenue",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-diabari-metro-station-area",
+      "label": "Diabari Metro Station Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-kamarpara-uttara",
+      "label": "Kamarpara Uttara",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-ranabhola-uttara",
+      "label": "Ranabhola Uttara",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-shahjahanpur-railway-colony",
+      "label": "Shahjahanpur Railway Colony",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-khilgaon-bagicha",
+      "label": "Khilgaon Bagicha",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-siddheswari-circular-road",
+      "label": "Siddheswari Circular Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-malibagh-railgate",
+      "label": "Malibagh Railgate",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-bangla-bazar",
+      "label": "Bangla Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-lalbagh-fort-area",
+      "label": "Lalbagh Fort Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-dhakeshwari-area",
+      "label": "Dhakeshwari Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-sadarghat-launch-terminal",
+      "label": "Sadarghat Launch Terminal Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-patuatuly",
+      "label": "Patuatuly",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-curzon-hall-area",
+      "label": "Curzon Hall Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-kutubkhali",
+      "label": "Kutubkhali",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-kajla-jatrabari",
+      "label": "Kajla Jatrabari",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-bibir-bagicha",
+      "label": "Bibir Bagicha",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-dholairpar",
+      "label": "Dholairpar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-muradpur-jurain",
+      "label": "Muradpur Jurain",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-zinjira-bazar",
+      "label": "Zinjira Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-aganagar-keraniganj",
+      "label": "Aganagar Keraniganj",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-hasnabad-keraniganj",
+      "label": "Hasnabad Keraniganj",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-ju-campus-area",
+      "label": "Jahangirnagar University Campus Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-radio-colony-savar",
+      "label": "Radio Colony Savar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-bank-town-savar",
+      "label": "Bank Town Savar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-savar-cantonment",
+      "label": "Savar Cantonment",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "dhaka-area-ashulia-model-town",
+      "label": "Ashulia Model Town",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "dhaka-city"
+    },
+    {
+      "id": "chattogram-area-nasirabad-housing-society",
+      "label": "Nasirabad Housing Society",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-area-khulshi-hills-ra",
+      "label": "Khulshi Hills R/A",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-area-wasa-more",
+      "label": "WASA More",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-area-agrabad-cda-ra",
+      "label": "Agrabad CDA R/A",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-area-agrabad-access-road",
+      "label": "Agrabad Access Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-area-port-connecting-road",
+      "label": "Port Connecting Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-area-halishahar-housing-estate",
+      "label": "Halishahar Housing Estate",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-area-oxygen-more",
+      "label": "Oxygen More",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-area-kuwaish",
+      "label": "Kuwaish",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-area-panchlaish-residential",
+      "label": "Panchlaish Residential Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-area-sholashahar-railway-station",
+      "label": "Sholashahar Railway Station Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-area-tigerpass-more",
+      "label": "Tigerpass More",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-area-cantonment-board-area",
+      "label": "Chittagong Cantonment Board Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "chattogram-area-south-campus-cu",
+      "label": "South Campus CU",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "chattogram-city"
+    },
+    {
+      "id": "sylhet-area-vip-road",
+      "label": "VIP Road Sylhet",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "sylhet-area-subidbazar-bonolota-ra",
+      "label": "Subidbazar Bonolota R/A",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "sylhet-area-ambarkhana-point",
+      "label": "Ambarkhana Point",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "sylhet-area-zindabazar-point",
+      "label": "Zindabazar Point",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "sylhet-area-bandar-bazar-point",
+      "label": "Bandar Bazar Point",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "sylhet-area-stadium-area",
+      "label": "Sylhet Stadium Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "sylhet-area-dargah-gate-area",
+      "label": "Shahjalal Dargah Gate Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "sylhet-area-khadim-para",
+      "label": "Khadim Para",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "sylhet-area-baghbari-residential",
+      "label": "Baghbari Residential Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "sylhet-area-pathantula-point",
+      "label": "Pathantula Point",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sylhet-city"
+    },
+    {
+      "id": "rajshahi-area-rmc-campus",
+      "label": "Rajshahi Medical College Campus",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "rajshahi-area-kadirganj",
+      "label": "Kadirganj Rajshahi",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "rajshahi-area-upashahar-block-a",
+      "label": "Upashahar Block A",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "rajshahi-area-upashahar-block-b",
+      "label": "Upashahar Block B",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "rajshahi-area-upashahar-block-c",
+      "label": "Upashahar Block C",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "rajshahi-area-padma-ra-sector-1",
+      "label": "Padma Residential Area Sector 1",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "rajshahi-area-padma-ra-sector-2",
+      "label": "Padma Residential Area Sector 2",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "rajshahi-area-bhadra-rail-gate",
+      "label": "Bhadra Rail Gate",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "rajshahi-area-shaheb-bazar-zero-point",
+      "label": "Shaheb Bazar Zero Point",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rajshahi-city"
+    },
+    {
+      "id": "khulna-area-gollamari-bridge-area",
+      "label": "Gollamari Bridge Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "khulna-area-sonadanga-bus-stand",
+      "label": "Sonadanga Bus Stand Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "khulna-area-boyra-college-road",
+      "label": "Boyra College Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "khulna-area-khalishpur-housing-estate",
+      "label": "Khalishpur Housing Estate",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "khulna-area-daulatpur-bazar",
+      "label": "Daulatpur Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "khulna-area-zilla-school-area",
+      "label": "Khulna Zilla School Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "khulna-area-haji-mohsin-road",
+      "label": "Haji Mohsin Road Khulna",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "khulna-city"
+    },
+    {
+      "id": "barishal-area-bm-college-campus",
+      "label": "BM College Campus Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "barishal-area-zilla-school-area",
+      "label": "Barishal Zilla School Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "barishal-area-bibir-pukur-par",
+      "label": "Bibir Pukur Par",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "barishal-area-central-bus-terminal",
+      "label": "Notullabad Central Bus Terminal",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "barishal-area-chowmatha-bazar",
+      "label": "Chowmatha Bazar",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "barishal-area-police-line",
+      "label": "Police Line Barishal",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "barishal-city"
+    },
+    {
+      "id": "mymensingh-area-charpara-medical-mor",
+      "label": "Charpara Medical Mor",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "mymensingh-area-zilla-school-area",
+      "label": "Mymensingh Zilla School Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "mymensingh-area-nasirabad-college-area",
+      "label": "Nasirabad College Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "mymensingh-area-kachijhuli-vip-road",
+      "label": "Kachijhuli VIP Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "mymensingh-area-sankipara-rail-crossing",
+      "label": "Sankipara Rail Crossing",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "mymensingh-area-kewatkhali-power-grid",
+      "label": "Kewatkhali Power Grid Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "mymensingh-city"
+    },
+    {
+      "id": "rangpur-area-zilla-school-more",
+      "label": "Rangpur Zilla School More",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "rangpur-area-kachari-bazar",
+      "label": "Kachari Bazar Rangpur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "rangpur-area-munshipara",
+      "label": "Munshipara Rangpur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "rangpur-area-lalbagh-railgate",
+      "label": "Lalbagh Railgate",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "rangpur-area-modern-mor",
+      "label": "Modern Mor Rangpur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "rangpur-area-shapla-chattar-point",
+      "label": "Shapla Chattar Point",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "rangpur-city"
+    },
+    {
+      "id": "cumilla-area-kandirpar-circle",
+      "label": "Kandirpar Circle",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "cumilla-area-dharmasagar-par",
+      "label": "Dharmasagar Par",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "cumilla-area-ranir-bazar",
+      "label": "Ranir Bazar Cumilla",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "cumilla-area-epz-area",
+      "label": "Cumilla EPZ Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "cumilla-area-kotbari-bard-area",
+      "label": "Kotbari BARD Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "cumilla-area-zilla-school-area",
+      "label": "Cumilla Zilla School Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "cumilla-area-racecourse",
+      "label": "Racecourse Cumilla",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "cumilla-district"
+    },
+    {
+      "id": "gazipur-area-board-bazar-iut-gate",
+      "label": "Board Bazar IUT Gate",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "gazipur-area-duet-campus-area",
+      "label": "DUET Campus Area Gazipur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "gazipur-area-joydebpur-station-area",
+      "label": "Joydebpur Railway Station Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "gazipur-area-dc-office-area",
+      "label": "Gazipur DC Office Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "gazipur-area-maleker-bari",
+      "label": "Maleker Bari Gazipur",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "gazipur-area-tongi-station-road",
+      "label": "Tongi Station Road",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "gazipur-district"
+    },
+    {
+      "id": "narayanganj-area-signboard",
+      "label": "Signboard Narayanganj",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "narayanganj-area-shibu-market",
+      "label": "Shibu Market",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "narayanganj-area-jalkuri",
+      "label": "Jalkuri",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "narayanganj-area-fatullah-station-area",
+      "label": "Fatullah Railway Station Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "narayanganj-area-kanchpur-bridge-area",
+      "label": "Kanchpur Bridge Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "narayanganj-area-madanpur",
+      "label": "Madanpur Narayanganj",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "narayanganj-area-club-area",
+      "label": "Narayanganj Club Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "narayanganj-district"
+    },
+    {
+      "id": "tangail-area-mbstu-campus",
+      "label": "MBSTU Campus Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "tangail-area-kumudini-college-area",
+      "label": "Kumudini College Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "tangail-area-bindubashini-school-area",
+      "label": "Bindubashini School Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "tangail-area-victoria-road",
+      "label": "Victoria Road Tangail",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "tangail-area-baby-stand",
+      "label": "Baby Stand Tangail",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "tangail-area-old-bus-stand",
+      "label": "Old Bus Stand Tangail",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "tangail-area-new-bus-stand",
+      "label": "New Bus Stand Tangail",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "tangail-city"
+    },
+    {
+      "id": "sirajganj-area-mujib-sadak",
+      "label": "Mujib Sadak Sirajganj",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "sirajganj-area-govt-college-area",
+      "label": "Sirajganj Govt College Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "sirajganj-area-masumpur",
+      "label": "Masumpur Sirajganj",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "sirajganj-area-dhanbandi",
+      "label": "Dhanbandi Sirajganj",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "sirajganj-area-hosenpur",
+      "label": "Hosenpur Sirajganj",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "sirajganj-city"
+    },
+    {
+      "id": "bogura-city",
+      "label": "Bogura",
+      "type": "city",
+      "country": "Bangladesh",
+      "parentId": "bd"
+    },
+    {
+      "id": "bogura-area-jaleshwaritola",
+      "label": "Jaleshwaritola",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "bogura-city"
+    },
+    {
+      "id": "bogura-area-shatmatha",
+      "label": "Shatmatha Bogura",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "bogura-city"
+    },
+    {
+      "id": "bogura-area-azizul-haque-college-area",
+      "label": "Azizul Haque College Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "bogura-city"
+    },
+    {
+      "id": "bogura-area-thanthania",
+      "label": "Thanthania Bogura",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "bogura-city"
+    },
+    {
+      "id": "bogura-area-colony",
+      "label": "Colony Bogura",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "bogura-city"
+    },
+    {
+      "id": "bogura-area-sutrapur",
+      "label": "Sutrapur Bogura",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "bogura-city"
+    },
+    {
+      "id": "bogura-area-chelopara",
+      "label": "Chelopara Bogura",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "bogura-city"
+    },
+    {
+      "id": "bogura-area-banani-mor",
+      "label": "Banani Mor Bogura",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "bogura-city"
+    },
+    {
+      "id": "bogura-area-matidali",
+      "label": "Matidali Bogura",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "bogura-city"
+    },
+    {
+      "id": "bogura-area-cantonment",
+      "label": "Bogura Cantonment",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "bogura-city"
+    },
+    {
+      "id": "bogura-area-zilla-school-area",
+      "label": "Bogura Zilla School Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "bogura-city"
+    },
+    {
+      "id": "jashore-city",
+      "label": "Jashore",
+      "type": "city",
+      "country": "Bangladesh",
+      "parentId": "bd"
+    },
+    {
+      "id": "jashore-area-just-campus-area",
+      "label": "JUST Campus Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "jashore-city"
+    },
+    {
+      "id": "jashore-area-mm-college-area",
+      "label": "MM College Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "jashore-city"
+    },
+    {
+      "id": "jashore-area-palbari-more",
+      "label": "Palbari More Jashore",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "jashore-city"
+    },
+    {
+      "id": "jashore-area-doratana-point",
+      "label": "Doratana Point Jashore",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "jashore-city"
+    },
+    {
+      "id": "jashore-area-garikhana",
+      "label": "Garikhana Jashore",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "jashore-city"
+    },
+    {
+      "id": "jashore-area-arabpur",
+      "label": "Arabpur Jashore",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "jashore-city"
+    },
+    {
+      "id": "jashore-area-shankarpur",
+      "label": "Shankarpur Jashore",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "jashore-city"
+    },
+    {
+      "id": "jashore-area-cantonment",
+      "label": "Jashore Cantonment",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "jashore-city"
+    },
+    {
+      "id": "kushtia-city",
+      "label": "Kushtia",
+      "type": "city",
+      "country": "Bangladesh",
+      "parentId": "bd"
+    },
+    {
+      "id": "kushtia-area-iu-campus-area",
+      "label": "Islamic University Campus Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "kushtia-city"
+    },
+    {
+      "id": "kushtia-area-govt-college-area",
+      "label": "Kushtia Govt College Area",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "kushtia-city"
+    },
+    {
+      "id": "kushtia-area-ns-road",
+      "label": "NS Road Kushtia",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "kushtia-city"
+    },
+    {
+      "id": "kushtia-area-majampur-gate",
+      "label": "Majampur Gate Kushtia",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "kushtia-city"
+    },
+    {
+      "id": "kushtia-area-court-para",
+      "label": "Court Para Kushtia",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "kushtia-city"
+    },
+    {
+      "id": "kushtia-area-chourhas",
+      "label": "Chourhas Kushtia",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "kushtia-city"
+    },
+    {
+      "id": "kushtia-area-housing-estate",
+      "label": "Housing Estate Kushtia",
+      "type": "area",
+      "country": "Bangladesh",
+      "parentId": "kushtia-city"
     }
   ]
 }

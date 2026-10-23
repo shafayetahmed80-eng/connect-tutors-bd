@@ -73,4 +73,33 @@ describe("TutorProfilePhotoEditor", () => {
     expect(document.querySelector("[data-modal-body]")!.className).toContain("overflow-y-auto");
     expect(screen.getByTestId("tutor-profile-photo-editor-crop-stage").className).toContain("52dvh");
   });
+
+  it("provides interactive zoom in/out, rotate 90 degrees, and grid toggle controls", () => {
+    render(<TutorProfilePhotoEditor imageUrl="blob:source-photo" onCancel={vi.fn()} onConfirm={vi.fn()} />);
+
+    // Zoom controls
+    const zoomInBtn = screen.getByRole("button", { name: "Zoom in" });
+    const zoomOutBtn = screen.getByRole("button", { name: "Zoom out" });
+    expect(zoomInBtn).toBeTruthy();
+    expect(zoomOutBtn).toBeTruthy();
+    fireEvent.click(zoomInBtn);
+    expect(screen.getByText(/Zoom \(120%\)/)).toBeTruthy();
+
+    // Rotate 90 degrees button
+    const rotateBtn = screen.getByRole("button", { name: "Rotate 90 degrees clockwise" });
+    expect(rotateBtn).toBeTruthy();
+    fireEvent.click(rotateBtn);
+    expect(screen.getByText(/Rotation: 90°/)).toBeTruthy();
+
+    // Toggle grid button
+    const gridBtn = screen.getByRole("button", { name: "Toggle grid guidelines" });
+    fireEvent.click(gridBtn);
+    expect(gridBtn.className).toContain("border-tp-accent");
+
+    // Reset button
+    const resetBtn = screen.getByRole("button", { name: /reset/i });
+    fireEvent.click(resetBtn);
+    expect(screen.getByText(/Zoom \(100%\)/)).toBeTruthy();
+    expect(screen.queryByText(/Rotation: 90°/)).toBeNull();
+  });
 });

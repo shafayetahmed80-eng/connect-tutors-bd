@@ -13,7 +13,7 @@ describe("shipped location catalog", () => {
   it("carries the whole tree, not a fragment", () => {
     // A fresh `db:migrate` alone gives 162 rows with two cities and no thanas,
     // which is why this file exists at all.
-    expect(suppliedLocations.length).toBe(899);
+    expect(suppliedLocations.length).toBe(1082);
   });
 
   it("has exactly one root, and it is the country", () => {
@@ -135,6 +135,46 @@ describe("shipped location catalog", () => {
         label: expected.label,
         parentId: expected.parentId,
         type: "area",
+      });
+    }
+  });
+  it("includes high-demand Phase 3 residential, educational, and tuition hubs across Dhaka, regional cities, and new education hubs", () => {
+    const keyLocations = [
+      { id: "dhaka-area-tolarbagh", label: "Tolarbagh", parentId: "dhaka-city", type: "area" },
+      { id: "dhaka-area-satmasjid-road", label: "Satmasjid Road", parentId: "dhaka-city", type: "area" },
+      { id: "dhaka-area-north-south-university-area", label: "North South University Area", parentId: "dhaka-city", type: "area" },
+      { id: "chattogram-area-nasirabad-housing-society", label: "Nasirabad Housing Society", parentId: "chattogram-city", type: "area" },
+      { id: "sylhet-area-subidbazar-bonolota-ra", label: "Subidbazar Bonolota R/A", parentId: "sylhet-city", type: "area" },
+      { id: "rajshahi-area-rmc-campus", label: "Rajshahi Medical College Campus", parentId: "rajshahi-city", type: "area" },
+      { id: "khulna-area-boyra-college-road", label: "Boyra College Road", parentId: "khulna-city", type: "area" },
+      { id: "barishal-area-choumatha", label: "Choumatha", parentId: "barishal-city", type: "area" },
+      { id: "mymensingh-area-charpara-medical-mor", label: "Charpara Medical Mor", parentId: "mymensingh-city", type: "area" },
+      { id: "rangpur-area-kachari-bazar", label: "Kachari Bazar Rangpur", parentId: "rangpur-city", type: "area" },
+      { id: "cumilla-area-ranir-bazar", label: "Ranir Bazar Cumilla", parentId: "cumilla-district", type: "area" },
+      { id: "gazipur-area-duet-campus-area", label: "DUET Campus Area Gazipur", parentId: "gazipur-district", type: "area" },
+      { id: "narayanganj-area-signboard", label: "Signboard Narayanganj", parentId: "narayanganj-district", type: "area" },
+      { id: "tangail-area-mbstu-campus", label: "MBSTU Campus Area", parentId: "tangail-city", type: "area" },
+      { id: "sirajganj-area-mujib-sadak", label: "Mujib Sadak Sirajganj", parentId: "sirajganj-city", type: "area" },
+      // New education hubs
+      { id: "bogura-city", label: "Bogura", parentId: "bd", type: "city" },
+      { id: "bogura-area-jaleshwaritola", label: "Jaleshwaritola", parentId: "bogura-city", type: "area" },
+      { id: "bogura-area-azizul-haque-college-area", label: "Azizul Haque College Area", parentId: "bogura-city", type: "area" },
+      { id: "jashore-city", label: "Jashore", parentId: "bd", type: "city" },
+      { id: "jashore-area-just-campus-area", label: "JUST Campus Area", parentId: "jashore-city", type: "area" },
+      { id: "jashore-area-mm-college-area", label: "MM College Area", parentId: "jashore-city", type: "area" },
+      { id: "kushtia-city", label: "Kushtia", parentId: "bd", type: "city" },
+      { id: "kushtia-area-iu-campus-area", label: "Islamic University Campus Area", parentId: "kushtia-city", type: "area" },
+      { id: "kushtia-area-ns-road", label: "NS Road Kushtia", parentId: "kushtia-city", type: "area" },
+    ];
+
+    for (const expected of keyLocations) {
+      const match = byId.get(expected.id);
+      expect(match).toBeDefined();
+      expect(match).toMatchObject({
+        id: expected.id,
+        label: expected.label,
+        parentId: expected.parentId,
+        type: expected.type,
       });
     }
   });
