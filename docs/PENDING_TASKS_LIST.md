@@ -669,3 +669,10 @@
 - **স্ট্যাটাস:** ✅ সম্পন্ন (PR #505) — মাইগ্রেশন ০১৩১ সংযুক্ত, ক্যাটালগ সিড ডাটা ৭৩৮টিতে সম্প্রসারিত, ইউনিট টেস্ট পাস এবং ০ TypeScript এরর নিশ্চিত।
 - **প্রম্পট:**
 > লোকেশন সেকশনে অনেক লোকেশন নাই , যেমন Dhaka > Nikunja 1 , Nikunja 2 , Kazipara , Shewrapara , Niketon, Chittagong > 2No Ghate , এনালাইসিস করে বর্তমান লোকেশনের সাথে আর কি কি লোকেশন যোগ করা যায় রিপোর্ট দেখান আলাদাভাবে দেখান , শুধু যে লোকেশন গুলো যোগ করা বাকি আছে সেগুলোই দেখাবেন
+
+### ৮৯. লোকেশন ক্যাটালগ সম্প্রসারণ (ফেজ ২): ঢাকা ও প্রধান বিভাগীয় শহরের ১৬১টি উচ্চ-চাহিদাসম্পন্ন টিউশন এলাকা সংযোজন [পরিকল্পিত]
+- **বিবরণ:** Connect Tutors BD-এর লোকেশন ক্যাটালগে ঢাকা (৫৩টি যেমন Lalmatia, Segunbagicha, Central Road, Kathalbagan, Nobodoy Housing, Rupnagar R/A, Paikpara), চট্টগ্রাম (২০টি যেমন Cheragi Pahar, OR Nizam Road, Chandanpura, Gani Bakery More, Kapashgola, CUET Campus Area), সিলেট (১১টি যেমন Housing Estate, Rikabi Bazar, Kajolshah), রাজশাহী (১১টি যেমন Terokhadia, Nawdapara, Horogram Bazar), খুলনা (১০টি যেমন Khulna University Campus Area, Khulna Medical College Area, Banorgati), বরিশাল (৭টি যেমন Barishal University Campus, Nobogram Road), ময়মনসিংহ (৯টি যেমন Sankipara, Ananda Mohan College Area), রংপুর (১১টি যেমন RK Road, Radhaballav, Keranipara), কুমিল্লা (১০টি যেমন Victoria College Area, Cumilla University Campus Area, Bagichagaon), গাজীপুর (১০টি যেমন Chandona Chowrasta, Shibbari More Gazipur, Tongi College Road), এবং নারায়ণগঞ্জ (৯টি যেমন Chashara More, Missionpara, Masdair) সহ মোট ১৬১টি গুরুত্বপূর্ণ এলাকা প্রমিত ইংরেজিতে সংযোজন। Drizzle মাইগ্রেশন `0132_add_161_high_demand_tuition_locations.sql`, `_journal.json` (idx: 132), ক্যাটালগ সিড ডাটা (৮৯৯টি) এবং ইউনিট ভ্যালিডেশন টেস্ট অন্তর্ভুক্ত।
+- **স্ট্যাটাস:** প্রস্তুত
+- **প্রম্পট:**
+> খুবই ভালো রিসার্চ করেছো, যোগ করে দাও
+
