@@ -531,6 +531,35 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     trpcMocks.documentLinks.mockImplementation(() => ({ data: undefined }));
   });
 
+  it("opens document lightbox preview with interactive controls when thumbnail is clicked", async () => {
+    trpcMocks.documentLinks.mockImplementation(() => ({
+      data: { universityId: "/api/files/tutors/1/university-id_a.jpg", supporting: {} },
+    }));
+    const user = userEvent.setup({ document: window.document });
+    render(
+      <TutorProfileWorkspace
+        profile={{ ...completeProfile, universityIdDocumentStatus: "uploaded" } as never}
+        onboardingFallback={null}
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: /Credential/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Documents" }));
+    const dialog = screen.getByRole("dialog");
+
+    const thumbBtn = within(dialog).getByRole("button", { name: "Preview University ID card in lightbox" });
+    expect(thumbBtn).toBeTruthy();
+    await user.click(thumbBtn);
+
+    const lightbox = screen.getByRole("dialog", { name: "Preview University ID card" });
+    expect(lightbox).toBeTruthy();
+    expect(within(lightbox).getByText("100%")).toBeTruthy();
+
+    await user.click(within(lightbox).getByRole("button", { name: "Close document preview" }));
+    expect(screen.queryByRole("dialog", { name: "Preview University ID card" })).toBeNull();
+    trpcMocks.documentLinks.mockImplementation(() => ({ data: undefined }));
+  });
+
   it("keeps the University ID upload private and shows only a safe uploaded status", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ universityIdDocumentStatus: "uploaded" }) }));
     const user = userEvent.setup({ document: window.document });
