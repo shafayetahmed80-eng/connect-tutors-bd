@@ -148,7 +148,7 @@ function GuardianHowItWorksPanel() {
   return <SiteContentProvider page="how-it-works">
     <div className="space-y-6">
       <HowItWorksPlayer panel="guardian" />
-      <Card className="rounded-xl border-sky-100 bg-sky-50 shadow-sm"><CardContent className="p-6"><p className="font-extrabold text-sky-950">Need help with a request?</p><a href={contact.whatsapp()} target="_blank" rel="noreferrer" className="mt-4 inline-flex rounded-xl bg-[#1677c8] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#0e4f85] transition-transform duration-200 active:scale-95 hover:scale-[1.02] shadow-xs hover:shadow-md">Contact support on WhatsApp</a></CardContent></Card>
+      <Card className="rounded-xl border-sky-100 bg-sky-50 shadow-sm"><CardContent className="p-6"><p className="text-base font-extrabold text-sky-950">Need help with a request?</p><a href={contact.whatsapp()} target="_blank" rel="noreferrer" className="mt-4 inline-flex rounded-xl bg-[#1677c8] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#0e4f85] transition-transform duration-200 active:scale-95 hover:scale-[1.02] shadow-xs hover:shadow-md">Contact support on WhatsApp</a></CardContent></Card>
     </div>
   </SiteContentProvider>;
 }

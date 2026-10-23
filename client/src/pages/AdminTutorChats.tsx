@@ -151,7 +151,7 @@ function QuickRepliesMenu({ onInsert, currentDraft }: { onInsert: (body: string)
           <div className="flex items-center gap-1.5">
             <BookmarkPlus className="size-3.5 text-j-accent sm:hidden" />
             <p className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Quick replies &amp; Templates</p>
-            <span className="rounded-full bg-j-surface-muted px-1.5 py-0.5 text-3xs font-semibold tabular-nums text-j-ink-muted">
+            <span className="rounded-full bg-j-surface-muted px-1.5 py-0.5 text-2xs font-semibold tabular-nums text-j-ink-muted">
               {items.length}
             </span>
           </div>
@@ -191,13 +191,13 @@ function QuickRepliesMenu({ onInsert, currentDraft }: { onInsert: (body: string)
             <button type="button" onClick={() => { onInsert(item.body); setOpen(false); }} className="min-w-0 flex-1 text-left">
               <div className="flex items-center gap-1.5">
                 <p className="truncate text-xs font-bold text-j-ink">{item.label}</p>
-                {item.command ? <span className="rounded bg-sky-50 px-1 py-0.2 font-mono text-3xs font-semibold text-sky-700">{item.command}</span> : null}
+                {item.command ? <span className="rounded bg-sky-50 px-1 py-0.2 font-mono text-2xs font-semibold text-sky-700">{item.command}</span> : null}
               </div>
               <p className="truncate text-2xs text-j-ink-muted">{item.body}</p>
             </button>
             {managing ? (
               item.isBuiltIn ? (
-                <span className="shrink-0 rounded px-1 py-0.5 text-3xs font-bold text-j-ink-muted">ডিফল্ট</span>
+                <span className="shrink-0 rounded px-1 py-0.5 text-2xs font-bold text-j-ink-muted">ডিফল্ট</span>
               ) : (
                 <button type="button" onClick={() => {
                   if (item.isTemplate) {
@@ -422,7 +422,7 @@ function ThreadList({ selectedTutorId, onSelect, archived, onArchivedChange, que
               <span className="truncate text-sm font-bold text-j-ink">{item.tutorName}</span>
               <span className="flex items-center gap-1.5 shrink-0">
                 {tagConfig ? (
-                  <span className={`rounded-md px-1.5 py-0.2 text-3xs font-extrabold ${tagConfig.badgeClass}`}>
+                  <span className={`rounded-md px-1.5 py-0.2 text-2xs font-extrabold ${tagConfig.badgeClass}`}>
                     {tagConfig.label}
                   </span>
                 ) : null}
@@ -432,7 +432,7 @@ function ThreadList({ selectedTutorId, onSelect, archived, onArchivedChange, que
             <span className="text-2xs font-semibold text-j-ink-faint">Tutor ID {item.tutorNumber ?? "—"}</span>
             <div className="flex items-center gap-1.5 min-w-0">
               {topic ? (
-                <span className="inline-flex items-center gap-0.5 rounded bg-sky-100 px-1.5 py-0.2 text-3xs font-bold text-sky-800 shrink-0">
+                <span className="inline-flex items-center gap-0.5 rounded bg-sky-100 px-1.5 py-0.2 text-2xs font-bold text-sky-800 shrink-0">
                   <span>{topic.icon}</span>
                   <span>{topic.label}</span>
                 </span>
@@ -869,7 +869,7 @@ function ThreadPanel({
           <div className="flex items-center gap-1.5">
             <p className="text-2xs font-bold text-j-ink-faint">Tutor ID {tutor?.tutorNumber ?? "—"}</p>
             {activeThreadTopic ? (
-              <span className="inline-flex items-center gap-1 rounded-md bg-sky-100 px-1.5 py-0.2 text-3xs font-bold text-sky-800" title="Selected inquiry topic">
+              <span className="inline-flex items-center gap-1 rounded-md bg-sky-100 px-1.5 py-0.2 text-2xs font-bold text-sky-800" title="Selected inquiry topic">
                 <span>{activeThreadTopic.icon}</span>
                 <span>{activeThreadTopic.label}</span>
               </span>
@@ -885,11 +885,11 @@ function ThreadPanel({
             </div>
           : null}
         {!isOnline ? (
-          <span className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-3xs font-bold text-amber-800">
+          <span className="flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-2xs font-bold text-amber-800">
             <WifiOff className="size-2.5" /> Offline
           </span>
         ) : (
-          <span className="flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-3xs font-bold text-emerald-700" title="Connected in real-time">
+          <span className="flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-2xs font-bold text-emerald-700" title="Connected in real-time">
             <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
           </span>
         )}
@@ -900,7 +900,7 @@ function ThreadPanel({
             type="button"
             onClick={() => setProfileDrawerOpen(true)}
             aria-label="View Tutor Profile"
-            className="flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-1.5 py-1 text-3xs font-bold text-j-ink-soft hover:bg-j-surface-sunken sm:px-2 sm:text-2xs"
+            className="flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-2 py-1 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken"
           >
             <UserCheck size={13} /> Profile
           </button>
@@ -911,15 +911,15 @@ function ThreadPanel({
             onSelectTag={onSetPriorityTag}
           />
         ) : null}
-        <button type="button" onClick={() => { setNotesOpen(true); onNotesViewed(); }} aria-label="Private notes" className="relative flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-1.5 py-1 text-3xs font-bold text-j-ink-soft hover:bg-j-surface-sunken sm:px-2 sm:text-2xs">
+        <button type="button" onClick={() => { setNotesOpen(true); onNotesViewed(); }} aria-label="Private notes" className="relative flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-2 py-1 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken">
           <StickyNote size={13} /> Notes
           {hasNoteAlert ? <span aria-label="New note" className="absolute -right-1 -top-1 size-2 rounded-full bg-j-accent" /> : null}
         </button>
         {claimedByAdminName
-          ? <button type="button" onClick={() => release.mutate({ tutorId })} className="flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-1.5 py-1 text-3xs font-bold text-j-ink-soft hover:bg-j-surface-sunken sm:px-2 sm:text-2xs">
+          ? <button type="button" onClick={() => release.mutate({ tutorId })} className="flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-2 py-1 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken">
               <UserRoundX size={13} /> <span className="max-w-[90px] truncate sm:max-w-none">Claimed by {claimedByAdminName}</span>
             </button>
-          : <button type="button" onClick={() => claim.mutate({ tutorId })} className="flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-1.5 py-1 text-3xs font-bold text-j-ink-soft hover:bg-j-surface-sunken sm:px-2 sm:text-2xs">
+          : <button type="button" onClick={() => claim.mutate({ tutorId })} className="flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-2 py-1 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken">
               <UserRoundCheck size={13} /> Claim
             </button>}
         <div className="hidden shrink-0 sm:block">
@@ -1115,7 +1115,7 @@ function ThreadPanel({
       {outbox.map(item => (
         <ChatAnimatedBubble key={item.tempId} own={true} className="flex flex-col items-end">
           <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl rounded-tr-xs shadow-xs ${item.status === "failed" ? "border border-red-300 bg-red-50 text-red-900" : "bg-gradient-to-br from-j-accent/90 to-[#156cb6]/90 text-white"}`}>
-            <p className="whitespace-pre-wrap text-sm leading-6">{item.body}</p>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed">{item.body}</p>
             <div className="mt-1 flex items-center justify-end gap-1 text-2xs font-medium opacity-80">
               {item.status === "sending" ? (
                 <>
@@ -1179,7 +1179,7 @@ function ThreadPanel({
             data-testid="slash-commands-menu"
             className="absolute bottom-full left-3 right-3 mb-2 z-30 max-h-56 overflow-y-auto rounded-xl border border-sky-200 bg-white p-1.5 shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-150 sm:left-14 sm:right-auto sm:w-96"
           >
-            <div className="flex items-center justify-between border-b border-slate-100 px-2 py-1 text-3xs font-semibold text-j-ink-faint">
+            <div className="flex items-center justify-between border-b border-slate-100 px-2 py-1 text-2xs font-semibold text-j-ink-faint">
               <span>কুইক রিপ্লাই শর্টকাট ({slashCandidates.length})</span>
               <span className="flex items-center gap-1 font-mono">
                 <kbd className="rounded bg-slate-100 border px-1">Tab</kbd> / <kbd className="rounded bg-slate-100 border px-1">↵</kbd> নির্বাচন
@@ -1198,12 +1198,12 @@ function ThreadPanel({
                       : "hover:bg-slate-50 border border-transparent"
                   }`}
                 >
-                  <span className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 font-mono text-3xs font-bold text-[#1267c8]">
+                  <span className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 font-mono text-2xs font-bold text-[#1267c8]">
                     {c.command}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-bold text-j-ink">{c.label}</p>
-                    <p className="line-clamp-1 text-3xs text-j-ink-soft">{c.body}</p>
+                    <p className="line-clamp-1 text-2xs text-j-ink-soft">{c.body}</p>
                   </div>
                 </button>
               ))}
@@ -1342,7 +1342,7 @@ function ThreadPanel({
               rows={1}
               enterKeyHint="send"
               placeholder="Reply as Admin…"
-              className="min-h-9 flex-1 resize-none py-2 text-xs sm:text-sm"
+              className="min-h-9 flex-1 resize-none py-2 text-sm leading-relaxed"
             />
             <ChatSendButton ariaLabel="Send reply" disabled={(!body.trim() && !pastedImageFile) || send.isPending || uploadProgress !== null} isPending={send.isPending} />
           </>

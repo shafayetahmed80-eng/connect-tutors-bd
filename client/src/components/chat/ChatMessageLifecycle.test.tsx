@@ -90,6 +90,7 @@ describe("ChatMessageLifecycle helpers and components", () => {
 
     rerender(<EditedMessageBadge own={true} />);
     expect(screen.getByTestId("edited-message-badge").textContent).toContain("(সম্পাদিত)");
+    expect(screen.getByTestId("edited-message-badge").className).toContain("text-2xs");
   });
 
   it("handles InlineMessageEditor typing, saving, and cancellation", () => {
@@ -106,6 +107,7 @@ describe("ChatMessageLifecycle helpers and components", () => {
 
     const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
     expect(textarea.value).toBe("Original text");
+    expect(textarea.className).toContain("text-sm leading-relaxed");
 
     fireEvent.change(textarea, { target: { value: "Updated text" } });
     fireEvent.click(screen.getByText("সংরক্ষণ করুন"));

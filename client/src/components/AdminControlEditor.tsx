@@ -233,7 +233,7 @@ function TutorChatAccessSwitch({ mode }: { mode: TutorChatAccessMode }) {
               {option.label}
             </span>
             {option.badge ? (
-              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-3xs font-semibold text-blue-700">
+              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-2xs font-semibold text-blue-700">
                 {option.badge}
               </span>
             ) : null}
@@ -266,12 +266,12 @@ function TutorChatAccessSwitch({ mode }: { mode: TutorChatAccessMode }) {
               <div className="rounded-lg border border-j-border bg-white p-2.5">
                 <span className="text-2xs font-semibold uppercase tracking-wider text-j-ink-faint">বর্তমান মোড</span>
                 <p className="mt-0.5 font-bold text-j-ink-strong">{currentOption?.label ?? mode}</p>
-                <p className="mt-0.5 text-3xs text-j-ink-muted">{currentOption?.description}</p>
+                <p className="mt-0.5 text-2xs text-j-ink-muted">{currentOption?.description}</p>
               </div>
               <div className="rounded-lg border border-j-accent/30 bg-blue-50/60 p-2.5">
                 <span className="text-2xs font-semibold uppercase tracking-wider text-j-accent">নতুন নির্বাচিত মোড</span>
                 <p className="mt-0.5 font-bold text-j-accent">{targetOption.label}</p>
-                <p className="mt-0.5 text-3xs text-j-ink-muted">{targetOption.description}</p>
+                <p className="mt-0.5 text-2xs text-j-ink-muted">{targetOption.description}</p>
               </div>
             </div>
 

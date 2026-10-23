@@ -99,7 +99,7 @@ export function ChatMessageBody({ text, query }: { text: string; query?: string 
   };
 
   return (
-    <div className="leading-6">
+    <div className="text-sm leading-relaxed">
       {quoteHeader && quoteSnippet ? (
         <div className="mb-2 rounded-lg border-l-3 border-j-accent bg-black/10 px-2.5 py-1.5 text-2xs text-current/90 backdrop-blur-xs">
           <p className="font-bold uppercase tracking-wider text-2xs text-current/90">{quoteHeader}</p>
@@ -131,7 +131,7 @@ export function ReplyPreviewBar({
       <div className="flex min-w-0 items-center gap-2 border-l-3 border-j-accent pl-2">
         <CornerUpLeft className="size-3.5 text-j-accent shrink-0" />
         <div className="min-w-0">
-          <p className="text-3xs font-bold uppercase tracking-wider text-j-accent">
+          <p className="text-2xs font-bold uppercase tracking-wider text-j-accent">
             Replying to {senderLabel}
           </p>
           <p className="truncate text-2xs text-j-ink">{replyingTo.body || "Attachment"}</p>
@@ -218,7 +218,7 @@ export function EmojiReactionPicker({
           onClick={() => setOpen(prev => !prev)}
           title="More reactions"
           aria-label="More reactions"
-          className="grid size-5 place-items-center rounded-full text-3xs text-j-ink-faint hover:bg-j-surface-sunken hover:text-j-ink"
+          className="grid size-5 place-items-center rounded-full text-2xs text-j-ink-faint hover:bg-j-surface-sunken hover:text-j-ink"
         >
           +
         </button>
@@ -312,7 +312,7 @@ export function TutorPeekProfileDrawer({
           {tutor.phone ? (
             <div className="flex items-center justify-between rounded-xl border border-j-border p-3 bg-white shadow-2xs">
               <div>
-                <p className="text-3xs font-bold uppercase text-j-ink-faint">Contact Phone</p>
+                <p className="text-2xs font-bold uppercase text-j-ink-faint">Contact Phone</p>
                 <p className="text-sm font-bold text-j-ink">{tutor.phone}</p>
               </div>
               <div className="flex items-center gap-1.5">

@@ -39,7 +39,7 @@ export function ChatDateDivider({ date }: { date: string | Date }) {
 
   return (
     <div className="my-3 flex items-center justify-center">
-      <span className="rounded-full border border-j-border/60 bg-white/95 px-3 py-0.5 text-3xs font-bold uppercase tracking-wider text-j-ink-faint shadow-2xs backdrop-blur-xs select-none">
+      <span className="rounded-full border border-j-border/60 bg-white/95 px-3 py-0.5 text-2xs font-bold uppercase tracking-wider text-j-ink-faint shadow-2xs backdrop-blur-xs select-none">
         {label}
       </span>
     </div>
@@ -193,7 +193,7 @@ export function ImageLightboxModal({ url, onClose, title = "Image Preview" }: Im
       </div>
 
       {/* Footer hint */}
-      <footer className="text-3xs font-medium text-white/50 select-none">
+      <footer className="text-2xs font-medium text-white/60 select-none">
         Click anywhere outside or press Esc to close · Use +/- to zoom
       </footer>
     </div>
