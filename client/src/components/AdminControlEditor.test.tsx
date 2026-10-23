@@ -414,5 +414,4 @@ describe("Live chat business hours and auto-responder", () => {
     render(<AdminControlEditor />);
     expect(screen.getByTestId("slash-presets-manager")).toBeTruthy();
   });
-  });
 });
