@@ -61,6 +61,7 @@ import { guardianReadableFields, projectTutorProfileForGuardian } from "@shared/
 import { GuardianTutorProfileHeader } from "@/components/GuardianTutorProfileHeader";
 import { TutorProfileSectionModal } from "@/components/TutorProfileSectionModal";
 import { TutorProfileTabEditor } from "./TutorProfileTabEditor";
+import { TutorDocumentLightboxModal } from "@/components/TutorDocumentLightboxModal";
 import { TutorProfileBottomNav } from "@/components/TutorProfileBottomNav";
 
 const fieldClassName = "modal-field-profile input-text-profile mt-1 w-full rounded-xl border border-tp-border bg-white px-2.5 py-1.5 text-tp-heading outline-none transition placeholder:text-tp-label-faint focus:border-tp-accent focus:ring-2 focus:ring-tp-accent-wash disabled:cursor-not-allowed disabled:bg-j-surface-sunken";
@@ -431,8 +432,22 @@ function DocumentUploadRow({
   onSelectFile: (file: File) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const isRejected = status === "changes_requested";
   const isApproved = status === "approved";
+
+  const activeImageUrl = viewUrl || localPreviewUrl;
+
+  const handleSelectFile = (file: File) => {
+    try {
+      const objectUrl = URL.createObjectURL(file);
+      setLocalPreviewUrl(objectUrl);
+    } catch {
+      // Ignore if ObjectURL is not supported in test environment
+    }
+    onSelectFile(file);
+  };
 
   return <div className="border-b border-tp-border py-3 first:pt-0">
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -444,31 +459,47 @@ function DocumentUploadRow({
         accept={TUTOR_DOCUMENT_ACCEPT_ATTRIBUTE}
         aria-label={`Upload ${label}`}
         aria-required={required || undefined}
-        onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) onSelectFile(file); }}
+        onChange={event => { const file = event.target.files?.[0]; event.target.value = ""; if (file) handleSelectFile(file); }}
       />
-      <div className="flex items-center gap-2">
-        <p className="flex items-center gap-2 text-sm font-bold text-tp-value">
-          {required ? <LockKeyhole className="shrink-0 text-tp-accent" size={16} aria-hidden="true" /> : null}
-          {label}
-          {required ? <span aria-hidden="true" className="text-tp-danger">*</span> : null}
-        </p>
-        {isApproved ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-3xs font-extrabold text-emerald-800">
-            <Check size={12} aria-hidden="true" /> Verified
-          </span>
-        ) : isRejected ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-3xs font-extrabold text-rose-800">
-            <AlertCircle size={12} aria-hidden="true" /> Re-upload Requested
-          </span>
+      <div className="flex items-center gap-2.5">
+        {activeImageUrl ? (
+          <button
+            type="button"
+            onClick={() => setIsLightboxOpen(true)}
+            aria-label={`Preview ${label} in lightbox`}
+            className="group relative size-10 shrink-0 overflow-hidden rounded-lg border border-tp-border bg-slate-100 shadow-2xs hover:border-tp-accent hover:ring-2 hover:ring-tp-accent/30 transition cursor-pointer"
+          >
+            <img src={activeImageUrl} alt={label} className="size-full object-cover group-hover:scale-110 transition-transform duration-200" />
+            <span className="absolute inset-0 bg-slate-950/25 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+              <Eye size={13} />
+            </span>
+          </button>
         ) : null}
+        <div>
+          <p className="flex items-center gap-2 text-sm font-bold text-tp-value">
+            {required ? <LockKeyhole className="shrink-0 text-tp-accent" size={16} aria-hidden="true" /> : null}
+            {label}
+            {required ? <span aria-hidden="true" className="text-tp-danger">*</span> : null}
+          </p>
+          <div className="mt-0.5 flex items-center gap-1.5">
+            {isApproved ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.2 text-3xs font-extrabold text-emerald-800">
+                <Check size={11} aria-hidden="true" /> Verified
+              </span>
+            ) : isRejected ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.2 text-3xs font-extrabold text-rose-800">
+                <AlertCircle size={11} aria-hidden="true" /> Re-upload Requested
+              </span>
+            ) : uploaded ? (
+              <span className="flex items-center gap-1 text-2xs font-bold text-j-ok">
+                <Check size={12} aria-hidden="true" /> Uploaded
+              </span>
+            ) : null}
+          </div>
+        </div>
       </div>
 
       <div className="flex items-center gap-2">
-        {uploaded && !isApproved && !isRejected ? (
-          <span className="flex items-center gap-1 text-xs font-bold text-j-ok">
-            <Check size={14} aria-hidden="true" /> Uploaded
-          </span>
-        ) : null}
         {uploaded && viewUrl ? (
           <a
             href={viewUrl}
@@ -513,6 +544,18 @@ function DocumentUploadRow({
           অনুগ্রহ করে স্পষ্ট ছবি তুলে &quot;Upload Replacement&quot; বাটনে ক্লিক করে নতুন কপি আপলোড করুন।
         </p>
       </div>
+    ) : null}
+
+    {activeImageUrl ? (
+      <TutorDocumentLightboxModal
+        isOpen={isLightboxOpen}
+        onClose={() => setIsLightboxOpen(false)}
+        title={label}
+        imageUrl={activeImageUrl}
+        status={status}
+        rejectionReason={rejectionReason}
+        onTriggerUpload={() => inputRef.current?.click()}
+      />
     ) : null}
   </div>;
 }
