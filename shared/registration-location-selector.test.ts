@@ -152,4 +152,24 @@ describe("buildCombinedCityLocationOptions", () => {
     const kushtiaOpts = buildCombinedCityLocationOptions("kushtia-city", rows);
     expect(kushtiaOpts.map(o => o.label)).toEqual(["NS Road Kushtia"]);
   });
+  it("resolves Phase 4 tuition locations under new education hubs (Feni, Dinajpur, Pabna)", () => {
+    const rows = [
+      { id: "feni-city", label: "Feni", type: "city", parentId: "bd" },
+      { id: "feni-area-masterpara", label: "Masterpara Feni", type: "area", parentId: "feni-city" },
+      { id: "feni-area-grand-trunk-road", label: "Grand Trunk Road Feni", type: "area", parentId: "feni-city" },
+      { id: "dinajpur-city", label: "Dinajpur", type: "city", parentId: "bd" },
+      { id: "dinajpur-area-balubari", label: "Balubari Dinajpur", type: "area", parentId: "dinajpur-city" },
+      { id: "pabna-city", label: "Pabna", type: "city", parentId: "bd" },
+      { id: "pabna-area-edward-college-area", label: "Govt Edward College Area", type: "area", parentId: "pabna-city" },
+    ] as const;
+
+    const feniOpts = buildCombinedCityLocationOptions("feni-city", rows);
+    expect(feniOpts.map(o => o.label)).toEqual(["Grand Trunk Road Feni", "Masterpara Feni"]);
+
+    const dinajpurOpts = buildCombinedCityLocationOptions("dinajpur-city", rows);
+    expect(dinajpurOpts.map(o => o.label)).toEqual(["Balubari Dinajpur"]);
+
+    const pabnaOpts = buildCombinedCityLocationOptions("pabna-city", rows);
+    expect(pabnaOpts.map(o => o.label)).toEqual(["Govt Edward College Area"]);
+  });
 });

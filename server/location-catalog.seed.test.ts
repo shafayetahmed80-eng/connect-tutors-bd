@@ -13,7 +13,7 @@ describe("shipped location catalog", () => {
   it("carries the whole tree, not a fragment", () => {
     // A fresh `db:migrate` alone gives 162 rows with two cities and no thanas,
     // which is why this file exists at all.
-    expect(suppliedLocations.length).toBe(1082);
+    expect(suppliedLocations.length).toBe(1282);
   });
 
   it("has exactly one root, and it is the country", () => {
@@ -165,6 +165,57 @@ describe("shipped location catalog", () => {
       { id: "kushtia-city", label: "Kushtia", parentId: "bd", type: "city" },
       { id: "kushtia-area-iu-campus-area", label: "Islamic University Campus Area", parentId: "kushtia-city", type: "area" },
       { id: "kushtia-area-ns-road", label: "NS Road Kushtia", parentId: "kushtia-city", type: "area" },
+    ];
+
+    for (const expected of keyLocations) {
+      const match = byId.get(expected.id);
+      expect(match).toBeDefined();
+      expect(match).toMatchObject({
+        id: expected.id,
+        label: expected.label,
+        parentId: expected.parentId,
+        type: expected.type,
+      });
+    }
+  });
+  it("includes high-demand Phase 4 residential, educational, and tuition hubs across Dhaka, regional cities, and new education hubs", () => {
+    const keyLocations = [
+      { id: "dhaka-area-senpara-parbata", label: "Senpara Parbata", parentId: "dhaka-city", type: "area" },
+      { id: "dhaka-area-bashundhara-block-a", label: "Bashundhara Block A", parentId: "dhaka-city", type: "area" },
+      { id: "dhaka-area-laxmibazar", label: "Laxmibazar Old Dhaka", parentId: "dhaka-city", type: "area" },
+      { id: "dhaka-area-uiu-campus-area", label: "United International University Campus Area", parentId: "dhaka-city", type: "area" },
+      { id: "chattogram-area-cmc-campus-area", label: "Chittagong Medical College Campus Area", parentId: "chattogram-city", type: "area" },
+      { id: "sylhet-area-chowhatta-point", label: "Chowhatta Point", parentId: "sylhet-city", type: "area" },
+      { id: "rajshahi-area-kazla-gate-ru", label: "Kazla Gate RU", parentId: "rajshahi-city", type: "area" },
+      { id: "khulna-area-bl-college-area", label: "Govt BL College Area", parentId: "khulna-city", type: "area" },
+      { id: "barishal-area-bm-college-main-gate", label: "BM College Main Gate Area", parentId: "barishal-city", type: "area" },
+      { id: "mymensingh-area-ananda-mohan-college-gate", label: "Ananda Mohan College Gate Area", parentId: "mymensingh-city", type: "area" },
+      { id: "rangpur-area-carmichael-college-campus", label: "Carmichael College Campus Area", parentId: "rangpur-city", type: "area" },
+      { id: "cumilla-area-victoria-college-degree-dharmapur", label: "Victoria Govt College Degree Branch Dharmapur", parentId: "cumilla-district", type: "area" },
+      { id: "gazipur-area-bsmrau-campus-area", label: "BSMRAU Campus Area Gazipur", parentId: "gazipur-district", type: "area" },
+      { id: "narayanganj-area-chashara-railway-station", label: "Chashara Railway Station Area", parentId: "narayanganj-district", type: "area" },
+      { id: "tangail-area-santosh-mbstu-gate", label: "Santosh MBSTU Gate Area", parentId: "tangail-city", type: "area" },
+      { id: "sirajganj-area-station-road", label: "Station Road Sirajganj", parentId: "sirajganj-city", type: "area" },
+      { id: "bogura-area-jahurul-nagar", label: "Jahurul Nagar Bogura", parentId: "bogura-city", type: "area" },
+      { id: "jashore-area-ghop-central-road", label: "Ghop Central Road Jashore", parentId: "jashore-city", type: "area" },
+      { id: "kushtia-area-mill-para", label: "Mill Para Kushtia", parentId: "kushtia-city", type: "area" },
+      // New education hub cities and areas
+      { id: "feni-city", label: "Feni", parentId: "bd", type: "city" },
+      { id: "feni-area-masterpara", label: "Masterpara Feni", parentId: "feni-city", type: "area" },
+      { id: "dinajpur-city", label: "Dinajpur", parentId: "bd", type: "city" },
+      { id: "dinajpur-area-balubari", label: "Balubari Dinajpur", parentId: "dinajpur-city", type: "area" },
+      { id: "pabna-city", label: "Pabna", parentId: "bd", type: "city" },
+      { id: "pabna-area-edward-college-area", label: "Govt Edward College Area", parentId: "pabna-city", type: "area" },
+      { id: "faridpur-city", label: "Faridpur", parentId: "bd", type: "city" },
+      { id: "faridpur-area-jhiltuli", label: "Jhiltuli Faridpur", parentId: "faridpur-city", type: "area" },
+      { id: "brahmanbaria-city", label: "Brahmanbaria", parentId: "bd", type: "city" },
+      { id: "brahmanbaria-area-medda", label: "Medda Brahmanbaria", parentId: "brahmanbaria-city", type: "area" },
+      { id: "narsingdi-city", label: "Narsingdi", parentId: "bd", type: "city" },
+      { id: "narsingdi-area-satirpara", label: "Satirpara Narsingdi", parentId: "narsingdi-city", type: "area" },
+      { id: "noakhali-city", label: "Noakhali", parentId: "bd", type: "city" },
+      { id: "noakhali-area-maijdee-court", label: "Maijdee Court", parentId: "noakhali-city", type: "area" },
+      { id: "coxs-bazar-city", label: "Coxs Bazar", parentId: "bd", type: "city" },
+      { id: "coxs-bazar-area-jhawtola", label: "Jhawtola Coxs Bazar", parentId: "coxs-bazar-city", type: "area" },
     ];
 
     for (const expected of keyLocations) {
