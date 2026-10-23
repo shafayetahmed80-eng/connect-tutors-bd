@@ -6,6 +6,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({
   messages: [] as any[],
   isLoading: false,
+  isError: false,
+  refetch: vi.fn(),
+  invalidateThread: vi.fn(),
   eligible: true,
   mode: "appointed" as "appointed" | "approved" | "all" | "disabled",
   adminLastReadAt: null as string | null,
@@ -26,9 +29,9 @@ vi.mock("@/hooks/useChatSocket", () => ({
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
-    useUtils: () => ({ tutorAdminChat: { thread: { invalidate: vi.fn() }, unreadCount: { invalidate: vi.fn() } } }),
+    useUtils: () => ({ tutorAdminChat: { thread: { invalidate: state.invalidateThread }, unreadCount: { invalidate: vi.fn() } } }),
     tutorAdminChat: {
-      thread: { useQuery: () => ({ data: { messages: state.messages, tutorLastReadAt: null, adminLastReadAt: state.adminLastReadAt, eligible: state.eligible, mode: state.mode }, isLoading: state.isLoading }) },
+      thread: { useQuery: () => ({ data: state.isError ? undefined : { messages: state.messages, tutorLastReadAt: null, adminLastReadAt: state.adminLastReadAt, eligible: state.eligible, mode: state.mode }, isLoading: state.isLoading, isError: state.isError, refetch: state.refetch }) },
       send: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.send(input); options.onSuccess?.(); }, isPending: false }) },
       markRead: { useMutation: () => ({ mutate: state.markRead, isPending: false }) },
       react: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.react(input); options.onSuccess?.(); }, isPending: false }) },
@@ -44,6 +47,7 @@ afterEach(() => {
   cleanup();
   state.messages = [];
   state.isLoading = false;
+  state.isError = false;
   state.eligible = true;
   state.mode = "appointed";
   state.adminLastReadAt = null;
@@ -52,6 +56,8 @@ afterEach(() => {
   state.react.mockReset();
   state.onSocketFrame = null;
   state.sendFrame.mockReset();
+  state.invalidateThread.mockReset();
+  state.refetch.mockReset();
 });
 
 describe("the Tutor's Admin chat panel", () => {
@@ -438,5 +444,34 @@ describe("the Tutor's Admin chat panel", () => {
     // Click 'প্ল্যাটফর্ম ফি' replaces previous topic
     fireEvent.click(feeTopicBtn);
     expect(textarea.value).toBe("[বিষয়: পেমেন্ট ও ফি] ");
+  });
+it("invalidates thread query when access_mode socket frame is received", () => {
+    render(<TutorAdminChatPanel />);
+    expect(state.onSocketFrame).toBeTruthy();
+
+    act(() => {
+      state.onSocketFrame?.({ type: "access_mode" });
+    });
+    expect(state.invalidateThread).toHaveBeenCalled();
+  });
+
+  it("shows checking status in composer area while loading rather than premature locked notice", () => {
+    state.isLoading = true;
+    render(<TutorAdminChatPanel />);
+
+    expect(screen.getByText(/লাইভ চ্যাট তথ্য যাচাই করা হচ্ছে…/i)).toBeTruthy();
+    expect(screen.queryByText(/শুধুমাত্র নিয়োগপ্রাপ্ত টিউটরদের জন্য উন্মুক্ত/i)).toBeNull();
+  });
+
+  it("shows retry button when thread query errors", () => {
+    state.isError = true;
+    render(<TutorAdminChatPanel />);
+
+    expect(screen.getByText(/চ্যাট তথ্য লোড হতে সমস্যা হয়েছে।/i)).toBeTruthy();
+    const retryBtn = screen.getByRole("button", { name: /পুনরায় চেষ্টা করুন/i });
+    expect(retryBtn).toBeTruthy();
+
+    fireEvent.click(retryBtn);
+    expect(state.refetch).toHaveBeenCalled();
   });
 });
