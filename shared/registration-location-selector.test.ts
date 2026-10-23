@@ -132,4 +132,24 @@ describe("buildCombinedCityLocationOptions", () => {
     const ngOpts = buildCombinedCityLocationOptions("narayanganj-district", rows);
     expect(ngOpts.map(o => o.label)).toEqual(["Chashara More"]);
   });
+  it("resolves Phase 3 tuition locations under new education hubs (Bogura, Jashore, Kushtia)", () => {
+    const rows = [
+      { id: "bogura-city", label: "Bogura", type: "city", parentId: "bd" },
+      { id: "bogura-area-jaleshwaritola", label: "Jaleshwaritola", type: "area", parentId: "bogura-city" },
+      { id: "bogura-area-shatmatha", label: "Shatmatha Bogura", type: "area", parentId: "bogura-city" },
+      { id: "jashore-city", label: "Jashore", type: "city", parentId: "bd" },
+      { id: "jashore-area-palbari-more", label: "Palbari More Jashore", type: "area", parentId: "jashore-city" },
+      { id: "kushtia-city", label: "Kushtia", type: "city", parentId: "bd" },
+      { id: "kushtia-area-ns-road", label: "NS Road Kushtia", type: "area", parentId: "kushtia-city" },
+    ] as const;
+
+    const boguraOpts = buildCombinedCityLocationOptions("bogura-city", rows);
+    expect(boguraOpts.map(o => o.label)).toEqual(["Jaleshwaritola", "Shatmatha Bogura"]);
+
+    const jashoreOpts = buildCombinedCityLocationOptions("jashore-city", rows);
+    expect(jashoreOpts.map(o => o.label)).toEqual(["Palbari More Jashore"]);
+
+    const kushtiaOpts = buildCombinedCityLocationOptions("kushtia-city", rows);
+    expect(kushtiaOpts.map(o => o.label)).toEqual(["NS Road Kushtia"]);
+  });
 });
