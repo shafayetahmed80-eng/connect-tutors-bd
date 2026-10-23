@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GuardianRequestTracking } from "@/pages/GuardianRequestTracking";
 import GuardianRequestJourney from "@/pages/GuardianRequestJourney";
 import { GuardianWorkspaceState } from "@/components/GuardianWorkspaceState";
-import { Bell, Clock3, Download, FileText, HelpCircle, KeyRound, LayoutDashboard, LogOut, MessageCircle, Plus, Settings, ShieldCheck, UserRound, Users } from "lucide-react";
+import { Bell, BookOpen, Clock3, Download, FileText, HelpCircle, KeyRound, LayoutDashboard, LogOut, MessageCircle, Plus, Settings, ShieldCheck, UserRound, Users } from "lucide-react";
 import { ConfirmationLetterViewButton } from "@/components/ConfirmationLetterPreview";
 import { NOTIFICATION_CHECK_MS } from "@/lib/bellSwing";
 import { Link, useLocation, useRoute } from "wouter";
@@ -148,7 +148,7 @@ function GuardianHowItWorksPanel() {
   return <SiteContentProvider page="how-it-works">
     <div className="space-y-6">
       <HowItWorksPlayer panel="guardian" />
-      <Card className="rounded-xl border-sky-100 bg-sky-50 shadow-sm"><CardContent className="p-6"><p className="font-extrabold text-sky-950">Need help with a request?</p><a href={contact.whatsapp()} target="_blank" rel="noreferrer" className="mt-4 inline-flex rounded-xl bg-[#1677c8] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#0e4f85] transition-transform duration-200 active:scale-95 hover:scale-[1.02] shadow-xs hover:shadow-md">Contact support on WhatsApp</a></CardContent></Card>
+      <Card className="rounded-xl border-sky-100 bg-sky-50 shadow-sm"><CardContent className="p-6"><p className="text-base font-extrabold text-sky-950">Need help with a request?</p><a href={contact.whatsapp()} target="_blank" rel="noreferrer" className="mt-4 inline-flex rounded-xl bg-[#1677c8] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#0e4f85] transition-transform duration-200 active:scale-95 hover:scale-[1.02] shadow-xs hover:shadow-md">Contact support on WhatsApp</a></CardContent></Card>
     </div>
   </SiteContentProvider>;
 }
@@ -256,6 +256,11 @@ function useGuardianWorkspaceHeader() {
     profilePhotoUrl: photoQuery.data?.photoUrl ?? null,
     details: profile?.guardianId ? [{ label: "Guardian ID", value: profile.guardianId }] : [],
     settingsPath: GUARDIAN_SETTINGS_PATH,
+    quickLinks: [
+      { label: "Terms & Conditions", href: "/terms-conditions", icon: BookOpen, external: true },
+      { label: "Privacy Policy", href: "/privacy-policy", icon: ShieldCheck, external: true },
+      { label: "Help & Support", href: "/contact", icon: HelpCircle, external: true },
+    ],
     notifications: { unreadCount: unreadNotificationsQuery.data?.unreadCount, path: "/guardian/dashboard/notifications" },
   };
 }

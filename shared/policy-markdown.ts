@@ -30,8 +30,15 @@ export type PolicyInline =
   | { kind: "italic"; text: string }
   | { kind: "link"; text: string; href: string };
 
+export type PolicyHeadingBlock = {
+  kind: "heading";
+  level: 2 | 3;
+  content: PolicyInline[];
+  id: string;
+};
+
 export type PolicyBlock =
-  | { kind: "heading"; level: 2 | 3; content: PolicyInline[] }
+  | PolicyHeadingBlock
   | { kind: "paragraph"; content: PolicyInline[] }
   | { kind: "list"; ordered: boolean; items: PolicyInline[][] };
 
@@ -100,6 +107,7 @@ const headingPattern = /^(#{2,3})\s+(.*)$/;
 export function parsePolicyMarkdown(source: string): PolicyBlock[] {
   const blocks: PolicyBlock[] = [];
   const lines = source.replace(/\r\n?/g, "\n").split("\n");
+  const seenSlugs = new Set<string>();
 
   let paragraph: string[] = [];
   let list: { ordered: boolean; items: string[] } | null = null;
@@ -122,7 +130,9 @@ export function parsePolicyMarkdown(source: string): PolicyBlock[] {
     const heading = headingPattern.exec(line);
     if (heading) {
       flushAll();
-      blocks.push({ kind: "heading", level: heading[1].length === 2 ? 2 : 3, content: parsePolicyInline(heading[2].trim()) });
+      const content = parsePolicyInline(heading[2].trim());
+      const id = slugifyHeading(policyInlineText(content), seenSlugs);
+      blocks.push({ kind: "heading", level: heading[1].length === 2 ? 2 : 3, content, id });
       continue;
     }
 
@@ -155,4 +165,56 @@ export function policyPlainText(source: string): string {
     .join(" ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/** Extracts plain text from an array of PolicyInline tokens. */
+export function policyInlineText(content: PolicyInline[]): string {
+  return content.map(part => part.text).join("");
+}
+
+/**
+ * Turns heading text into a web-safe, URL-friendly anchor ID.
+ * Supports Unicode letters and numbers (English, Bengali, etc.),
+ * strips out punctuation/symbols, replaces whitespace with hyphens,
+ * and de-duplicates collisions when `existing` Set is provided.
+ */
+export function slugifyHeading(raw: string, existing?: Set<string>): string {
+  const base = raw
+    .toLowerCase()
+    .trim()
+    .replace(new RegExp("[^\\p{L}\\p{M}\\p{N}\\s-]", "gu"), "")
+    .replace(/[\s-]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "section";
+
+  if (!existing) return base;
+  if (!existing.has(base)) {
+    existing.add(base);
+    return base;
+  }
+  let counter = 2;
+  while (existing.has(`${base}-${counter}`)) {
+    counter++;
+  }
+  const unique = `${base}-${counter}`;
+  existing.add(unique);
+  return unique;
+}
+
+export type PolicyTocItem = {
+  id: string;
+  level: 2 | 3;
+  text: string;
+};
+
+/**
+ * Extracts the Table of Contents (TOC) hierarchy from a parsed policy document.
+ */
+export function extractPolicyToc(blocks: PolicyBlock[]): PolicyTocItem[] {
+  return blocks
+    .filter((b): b is PolicyHeadingBlock => b.kind === "heading")
+    .map(b => ({
+      id: b.id,
+      level: b.level,
+      text: policyInlineText(b.content),
+    }));
 }
