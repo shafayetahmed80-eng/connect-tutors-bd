@@ -86,4 +86,30 @@ describe("buildCombinedCityLocationOptions", () => {
     expect(new Set(options.map(option => option.id)).size).toBe(options.length);
     expect(new Set(options.map(option => option.label.toLocaleLowerCase())).size).toBe(options.length);
   });
+  it("resolves newly added tuition locations under Dhaka and Chattogram without collisions", () => {
+    const customRows = [
+      { id: "dhaka-city", label: "Dhaka", type: "city", parentId: "bd" },
+      { id: "dhaka-area-nikunja-1", label: "Nikunja 1", type: "area", parentId: "dhaka-city" },
+      { id: "dhaka-area-nikunja-2", label: "Nikunja 2", type: "area", parentId: "dhaka-city" },
+      { id: "dhaka-area-niketon", label: "Niketon", type: "area", parentId: "dhaka-city" },
+      { id: "dhaka-area-kazipara", label: "Kazipara", type: "area", parentId: "dhaka-city" },
+      { id: "dhaka-area-shewrapara", label: "Shewrapara", type: "area", parentId: "dhaka-city" },
+      { id: "chattogram-city", label: "Chattogram", type: "city", parentId: "bd" },
+      { id: "chattogram-area-2-no-gate", label: "2 No Gate", type: "area", parentId: "chattogram-city" },
+    ] as const;
+
+    const dhakaOptions = buildCombinedCityLocationOptions("dhaka-city", customRows);
+    expect(dhakaOptions.map(opt => opt.label)).toEqual([
+      "Kazipara",
+      "Niketon",
+      "Nikunja 1",
+      "Nikunja 2",
+      "Shewrapara",
+    ]);
+
+    const ctgOptions = buildCombinedCityLocationOptions("chattogram-city", customRows);
+    expect(ctgOptions.map(opt => opt.label)).toEqual([
+      "2 No Gate",
+    ]);
+  });
 });
