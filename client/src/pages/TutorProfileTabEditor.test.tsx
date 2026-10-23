@@ -83,6 +83,39 @@ describe("TutorProfileTabEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit University Section" }));
     expect(onEditSection).toHaveBeenCalledWith("c", "c-university");
   });
+
+  it("navigates to next section on horizontal swipe left", () => {
+    const onTabChange = vi.fn();
+    render(<TutorProfileTabEditor sections={sections} activeTab="a" onTabChange={onTabChange} onEditSection={vi.fn()} />);
+
+    const panel = screen.getByRole("tabpanel");
+    fireEvent.touchStart(panel, { touches: [{ clientX: 200, clientY: 100 }] });
+    fireEvent.touchEnd(panel, { changedTouches: [{ clientX: 120, clientY: 100 }] });
+
+    expect(onTabChange).toHaveBeenCalledWith("c");
+  });
+
+  it("navigates to previous section on horizontal swipe right", () => {
+    const onTabChange = vi.fn();
+    render(<TutorProfileTabEditor sections={sections} activeTab="c" onTabChange={onTabChange} onEditSection={vi.fn()} />);
+
+    const panel = screen.getByRole("tabpanel");
+    fireEvent.touchStart(panel, { touches: [{ clientX: 100, clientY: 100 }] });
+    fireEvent.touchEnd(panel, { changedTouches: [{ clientX: 180, clientY: 100 }] });
+
+    expect(onTabChange).toHaveBeenCalledWith("a");
+  });
+
+  it("does not trigger navigation when vertical scroll dominates horizontal movement", () => {
+    const onTabChange = vi.fn();
+    render(<TutorProfileTabEditor sections={sections} activeTab="a" onTabChange={onTabChange} onEditSection={vi.fn()} />);
+
+    const panel = screen.getByRole("tabpanel");
+    fireEvent.touchStart(panel, { touches: [{ clientX: 100, clientY: 100 }] });
+    fireEvent.touchEnd(panel, { changedTouches: [{ clientX: 80, clientY: 300 }] });
+
+    expect(onTabChange).not.toHaveBeenCalled();
+  });
 });
 
 describe("TutorProfileTabEditor states", () => {

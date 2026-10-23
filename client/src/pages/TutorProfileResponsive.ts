@@ -1,6 +1,6 @@
 /** Shared responsive classes for the Tutor Profile controls that must remain usable on portrait mobile screens. */
 export const tutorProfileResponsiveClasses = {
-  workspace: "w-full min-w-0 overflow-x-clip space-y-4",
+  workspace: "w-full min-w-0 overflow-x-clip space-y-4 pb-[calc(5.75rem+env(safe-area-inset-bottom))] md:pb-4",
   section: "min-w-0 overflow-x-clip",
   fieldRoot: "min-w-0",
   selectorRoot: "relative min-w-0 w-full",
