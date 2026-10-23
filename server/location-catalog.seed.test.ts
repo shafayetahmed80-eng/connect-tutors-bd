@@ -13,7 +13,7 @@ describe("shipped location catalog", () => {
   it("carries the whole tree, not a fragment", () => {
     // A fresh `db:migrate` alone gives 162 rows with two cities and no thanas,
     // which is why this file exists at all.
-    expect(suppliedLocations.length).toBe(738);
+    expect(suppliedLocations.length).toBe(899);
   });
 
   it("has exactly one root, and it is the country", () => {
@@ -93,6 +93,38 @@ describe("shipped location catalog", () => {
       { id: "barishal-area-natun-bazar", label: "Natun Bazar", parentId: "barishal-city" },
       { id: "mymensingh-area-ganginarpar-more", label: "Ganginarpar More", parentId: "mymensingh-city" },
       { id: "rangpur-area-jahaj-company-more", label: "Jahaj Company More", parentId: "rangpur-city" },
+    ];
+
+    for (const expected of keyLocations) {
+      const match = byId.get(expected.id);
+      expect(match).toBeDefined();
+      expect(match).toMatchObject({
+        id: expected.id,
+        label: expected.label,
+        parentId: expected.parentId,
+        type: "area",
+      });
+    }
+  });
+  it("includes high-demand Phase 2 residential, educational, and tuition hubs", () => {
+    const keyLocations = [
+      { id: "dhaka-area-lalmatia", label: "Lalmatia", parentId: "dhaka-city" },
+      { id: "dhaka-area-segunbagicha", label: "Segunbagicha", parentId: "dhaka-city" },
+      { id: "dhaka-area-central-road", label: "Central Road", parentId: "dhaka-city" },
+      { id: "dhaka-area-rupnagar-ra", label: "Rupnagar R/A", parentId: "dhaka-city" },
+      { id: "chattogram-area-cheragi-pahar", label: "Cheragi Pahar", parentId: "chattogram-city" },
+      { id: "chattogram-area-or-nizam-road", label: "OR Nizam Road", parentId: "chattogram-city" },
+      { id: "sylhet-area-housing-estate", label: "Housing Estate", parentId: "sylhet-city" },
+      { id: "sylhet-area-kajolshah", label: "Kajolshah", parentId: "sylhet-city" },
+      { id: "rajshahi-area-terokhadia", label: "Terokhadia", parentId: "rajshahi-city" },
+      { id: "khulna-area-khulna-university-campus", label: "Khulna University Campus Area", parentId: "khulna-city" },
+      { id: "barishal-area-barishal-university-campus", label: "Barishal University Campus", parentId: "barishal-city" },
+      { id: "mymensingh-area-sankipara", label: "Sankipara", parentId: "mymensingh-city" },
+      { id: "rangpur-area-rk-road", label: "RK Road", parentId: "rangpur-city" },
+      { id: "cumilla-area-victoria-college-area", label: "Victoria College Area", parentId: "cumilla-district" },
+      { id: "gazipur-area-chandona-chowrasta", label: "Chandona Chowrasta", parentId: "gazipur-district" },
+      { id: "narayanganj-area-chashara-more", label: "Chashara More", parentId: "narayanganj-district" },
+      { id: "narayanganj-area-masdair", label: "Masdair", parentId: "narayanganj-district" },
     ];
 
     for (const expected of keyLocations) {
