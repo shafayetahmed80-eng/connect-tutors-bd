@@ -250,7 +250,7 @@ const plugins = [
       navigateFallbackDenylist: [/^\/api\//, /^\/storage/, /^\/manus-storage\//, /^\/oauth/],
       cleanupOutdatedCaches: true,
       inlineWorkboxRuntime: true,
-      maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+      maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
       // Adds the shared push-notification listeners (Admin chat alerts,
       // Tutor/Guardian notifications) to the generated service worker; see
       // the file itself for why this rides along here rather than as its
