@@ -6,6 +6,7 @@ import AdminWorkspaceLayout from "@/components/AdminWorkspaceLayout";
 import { ImageStudioColourPicker } from "@/components/ImageStudioColourPicker";
 import { LogoStudioContent } from "@/pages/AdminLogoStudio";
 import { PosterStudioContent } from "@/pages/AdminPosterStudio";
+import { BannerStudioContent } from "@/pages/AdminBannerStudio";
 import { ImageStudioFontPicker } from "@/components/ImageStudioFontPicker";
 import { trpc } from "@/lib/trpc";
 import { loadPosterFonts } from "@/lib/poster/canvas-kit";
@@ -275,6 +276,6 @@ export default function AdminImageStudio() {
   const { section } = useParams<{ section: string }>();
   if (!isImageStudioSection(section)) return <Redirect to="/admin/images/poster" />;
   return <AdminWorkspaceLayout title={imageStudioSectionLabels[section]}>
-    {section === "logo" ? <LogoStudioContent /> : section === "poster" ? <PosterStudioContent /> : <ImageStudioContent section={section} />}
+    {section === "logo" ? <LogoStudioContent /> : section === "poster" ? <PosterStudioContent /> : section === "banner" ? <BannerStudioContent /> : <ImageStudioContent section={section} />}
   </AdminWorkspaceLayout>;
 }
