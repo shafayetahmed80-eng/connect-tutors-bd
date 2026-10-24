@@ -5,10 +5,13 @@ import {
   buildEnglishBulkFacebookPostText,
   buildEnglishJobDetailsInline,
   buildFacebookPostText,
+  formatCompactClass,
   formatJobAreaItem,
+  formatJobClassLine,
   formatJobEmojiLine,
   formatJobKeyPriority,
   formatJobMobileCard,
+  formatJobStandardCard,
 } from "./facebook-post";
 
 describe("buildFacebookPostText", () => {
@@ -34,10 +37,11 @@ describe("buildFacebookPostText", () => {
     });
 
     expect(text).toContain("🔴 NEW TUITION OFFER — CONNECT TUTORS 🔴");
-    expect(text).toContain("📌 Job ID: CT-1024 (Female Tutor (DU / BUET preferred))");
+    expect(text).toContain("📌 Job ID: CT-1024 (Female Tutor)");
     expect(text).toContain("📍 #DHANMONDI_DHAKA (Road 27)");
-    expect(text).toContain("🔹 Class- Class 9 (Edexcel)");
-    expect(text).toContain("📚 Subjects- Math, Physics, Chemistry  |  🗓️ 3 Days, 6:00 PM  |  💰 Salary 8,000 BDT/month");
+    expect(text).toContain("🔹 Standard - 9 EM");
+    expect(text).toContain("📚 Subjects- Math, Physics, Chemistry  |  🗓️ 3 Days, Time: 6:00 PM  |  💰 Salary 8,000 BDT");
+    expect(text).toContain("🏫 School: DU / BUET preferred");
     expect(text).toContain("\n📋 Notes: Math expert required");
     expect(text).toContain(ITEM_DIVIDER);
     expect(text).toContain("🚀 How to Apply:");
@@ -58,7 +62,7 @@ describe("buildFacebookPostText", () => {
     });
 
     expect(text).toContain("Job ID: CT-0055");
-    expect(text).toContain("Class 5");
+    expect(text).toContain("🔹 Class - 5");
     expect(text).toContain("All Subjects");
     expect(text).toContain("Salary Negotiable");
     expect(text).toContain("Flexible Days");
@@ -101,7 +105,7 @@ describe("buildEnglishJobDetailsInline", () => {
     });
 
     expect(line).toBe(
-      "Job ID: CT-1042  |  🎓 Male Tutor (BUET/DU)  |  Class 9 (English Medium)  |  Math, Physics  |  📍 Dhanmondi, Dhaka (Road 27)  |  🗓️ 3 Days/week, 6:00 PM  |  💰 8,000 BDT/month  |  1 Student (Male)  |  Notes: Experience preferred",
+      "Job ID: CT-1042  |  🎓 Male Tutor  |  🔹 Standard - 9 EM  |  Math, Physics  |  📍 Dhanmondi, Dhaka (Road 27)  |  🗓️ 3 Days, Time: 6:00 PM  |  💰 Salary 8,000 BDT  |  🏫 School: BUET/DU  |  1 Student (Male)  |  Notes: Experience preferred",
     );
   });
 
@@ -196,8 +200,8 @@ describe("buildEnglishBulkFacebookPostText formats", () => {
     expect(post).toContain("🔴 LIVE TUITION JOBS — CONNECT TUTORS 🔴");
     expect(post).toContain("📌 Job ID: 6806 (Female Tutor)");
     expect(post).toContain("📍 #MOHAMMADPUR_DHAKA (Housing Society)");
-    expect(post).toContain("🔹 Class- Standard 1 (British)");
-    expect(post).toContain("📚 Subjects- All  |  🗓️ 5 Days  |  💰 Salary 7,000 BDT/month");
+    expect(post).toContain("🔹 Standard - 1 EM");
+    expect(post).toContain("📚 Subjects- All  |  🗓️ 5 Days  |  💰 Salary 7,000 BDT");
     expect(post).toContain("\n📋 Notes: O&A Levels Background Tutors Are encouraged to apply");
     expect(post).toContain("──────────────────────────");
   });
@@ -208,9 +212,9 @@ describe("buildEnglishBulkFacebookPostText formats", () => {
     });
 
     expect(post).toContain("📚 ENGLISH MEDIUM\n────────────────");
-    expect(post).toContain("📌 Job ID: CT-1001 (Female Tutor)\n📍 #GULSHAN_DHAKA\n🔹 Class- Class 9 (English Medium)\n📚 Subjects- Math  |  🗓️ 3 Days  |  💰 Salary 10,000 BDT/month");
+    expect(post).toContain("📌 Job ID: CT-1001 (Female Tutor)\n📍 #GULSHAN_DHAKA\n🔹 Standard - 9 EM\n📚 Subjects- Math  |  🗓️ 3 Days  |  💰 Salary 10,000 BDT");
     expect(post).toContain("📚 BANGLA MEDIUM\n───────────────");
-    expect(post).toContain("📌 Job ID: CT-1002 (Male Tutor)\n📍 #UTTARA_DHAKA\n🔹 Class- Class 6 (Bangla Medium)\n📚 Subjects- All Subjects  |  🗓️ 4 Days  |  💰 Salary 6,000 BDT/month");
+    expect(post).toContain("📌 Job ID: CT-1002 (Male Tutor)\n📍 #UTTARA_DHAKA\n🔹 Class - 6 BM\n📚 Subjects- All Subjects  |  🗓️ 4 Days  |  💰 Salary 6,000 BDT");
     expect(post).toContain(ITEM_DIVIDER);
   });
 
@@ -235,7 +239,7 @@ describe("buildEnglishBulkFacebookPostText formats", () => {
     );
 
     expect(post).toContain("👨‍🏫 Male Tuition Jobs\n──────────────────────────\n📌 Job ID: CT-1002, 📍 #UTTARA 🔹 Class- 6 BM, (All Subjects), 4D, 6,000 BDT");
-    expect(post).toContain("👩‍🏫 Female Tuition Jobs\n──────────────────────────\n📌 Job ID: CT-1001, 📍 #GULSHAN 🔹 Class- 9 EM, (Math), 3D, 10,000 BDT");
+    expect(post).toContain("👩‍🏫 Female Tuition Jobs\n──────────────────────────\n📌 Job ID: CT-1001, 📍 #GULSHAN 🔹 Standard- 9 EM, (Math), 3D, 10,000 BDT");
     expect(post).toContain("👥 Male/Female Tuition Jobs\n──────────────────────────\n📌 Job ID: CT-1003, 📍 #MOHAMMADPUR 🔹 Standard- 3 EM, (English + Math), 5D, 8,000 BDT");
     expect(post).toContain(ITEM_DIVIDER);
   });
@@ -251,6 +255,7 @@ describe("buildEnglishBulkFacebookPostText formats", () => {
           curriculumType: "British",
           subjects: ["All"],
           tuitionLocationLabel: "Mohammadpur, Dhaka",
+          addressDetails: "Housing Society",
           budgetAmount: 7000,
           daysPerWeek: 5,
           preferredGender: "female" as const,
@@ -265,15 +270,15 @@ describe("buildEnglishBulkFacebookPostText formats", () => {
     // Dynamic underline matching location hashtag length:
     // "📍 #MOHAMMADPUR_DHAKA" has 20 unicode code points -> 20 dashes
     expect(post).toContain("📍 #MOHAMMADPUR_DHAKA\n────────────────────\n\n📌 Job ID: 6806 (Female Tutor)");
-    expect(post).toContain("🔹 Class- Standard 1 (British)");
-    expect(post).toContain("📚 Subjects- All  |  🗓️ 5 Days  |  💰 Salary 7,000 BDT/month");
+    expect(post).toContain("🔹 Standard - 1 EM");
+    expect(post).toContain("📚 Subjects- All  |  🗓️ 5 Days  |  💰 Salary 7,000 BDT");
     expect(post).toContain("\n📋 Notes: O&A Levels Background Tutors Are encouraged to apply");
     expect(post).toContain("──────────────────────────");
 
     // Gulshan hashtag has 16 unicode code points -> 16 dashes
     expect(post).toContain("📍 #GULSHAN_DHAKA\n────────────────\n\n📌 Job ID: CT-1001 (Female Tutor)");
-    expect(post).toContain("🔹 Class- Class 9 (English Medium)");
-    expect(post).toContain("📚 Subjects- Math  |  🗓️ 3 Days  |  💰 Salary 10,000 BDT/month");
+    expect(post).toContain("🔹 Standard - 9 EM");
+    expect(post).toContain("📚 Subjects- Math  |  🗓️ 3 Days  |  💰 Salary 10,000 BDT");
 
     // Divider is 26 characters (shortened to prevent 2-line wrap on mobile)
     expect(ITEM_DIVIDER).toBe("──────────────────────────");
@@ -464,5 +469,129 @@ describe("buildDynamicBulkHeadline", () => {
 
     expect(post).toContain("#ConnectTutors");
     expect(post).toContain("#DhanmondiTuition");
+  });
+});
+
+describe("formatJobClassLine curriculum-aware formatting", () => {
+  it("uses 'Standard' for English Medium and strips duplicate prefixes/shortcodes", () => {
+    expect(
+      formatJobClassLine({
+        id: 1,
+        classCourse: "Class 9",
+        curriculumType: "Edexcel",
+      }),
+    ).toBe("🔹 Standard - 9 EM");
+
+    expect(
+      formatJobClassLine({
+        id: 2,
+        classCourse: "Standard 3",
+        curriculumType: "Cambridge",
+      }),
+    ).toBe("🔹 Standard - 3 EM");
+
+    expect(
+      formatJobClassLine({
+        id: 3,
+        classCourse: "Grade 11",
+        category: "English Medium (British)",
+      }),
+    ).toBe("🔹 Standard - 11 EM");
+
+    expect(
+      formatJobClassLine({
+        id: 4,
+        classCourse: "O Level EM",
+        curriculumType: "English Medium",
+      }),
+    ).toBe("🔹 Standard - O Level EM");
+  });
+
+  it("uses 'Class' for Bangla Medium, English Version, and others", () => {
+    expect(
+      formatJobClassLine({
+        id: 5,
+        classCourse: "Class 10",
+        curriculumType: "Bangla Medium",
+      }),
+    ).toBe("🔹 Class - 10 BM");
+
+    expect(
+      formatJobClassLine({
+        id: 6,
+        classCourse: "Grade 8",
+        curriculumType: "English Version",
+      }),
+    ).toBe("🔹 Class - 8 EV");
+
+    expect(
+      formatJobClassLine({
+        id: 7,
+        classCourse: "Alim",
+        curriculumType: "Madrasah",
+      }),
+    ).toBe("🔹 Class - Alim Madrasah");
+
+    expect(
+      formatJobClassLine({
+        id: 8,
+        classCourse: "Medical Admission",
+        curriculumType: "Admission",
+      }),
+    ).toBe("🔹 Class - Medical Admission");
+  });
+
+  it("never outputs 'Class / Standard' together", () => {
+    const bmLine = formatJobClassLine({ id: 10, classCourse: "10", curriculumType: "Bangla Medium" });
+    const emLine = formatJobClassLine({ id: 11, classCourse: "10", curriculumType: "English Medium" });
+
+    expect(bmLine).not.toContain("Class / Standard");
+    expect(emLine).not.toContain("Class / Standard");
+    expect(bmLine).toBe("🔹 Class - 10 BM");
+    expect(emLine).toBe("🔹 Standard - 10 EM");
+  });
+});
+
+describe("Student School and 3-in-1 line formatting", () => {
+  it("renders dedicated '🏫 School:' line when instituteName is present and keeps Line 1 clean", () => {
+    const text = buildFacebookPostText({
+      id: 6815,
+      jobId: "6815",
+      preferredGender: "male",
+      tuitionLocationLabel: "Segunbagicha, Dhaka",
+      addressDetails: "Kachabazar",
+      classCourse: "10",
+      curriculumType: "Bangla Medium",
+      subjects: ["English", "Bangla", "Geography", "Economics"],
+      daysPerWeek: 5,
+      tutoringTime: "7:00 PM",
+      budgetAmount: 7000,
+      instituteName: "Birshrestho Munshi Abdur Rouf",
+      notes: "Experienced Tutors are requested to apply",
+    });
+
+    expect(text).toContain("📌 Job ID: 6815 (Male Tutor)");
+    expect(text).not.toContain("(Male Tutor (Birshrestho");
+    expect(text).toContain("📍 #SEGUNBAGICHA_DHAKA (Kachabazar)");
+    expect(text).toContain("🔹 Class - 10 BM");
+    expect(text).toContain("📚 Subjects- English, Bangla, Geography, Economics  |  🗓️ 5 Days, Time: 7:00 PM  |  💰 Salary 7,000 BDT");
+    expect(text).toContain("🏫 School: Birshrestho Munshi Abdur Rouf");
+    expect(text).toContain("\n📋 Notes: Experienced Tutors are requested to apply");
+  });
+
+  it("omits '🏫 School:' line when instituteName is empty, null, or placeholder", () => {
+    const textWithoutSchool = buildFacebookPostText({
+      id: 6816,
+      jobId: "6816",
+      classCourse: "Class 8",
+      curriculumType: "Bangla Medium",
+      instituteName: "N/A",
+      budgetAmount: 5000,
+    });
+
+    expect(textWithoutSchool).not.toContain("🏫 School:");
+    expect(textWithoutSchool).toContain("🔹 Class - 8 BM");
+    expect(textWithoutSchool).toContain("💰 Salary 5,000 BDT");
+    expect(textWithoutSchool).not.toContain("/month");
   });
 });
