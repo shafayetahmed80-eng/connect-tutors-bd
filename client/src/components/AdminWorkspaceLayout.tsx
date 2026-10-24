@@ -59,32 +59,42 @@ export type GuardianRequestCounts = { shortlist: number; appoint: number; confir
 
 export function buildAdminWorkspaceNavigation(isOwner: boolean, pendingChangeRequests = 0, guardianRequests?: GuardianRequestCounts, tutorChatUnreadThreads = 0): DashboardNavigationItem[] {
   const requests = { label: "Guardian Requests", icon: Inbox };
+  const imageStudio = { label: "Image Studio", icon: Images };
   // Order matters twice over: it is the visible order, and DashboardLayout
   // starts a new section heading wherever `sectionLabel` changes.
   return [
-    { icon: LayoutDashboard, label: "Overview", path: "/admin/dashboard", sectionLabel: "Operations" },
-    { icon: CircleUserRound, label: "Admin Profile", path: "/admin/profile", sectionLabel: "Operations" },
-    { icon: UserRoundCog, label: "Tutor Profiles", path: "/admin/tutor-profiles", sectionLabel: "Operations" },
-    { icon: ContactRound, label: "Guardian Profiles", path: "/admin/guardians", sectionLabel: "Operations" },
-    { icon: MessageCircle, label: "Tutor Chats", path: "/admin/tutor-chats", sectionLabel: "Operations", badge: tutorChatUnreadThreads },
-    { icon: ClipboardPen, label: "Change requests", path: "/admin/change-requests", sectionLabel: "Operations", badge: pendingChangeRequests },
-    { icon: FileText, label: "Posted jobs", path: "/admin/posted-jobs", sectionLabel: "Operations" },
-    { icon: Share2, label: "Facebook Post", path: "/admin/facebook-posts", sectionLabel: "Operations" },
-    { icon: CalendarCheck2, label: "Appointed Jobs", path: "/admin/appointed-jobs", sectionLabel: "Operations", badge: guardianRequests?.appointedJobs },
-    { icon: BadgeCheck, label: "Confirmed Jobs", path: "/admin/confirmed-jobs", sectionLabel: "Operations", badge: guardianRequests?.confirmedJobs },
-    { icon: FileBadge, label: "Admin Posted Jobs", path: "/admin/admin-posted-jobs", sectionLabel: "Operations" },
-    { icon: Users, label: "Applied Tutors", path: "/admin/applied-tutors", sectionLabel: "Operations" },
-    { icon: Target, label: "Tutor Matching", path: "/admin/tutor-matching", sectionLabel: "Operations" },
+    // --- Core Section ---
+    { icon: LayoutDashboard, label: "Overview", path: "/admin/dashboard", sectionLabel: "Core" },
+
+    // --- Tuitions Section (Lifecycle order: Posted -> Admin Posted -> Applied -> Matching -> Requests -> Appointed -> Confirmed) ---
+    { icon: FileText, label: "Posted jobs", path: "/admin/posted-jobs", sectionLabel: "Tuitions" },
+    { icon: FileBadge, label: "Admin Posted Jobs", path: "/admin/admin-posted-jobs", sectionLabel: "Tuitions" },
+    { icon: Users, label: "Applied Tutors", path: "/admin/applied-tutors", sectionLabel: "Tuitions" },
+    { icon: Target, label: "Tutor Matching", path: "/admin/tutor-matching", sectionLabel: "Tuitions" },
     // The shortlist is a signal, not a question, so it carries no count.
-    { icon: Star, label: "Shortlist Requests", path: "/admin/guardian-requests/shortlist", sectionLabel: "Operations", subgroup: requests },
-    { icon: UserCheck, label: "Appoint Requests", path: "/admin/guardian-requests/appoint", sectionLabel: "Operations", subgroup: requests, badge: guardianRequests?.appoint },
-    { icon: CircleCheckBig, label: "Confirm Requests", path: "/admin/guardian-requests/confirm", sectionLabel: "Operations", subgroup: requests, badge: guardianRequests?.confirm },
-    { icon: CircleX, label: "Cancel Requests", path: "/admin/guardian-requests/cancel", sectionLabel: "Operations", subgroup: requests, badge: guardianRequests?.cancel },
-    // Every Admin makes social-media pictures, so this section is not the Owner's alone; it sits just above the Dynamic Section.
-    { icon: Images, label: "Poster", path: "/admin/images/poster", sectionLabel: "Image Section" },
-    { icon: ImageIcon, label: "Banner", path: "/admin/images/banner", sectionLabel: "Image Section" },
-    { icon: PenTool, label: "Logo", path: "/admin/images/logo", sectionLabel: "Image Section" },
+    { icon: Star, label: "Shortlist Requests", path: "/admin/guardian-requests/shortlist", sectionLabel: "Tuitions", subgroup: requests },
+    { icon: UserCheck, label: "Appoint Requests", path: "/admin/guardian-requests/appoint", sectionLabel: "Tuitions", subgroup: requests, badge: guardianRequests?.appoint },
+    { icon: CircleCheckBig, label: "Confirm Requests", path: "/admin/guardian-requests/confirm", sectionLabel: "Tuitions", subgroup: requests, badge: guardianRequests?.confirm },
+    { icon: CircleX, label: "Cancel Requests", path: "/admin/guardian-requests/cancel", sectionLabel: "Tuitions", subgroup: requests, badge: guardianRequests?.cancel },
+    { icon: CalendarCheck2, label: "Appointed Jobs", path: "/admin/appointed-jobs", sectionLabel: "Tuitions", badge: guardianRequests?.appointedJobs },
+    { icon: BadgeCheck, label: "Confirmed Jobs", path: "/admin/confirmed-jobs", sectionLabel: "Tuitions", badge: guardianRequests?.confirmedJobs },
+
+    // --- Users & Communication Section ---
+    { icon: UserRoundCog, label: "Tutor Profiles", path: "/admin/tutor-profiles", sectionLabel: "Users & Communication" },
+    { icon: ContactRound, label: "Guardian Profiles", path: "/admin/guardians", sectionLabel: "Users & Communication" },
+    { icon: MessageCircle, label: "Tutor Chats", path: "/admin/tutor-chats", sectionLabel: "Users & Communication", badge: tutorChatUnreadThreads },
+    { icon: ClipboardPen, label: "Change requests", path: "/admin/change-requests", sectionLabel: "Users & Communication", badge: pendingChangeRequests },
+
+    // --- Marketing & Creative Section ---
+    { icon: Share2, label: "Facebook Post", path: "/admin/facebook-posts", sectionLabel: "Marketing & Creative" },
+    { icon: Images, label: "Poster", path: "/admin/images/poster", sectionLabel: "Marketing & Creative", subgroup: imageStudio },
+    { icon: ImageIcon, label: "Banner", path: "/admin/images/banner", sectionLabel: "Marketing & Creative", subgroup: imageStudio },
+    { icon: PenTool, label: "Logo", path: "/admin/images/logo", sectionLabel: "Marketing & Creative", subgroup: imageStudio },
+
+    // --- Dynamic Section (Owner only) ---
     ...(isOwner ? dynamicSectionItems : []),
+
+    // --- Owner controls (Owner only) ---
     ...(isOwner
       ? [
           { icon: UserCog, label: "Admin Profiles", path: "/admin/admin-profiles", sectionLabel: "Owner controls" },
@@ -92,9 +102,9 @@ export function buildAdminWorkspaceNavigation(isOwner: boolean, pendingChangeReq
           { icon: ShieldCheck, label: "Admin security", path: "/admin/security", sectionLabel: "Owner controls" },
         ]
       : []),
-    // Last, as in the Tutor sidebar. The path is never navigated to - the
-    // layout sees `action: "signout"` and signs out instead - but a nav item
-    // needs one.
+
+    // --- Account Section ---
+    { icon: CircleUserRound, label: "Admin Profile", path: "/admin/profile", sectionLabel: "Account" },
     { icon: Settings, label: "Settings", path: "/admin/settings", sectionLabel: "Account" },
     // The browser's to offer: DashboardLayout draws this row only while it has offered to install the Admin app.
     { icon: Download, label: "Install app", path: "/admin/install", sectionLabel: "Account", action: "install" },

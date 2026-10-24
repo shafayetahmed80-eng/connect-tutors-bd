@@ -741,3 +741,15 @@
 - **স্ট্যাটাস:** ✅ সম্পন্ন — `client/src/lib/banner-studio.ts`, `client/src/lib/banner-studio.test.ts`, `client/src/pages/AdminBannerStudio.tsx`, `client/src/pages/AdminBannerStudio.test.tsx`, `client/src/pages/AdminImageStudio.tsx` সংযুক্ত, ২৪টি টেস্ট পাস ও ০ TypeScript এরর নিশ্চিত।
 - **প্রম্পট:**
 > প্যাকেজ ১ (ব্যানার স্টুডিও সম্পূর্ণ বাস্তবায়ন) শুরু করেন, work like a world class developer and designer , in image section you can follow claude opus 5.5 model
+
+
+### ৯৮. অ্যাডমিন সাইডবার রিস্ট্রাকচারিং: ওয়ার্কফ্লো-ভিত্তিক ডোমেন রিঅর্গানাইজেশন ও ক্রিয়েটিভ স্টুডিও ড্রপডাউন [✅ সম্পন্ন]
+- **বিবরণ:** অ্যাডমিন প্যানেলের ১৭-আইটেমের দীর্ঘ অগোছালো `Operations` সেকশনকে আধুনিক SaaS স্ট্যান্ডার্ড অনুযায়ী কাজের স্বাভাবিক গতিপথ (Workflow) ও ডোমেন ভিত্তিতে সাজানো:
+  ১. **Core:** Overview (ড্যাশবোর্ড মেট্রিক্স)।
+  ২. **Tuitions (টিউশন লাইফসাইকেল ফ্লো):** Posted Jobs ➔ Admin Posted Jobs ➔ Applied Tutors ➔ Tutor Matching ➔ Guardian Requests (Shortlist, Appoint, Confirm, Cancel ড্রপডাউন) ➔ Appointed Jobs ➔ Confirmed Jobs ক্রমানুসারে সাজানো।
+  ৩. **Users & Communication:** Tutor Profiles, Guardian Profiles, Tutor Chats ও Change Requests একত্রীকরণ।
+  ৪. **Marketing & Creative:** Facebook Post এবং ইমেজ সেকশনের বিচ্ছিন্ন ৩টি রোকে (Poster, Banner, Logo) এক ছাদের নিচে কমপ্যাক্ট ড্রপডাউন সাবগ্রুপ "Image Studio" হিসেবে বিন্যস্তকরণ।
+  ৫. **Account:** অ্যাডমিন প্রোফাইলকে অপারেশনের জটলা থেকে সরিয়ে নিচের অ্যাকাউন্ট সেকশনে (Admin Profile, Settings, Install App, Sign Out) স্থানান্তর।
+- **স্ট্যাটাস:** ✅ সম্পন্ন — `client/src/components/AdminWorkspaceLayout.tsx`, `client/src/components/AdminWorkspaceLayout.test.ts`, `shared/sidebar-tabs.ts`, `server/tutor-admin-chat.db.test.ts` হালনাগাদ, ২৯টি সাইডবার টেস্ট ও ৪,২৯০+ টেস্ট পাস এবং ০ TypeScript এরর নিশ্চিত।
+- **প্রম্পট:**
+> এডমিন প্যানেলের সাইডবারের ট্যাবগুলো কিভাবে সাজানো যায় বর্তমান স্ট্রাকচার পরিক্ষা করে সাজেশন দাও ... হ্যা, সুন্দর হইছে, করে দেন

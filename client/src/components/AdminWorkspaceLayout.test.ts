@@ -14,17 +14,11 @@ describe("Admin workspace navigation", () => {
 
   it("groups active operational work, public reference, and Owner controls explicitly", () => {
     const adminItems = buildAdminWorkspaceNavigation(false);
-    expect(adminItems.filter(item => item.sectionLabel === "Operations").map(item => item.label)).toEqual([
+    expect(adminItems.filter(item => item.sectionLabel === "Core").map(item => item.label)).toEqual([
       "Overview",
-      "Admin Profile",
-      "Tutor Profiles",
-      "Guardian Profiles",
-      "Tutor Chats",
-      "Change requests",
+    ]);
+    expect(adminItems.filter(item => item.sectionLabel === "Tuitions").map(item => item.label)).toEqual([
       "Posted jobs",
-      "Facebook Post",
-      "Appointed Jobs",
-      "Confirmed Jobs",
       "Admin Posted Jobs",
       "Applied Tutors",
       "Tutor Matching",
@@ -32,6 +26,20 @@ describe("Admin workspace navigation", () => {
       "Appoint Requests",
       "Confirm Requests",
       "Cancel Requests",
+      "Appointed Jobs",
+      "Confirmed Jobs",
+    ]);
+    expect(adminItems.filter(item => item.sectionLabel === "Users & Communication").map(item => item.label)).toEqual([
+      "Tutor Profiles",
+      "Guardian Profiles",
+      "Tutor Chats",
+      "Change requests",
+    ]);
+    expect(adminItems.filter(item => item.sectionLabel === "Marketing & Creative").map(item => item.label)).toEqual([
+      "Facebook Post",
+      "Poster",
+      "Banner",
+      "Logo",
     ]);
 
     const ownerItems = buildAdminWorkspaceNavigation(true);
@@ -45,13 +53,13 @@ describe("Admin workspace navigation", () => {
   it("folds the Guardian Requests and the Dynamic Section into collapsible rows, with the counts on the rows that ask", () => {
     const items = buildAdminWorkspaceNavigation(true, 0, { shortlist: 6, appoint: 2, confirm: 1, cancel: 0, appointedJobs: 0, confirmedJobs: 0 });
     const rows = groupNavigationRows(items).filter(row => row.kind === "subgroup");
-    expect(rows.map(row => row.kind === "subgroup" && row.subgroup.label)).toEqual(["Guardian Requests", "Profile forms", "Site content", "Option lists", "Appearance", "Controls"]);
+    expect(rows.map(row => row.kind === "subgroup" && row.subgroup.label)).toEqual(["Guardian Requests", "Image Studio", "Profile forms", "Site content", "Option lists", "Appearance", "Controls"]);
     const requests = rows[0];
     expect(requests.kind === "subgroup" && requests.members.map(member => [member.item.label, member.item.badge])).toEqual([
       ["Shortlist Requests", undefined], ["Appoint Requests", 2], ["Confirm Requests", 1], ["Cancel Requests", 0],
     ]);
     // An Admin who is not the Owner has no Dynamic Section rows, and keeps Guardian Requests.
-    expect(groupNavigationRows(buildAdminWorkspaceNavigation(false)).filter(row => row.kind === "subgroup")).toHaveLength(1);
+    expect(groupNavigationRows(buildAdminWorkspaceNavigation(false)).filter(row => row.kind === "subgroup")).toHaveLength(2);
   });
 
   it("counts the tuitions with a Guardian's request waiting beside Appointed Jobs and Confirmed Jobs", () => {
@@ -119,15 +127,15 @@ describe("Admin workspace navigation", () => {
     const sections = buildAdminWorkspaceNavigation(true)
       .map(item => item.sectionLabel)
       .filter((label, index, all) => label !== all[index - 1]);
-    expect(sections).toEqual(["Operations", "Image Section", "Dynamic Section", "Owner controls", "Account"]);
+    expect(sections).toEqual(["Core", "Tuitions", "Users & Communication", "Marketing & Creative", "Dynamic Section", "Owner controls", "Account"]);
   });
 
-  it("gives every Admin, not only the Owner, the Image Section right after Operations", () => {
+  it("gives every Admin, not only the Owner, the Marketing & Creative Section with Image Studio", () => {
     const sections = (isOwner: boolean) => buildAdminWorkspaceNavigation(isOwner)
       .map(item => item.sectionLabel)
       .filter((label, index, all) => label !== all[index - 1]);
-    expect(sections(false)).toEqual(["Operations", "Image Section", "Account"]);
-    expect(buildAdminWorkspaceNavigation(false).filter(item => item.sectionLabel === "Image Section").map(item => [item.label, item.path])).toEqual([
+    expect(sections(false)).toEqual(["Core", "Tuitions", "Users & Communication", "Marketing & Creative", "Account"]);
+    expect(buildAdminWorkspaceNavigation(false).filter(item => item.subgroup?.label === "Image Studio").map(item => [item.label, item.path])).toEqual([
       ["Poster", "/admin/images/poster"],
       ["Banner", "/admin/images/banner"],
       ["Logo", "/admin/images/logo"],
@@ -203,8 +211,8 @@ describe("Install app in the Admin sidebar", () => {
     for (const isOwner of [true, false]) {
       const account = buildAdminWorkspaceNavigation(isOwner).filter(item => item.sectionLabel === "Account");
 
-      expect(account.map(item => item.label), `isOwner=${isOwner}`).toEqual(["Settings", "Install app", "Sign Out"]);
-      expect(account[1], `isOwner=${isOwner}`).toMatchObject({ path: "/admin/install", action: "install" });
+      expect(account.map(item => item.label), `isOwner=${isOwner}`).toEqual(["Admin Profile", "Settings", "Install app", "Sign Out"]);
+      expect(account.find(item => item.action === "install"), `isOwner=${isOwner}`).toMatchObject({ path: "/admin/install", action: "install" });
     }
   });
 
