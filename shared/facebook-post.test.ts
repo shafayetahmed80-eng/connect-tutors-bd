@@ -39,8 +39,9 @@ describe("buildFacebookPostText", () => {
     expect(text).toContain("🔴 NEW TUITION OFFER — CONNECT TUTORS 🔴");
     expect(text).toContain("📌 Job ID: CT-1024 (Female Tutor)");
     expect(text).toContain("📍 #DHANMONDI_DHAKA (Road 27)");
-    expect(text).toContain("🔹 Standard - 9 EM");
-    expect(text).toContain("📚 Subjects- Math, Physics, Chemistry  |  🗓️ 3 Days, Time: 6:00 PM  |  💰 Salary 8,000 BDT");
+    expect(text).toContain("🔹 Standard: 9 EM");
+    expect(text).toContain("📚 Subjects: Math, Physics, Chemistry  |  🗓️ 3 Days, Time: 6:00 PM  |  💰 Salary 8,000 BDT");
+    expect(text).toContain("👨‍🎓 Student: Male Student");
     expect(text).toContain("🏫 School: DU / BUET preferred");
     expect(text).toContain("\n📋 Notes: Math expert required");
     expect(text).toContain(ITEM_DIVIDER);
@@ -62,7 +63,7 @@ describe("buildFacebookPostText", () => {
     });
 
     expect(text).toContain("Job ID: CT-0055");
-    expect(text).toContain("🔹 Class - 5");
+    expect(text).toContain("🔹 Class: 5");
     expect(text).toContain("All Subjects");
     expect(text).toContain("Salary Negotiable");
     expect(text).toContain("Flexible Days");
@@ -78,7 +79,7 @@ describe("buildFacebookPostText", () => {
       addressDetails: "Should be omitted for online",
     });
 
-    expect(text).toContain("📍 #ONLINE");
+    expect(text).toContain("🌐 #ONLINE_TUITION");
     expect(text).not.toContain("Should be omitted for online");
   });
 });
@@ -105,7 +106,7 @@ describe("buildEnglishJobDetailsInline", () => {
     });
 
     expect(line).toBe(
-      "Job ID: CT-1042  |  🎓 Male Tutor  |  🔹 Standard - 9 EM  |  Math, Physics  |  📍 Dhanmondi, Dhaka (Road 27)  |  🗓️ 3 Days, Time: 6:00 PM  |  💰 Salary 8,000 BDT  |  🏫 School: BUET/DU  |  1 Student (Male)  |  Notes: Experience preferred",
+      "Job ID: CT-1042  |  🎓 Male Tutor  |  🔹 Standard: 9 EM  |  Math, Physics  |  📍 Dhanmondi, Dhaka (Road 27)  |  🗓️ 3 Days, Time: 6:00 PM  |  💰 Salary 8,000 BDT  |  👨‍🎓 Student: Male Student  |  🏫 School: BUET/DU  |  Notes: Experience preferred",
     );
   });
 
@@ -200,8 +201,8 @@ describe("buildEnglishBulkFacebookPostText formats", () => {
     expect(post).toContain("🔴 LIVE TUITION JOBS — CONNECT TUTORS 🔴");
     expect(post).toContain("📌 Job ID: 6806 (Female Tutor)");
     expect(post).toContain("📍 #MOHAMMADPUR_DHAKA (Housing Society)");
-    expect(post).toContain("🔹 Standard - 1 EM");
-    expect(post).toContain("📚 Subjects- All  |  🗓️ 5 Days  |  💰 Salary 7,000 BDT");
+    expect(post).toContain("🔹 Standard: 1 EM");
+    expect(post).toContain("📚 Subjects: All  |  🗓️ 5 Days  |  💰 Salary 7,000 BDT");
     expect(post).toContain("\n📋 Notes: O&A Levels Background Tutors Are encouraged to apply");
     expect(post).toContain("──────────────────────────");
   });
@@ -212,9 +213,9 @@ describe("buildEnglishBulkFacebookPostText formats", () => {
     });
 
     expect(post).toContain("📚 ENGLISH MEDIUM\n────────────────");
-    expect(post).toContain("📌 Job ID: CT-1001 (Female Tutor)\n📍 #GULSHAN_DHAKA\n🔹 Standard - 9 EM\n📚 Subjects- Math  |  🗓️ 3 Days  |  💰 Salary 10,000 BDT");
+    expect(post).toContain("📌 Job ID: CT-1001 (Female Tutor)\n📍 #GULSHAN_DHAKA\n🔹 Standard: 9 EM\n📚 Subjects: Math  |  🗓️ 3 Days  |  💰 Salary 10,000 BDT");
     expect(post).toContain("📚 BANGLA MEDIUM\n───────────────");
-    expect(post).toContain("📌 Job ID: CT-1002 (Male Tutor)\n📍 #UTTARA_DHAKA\n🔹 Class - 6 BM\n📚 Subjects- All Subjects  |  🗓️ 4 Days  |  💰 Salary 6,000 BDT");
+    expect(post).toContain("📌 Job ID: CT-1002 (Male Tutor)\n📍 #UTTARA_DHAKA\n🔹 Class: 6 BM\n📚 Subjects: All Subjects  |  🗓️ 4 Days  |  💰 Salary 6,000 BDT");
     expect(post).toContain(ITEM_DIVIDER);
   });
 
@@ -238,9 +239,9 @@ describe("buildEnglishBulkFacebookPostText formats", () => {
       },
     );
 
-    expect(post).toContain("👨‍🏫 Male Tuition Jobs\n──────────────────────────\n📌 Job ID: CT-1002, 📍 #UTTARA 🔹 Class- 6 BM, (All Subjects), 4D, 6,000 BDT");
-    expect(post).toContain("👩‍🏫 Female Tuition Jobs\n──────────────────────────\n📌 Job ID: CT-1001, 📍 #GULSHAN 🔹 Standard- 9 EM, (Math), 3D, 10,000 BDT");
-    expect(post).toContain("👥 Male/Female Tuition Jobs\n──────────────────────────\n📌 Job ID: CT-1003, 📍 #MOHAMMADPUR 🔹 Standard- 3 EM, (English + Math), 5D, 8,000 BDT");
+    expect(post).toContain("👨‍🏫 Male Tuition Jobs\n──────────────────────────\n📌 Job ID: CT-1002, 📍 #UTTARA 🔹 Class: 6 BM, (All Subjects), 4D, 6,000 BDT");
+    expect(post).toContain("👩‍🏫 Female Tuition Jobs\n──────────────────────────\n📌 Job ID: CT-1001, 📍 #GULSHAN 🔹 Standard: 9 EM, (Math), 3D, 10,000 BDT");
+    expect(post).toContain("👥 Male/Female Tuition Jobs\n──────────────────────────\n📌 Job ID: CT-1003, 📍 #MOHAMMADPUR 🔹 Standard: 3 EM, (English + Math), 5D, 8,000 BDT");
     expect(post).toContain(ITEM_DIVIDER);
   });
 
@@ -269,16 +270,16 @@ describe("buildEnglishBulkFacebookPostText formats", () => {
 
     // Dynamic underline matching location hashtag length:
     // "📍 #MOHAMMADPUR_DHAKA" has 20 unicode code points -> 20 dashes
-    expect(post).toContain("📍 #MOHAMMADPUR_DHAKA\n────────────────────\n\n📌 Job ID: 6806 (Female Tutor)");
-    expect(post).toContain("🔹 Standard - 1 EM");
-    expect(post).toContain("📚 Subjects- All  |  🗓️ 5 Days  |  💰 Salary 7,000 BDT");
+    expect(post).toContain("📍 #MOHAMMADPUR_DHAKA\n────────────────────\n\n📌 Job ID: 6806 (Female Tutor) • Housing Society");
+    expect(post).toContain("🔹 Standard: 1 EM");
+    expect(post).toContain("📚 Subjects: All  |  🗓️ 5 Days  |  💰 Salary 7,000 BDT");
     expect(post).toContain("\n📋 Notes: O&A Levels Background Tutors Are encouraged to apply");
     expect(post).toContain("──────────────────────────");
 
     // Gulshan hashtag has 16 unicode code points -> 16 dashes
     expect(post).toContain("📍 #GULSHAN_DHAKA\n────────────────\n\n📌 Job ID: CT-1001 (Female Tutor)");
-    expect(post).toContain("🔹 Standard - 9 EM");
-    expect(post).toContain("📚 Subjects- Math  |  🗓️ 3 Days  |  💰 Salary 10,000 BDT");
+    expect(post).toContain("🔹 Standard: 9 EM");
+    expect(post).toContain("📚 Subjects: Math  |  🗓️ 3 Days  |  💰 Salary 10,000 BDT");
 
     // Divider is 26 characters (shortened to prevent 2-line wrap on mobile)
     expect(ITEM_DIVIDER).toBe("──────────────────────────");
@@ -480,7 +481,7 @@ describe("formatJobClassLine curriculum-aware formatting", () => {
         classCourse: "Class 9",
         curriculumType: "Edexcel",
       }),
-    ).toBe("🔹 Standard - 9 EM");
+    ).toBe("🔹 Standard: 9 EM");
 
     expect(
       formatJobClassLine({
@@ -488,7 +489,7 @@ describe("formatJobClassLine curriculum-aware formatting", () => {
         classCourse: "Standard 3",
         curriculumType: "Cambridge",
       }),
-    ).toBe("🔹 Standard - 3 EM");
+    ).toBe("🔹 Standard: 3 EM");
 
     expect(
       formatJobClassLine({
@@ -496,7 +497,7 @@ describe("formatJobClassLine curriculum-aware formatting", () => {
         classCourse: "Grade 11",
         category: "English Medium (British)",
       }),
-    ).toBe("🔹 Standard - 11 EM");
+    ).toBe("🔹 Standard: 11 EM");
 
     expect(
       formatJobClassLine({
@@ -504,7 +505,7 @@ describe("formatJobClassLine curriculum-aware formatting", () => {
         classCourse: "O Level EM",
         curriculumType: "English Medium",
       }),
-    ).toBe("🔹 Standard - O Level EM");
+    ).toBe("🔹 Standard: O Level EM");
   });
 
   it("uses 'Class' for Bangla Medium, English Version, and others", () => {
@@ -514,7 +515,7 @@ describe("formatJobClassLine curriculum-aware formatting", () => {
         classCourse: "Class 10",
         curriculumType: "Bangla Medium",
       }),
-    ).toBe("🔹 Class - 10 BM");
+    ).toBe("🔹 Class: 10 BM");
 
     expect(
       formatJobClassLine({
@@ -522,7 +523,7 @@ describe("formatJobClassLine curriculum-aware formatting", () => {
         classCourse: "Grade 8",
         curriculumType: "English Version",
       }),
-    ).toBe("🔹 Class - 8 EV");
+    ).toBe("🔹 Class: 8 EV");
 
     expect(
       formatJobClassLine({
@@ -530,7 +531,7 @@ describe("formatJobClassLine curriculum-aware formatting", () => {
         classCourse: "Alim",
         curriculumType: "Madrasah",
       }),
-    ).toBe("🔹 Class - Alim Madrasah");
+    ).toBe("🔹 Class: Alim Madrasah");
 
     expect(
       formatJobClassLine({
@@ -538,7 +539,7 @@ describe("formatJobClassLine curriculum-aware formatting", () => {
         classCourse: "Medical Admission",
         curriculumType: "Admission",
       }),
-    ).toBe("🔹 Class - Medical Admission");
+    ).toBe("🔹 Class: Medical Admission");
   });
 
   it("never outputs 'Class / Standard' together", () => {
@@ -547,8 +548,24 @@ describe("formatJobClassLine curriculum-aware formatting", () => {
 
     expect(bmLine).not.toContain("Class / Standard");
     expect(emLine).not.toContain("Class / Standard");
-    expect(bmLine).toBe("🔹 Class - 10 BM");
-    expect(emLine).toBe("🔹 Standard - 10 EM");
+    expect(bmLine).toBe("🔹 Class: 10 BM");
+    expect(emLine).toBe("🔹 Standard: 10 EM");
+  });
+
+  it("deduplicates repeating Class/Standard words in multi-class course strings", () => {
+    const multiBm = formatJobClassLine({
+      id: 12,
+      classCourse: "Class 7 & Class 5",
+      curriculumType: "Bangla Medium",
+    });
+    expect(multiBm).toBe("🔹 Class: 7 & 5 BM");
+
+    const multiEm = formatJobClassLine({
+      id: 13,
+      classCourse: "Standard 8 and Standard 6",
+      curriculumType: "English Medium",
+    });
+    expect(multiEm).toBe("🔹 Standard: 8 and 6 EM");
   });
 });
 
@@ -573,8 +590,8 @@ describe("Student School and 3-in-1 line formatting", () => {
     expect(text).toContain("📌 Job ID: 6815 (Male Tutor)");
     expect(text).not.toContain("(Male Tutor (Birshrestho");
     expect(text).toContain("📍 #SEGUNBAGICHA_DHAKA (Kachabazar)");
-    expect(text).toContain("🔹 Class - 10 BM");
-    expect(text).toContain("📚 Subjects- English, Bangla, Geography, Economics  |  🗓️ 5 Days, Time: 7:00 PM  |  💰 Salary 7,000 BDT");
+    expect(text).toContain("🔹 Class: 10 BM");
+    expect(text).toContain("📚 Subjects: English, Bangla, Geography, Economics  |  🗓️ 5 Days, Time: 7:00 PM  |  💰 Salary 7,000 BDT");
     expect(text).toContain("🏫 School: Birshrestho Munshi Abdur Rouf");
     expect(text).toContain("\n📋 Notes: Experienced Tutors are requested to apply");
   });
@@ -590,8 +607,38 @@ describe("Student School and 3-in-1 line formatting", () => {
     });
 
     expect(textWithoutSchool).not.toContain("🏫 School:");
-    expect(textWithoutSchool).toContain("🔹 Class - 8 BM");
+    expect(textWithoutSchool).toContain("🔹 Class: 8 BM");
     expect(textWithoutSchool).toContain("💰 Salary 5,000 BDT");
     expect(textWithoutSchool).not.toContain("/month");
+  });
+
+  it("renders dedicated Student info line when gender or multiple students exist and strips double parens from address", () => {
+    const textFemaleStudent = buildFacebookPostText({
+      id: 6820,
+      jobId: "6820",
+      studentGender: "female",
+      studentCount: 1,
+      addressDetails: "((Kachabazar))",
+      tuitionLocationLabel: "Segunbagicha, Dhaka",
+    });
+    expect(textFemaleStudent).toContain("👨‍🎓 Student: Female Student");
+    expect(textFemaleStudent).toContain("📍 #SEGUNBAGICHA_DHAKA (Kachabazar)");
+    expect(textFemaleStudent).not.toContain("((Kachabazar))");
+
+    const textMultiStudent = buildFacebookPostText({
+      id: 6821,
+      jobId: "6821",
+      studentCount: 3,
+    });
+    expect(textMultiStudent).toContain("👥 Students: 3 Students");
+
+    // Single student unspecified gender should not have a redundant line
+    const textGeneric = buildFacebookPostText({
+      id: 6822,
+      jobId: "6822",
+      studentCount: 1,
+    });
+    expect(textGeneric).not.toContain("Student:");
+    expect(textGeneric).not.toContain("Students:");
   });
 });

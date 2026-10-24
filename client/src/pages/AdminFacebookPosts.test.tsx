@@ -229,14 +229,14 @@ describe("AdminFacebookPostsContent", () => {
     const calledText = (navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mock.calls[0][0];
 
     expect(calledText).toContain("Job ID: ");
-    expect(calledText).toContain("🔹 Class - 10 EV");
+    expect(calledText).toContain("🔹 Class: 10 EV");
     expect(calledText).toContain("Higher Math, Physics");
     expect(calledText).toContain("Dhanmondi, Dhaka (Road 8/A)");
     expect(calledText).toContain("Salary 9,000 BDT");
     expect(calledText).toContain("3 Days, Time: 6:00 PM");
     expect(calledText).toContain("Female Tutor");
     expect(calledText).toContain("🏫 School: BUET / DU");
-    expect(calledText).toContain("1 Student (Male)");
+    expect(calledText).toContain("👨‍🎓 Student: Male Student");
     // Should not include redundant apply link per job
     expect(calledText).not.toContain("Apply:");
 

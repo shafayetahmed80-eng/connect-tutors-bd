@@ -80,6 +80,18 @@ describe("facebook-hashtags", () => {
     expect(tags).toContain("FemaleTutorWanted");
   });
 
+  it("extracts institute preference hashtags from job.notes as fallback/addition", () => {
+    const job: FacebookPostJobInput = {
+      id: 31,
+      notes: "Strictly BUET or Medical tutors needed",
+      preferredGender: "male",
+    };
+    const tags = extractPreferenceHashtags(job);
+    expect(tags).toContain("BUETTutors");
+    expect(tags).toContain("MedicalTutors");
+    expect(tags).toContain("MaleTutorWanted");
+  });
+
   it("generates deduplicated smart hashtags for a single tuition", () => {
     const job: FacebookPostJobInput = {
       id: 101,

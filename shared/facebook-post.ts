@@ -76,34 +76,35 @@ export interface BuildJobDetailsInlineOptions {
   includeHashtags?: boolean;
 }
 
+export const SECTION_DIVIDER = "━━━━━━━━━━━━━━━━━━━━━━━━━━";
 export const ITEM_DIVIDER = "──────────────────────────";
 
 export const DEFAULT_BULK_HEADER = `🔴 LIVE TUITION JOBS — CONNECT TUTORS 🔴
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━
 {headline}
 🔍 Search using "Job ID" on our website to view full details.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
-export const DEFAULT_BULK_FOOTER = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+export const DEFAULT_BULK_FOOTER = `━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚀 How to Apply:
 👉 Visit our website and search using the "Job ID" to apply:
 {website}
 
 ⚡ 1-Click Apply • Direct Guardian Contact • Verified Tuitions
 🌐 Connect Tutors — The Most Trusted Digital Tuition Platform
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
 export const DEFAULT_SINGLE_HEADER = `🔴 NEW TUITION OFFER — CONNECT TUTORS 🔴
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
-export const DEFAULT_SINGLE_FOOTER = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+export const DEFAULT_SINGLE_FOOTER = `━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚀 How to Apply:
 👉 Direct Apply Link:
 {applyUrl}
 
 ⚡ 1-Click Apply • Direct Guardian Contact • Verified Tuitions
 🌐 Connect Tutors — The Most Trusted Digital Tuition Platform
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
 /**
  * Replaces placeholders like {count}, {website}, {applyUrl}, {jobId} with actual values.
@@ -171,8 +172,9 @@ export function extractJobEnglishFields(job: FacebookPostJobInput) {
   let loc = job.tuitionType === "online"
     ? "Online"
     : (job.tuitionLocationLabel ?? job.locationText ?? "Location not specified");
-  if (job.addressDetails?.trim() && job.tuitionType !== "online") {
-    loc += ` (${job.addressDetails.trim()})`;
+  const rawAddress = job.addressDetails?.trim().replace(/^\(+|\)+$/g, "").trim();
+  if (rawAddress && job.tuitionType !== "online") {
+    loc += ` (${rawAddress})`;
   }
 
   const salary = job.budgetAmount !== null && job.budgetAmount !== undefined && job.budgetAmount > 0
@@ -201,13 +203,24 @@ export function extractJobEnglishFields(job: FacebookPostJobInput) {
       ? rawSchool
       : null;
 
-  const count = job.studentCount && job.studentCount > 0 ? `${job.studentCount} ${job.studentCount === 1 ? "Student" : "Students"}` : null;
-  const gender = job.studentGender === "male" ? "Male" : job.studentGender === "female" ? "Female" : null;
+  const count = job.studentCount && job.studentCount > 0 ? job.studentCount : null;
+  const rawGender = job.studentGender?.trim().toLowerCase();
+  const gender = rawGender === "male" ? "Male" : rawGender === "female" ? "Female" : null;
+
+  let studentLine: string | null = null;
+  if (count && count > 1) {
+    studentLine = gender
+      ? `👥 Students: ${count} Students (${gender})`
+      : `👥 Students: ${count} Students`;
+  } else if (gender) {
+    studentLine = `👨‍🎓 Student: ${gender} Student`;
+  }
+
   let studentInfo: string | null = null;
   if (count && gender) {
-    studentInfo = `${count} (${gender})`;
+    studentInfo = `${count} ${count === 1 ? "Student" : "Students"} (${gender})`;
   } else if (count) {
-    studentInfo = count;
+    studentInfo = `${count} ${count === 1 ? "Student" : "Students"}`;
   } else if (gender) {
     studentInfo = `${gender} Student`;
   }
@@ -232,6 +245,7 @@ export function extractJobEnglishFields(job: FacebookPostJobInput) {
     schedule,
     tutorPref,
     school,
+    studentLine,
     studentInfo,
     notes,
   };
@@ -239,7 +253,7 @@ export function extractJobEnglishFields(job: FacebookPostJobInput) {
 
 /**
  * Formats a single tuition's details side-by-side in English.
- * Order: Job ID | Tutor Pref | Class | Subjects | Location | Schedule | Salary | [School]
+ * Order: Job ID | Tutor Pref | Class | Subjects | Location | Schedule | Salary | [Student] | [School]
  */
 export function buildEnglishJobDetailsInline(
   job: FacebookPostJobInput,
@@ -259,11 +273,13 @@ export function buildEnglishJobDetailsInline(
     `🗓️ ${f.schedule}`,
     `💰 ${f.salary}`,
   ];
+  if (f.studentLine) {
+    parts.push(f.studentLine);
+  } else if (f.studentInfo) {
+    parts.push(f.studentInfo);
+  }
   if (f.school) {
     parts.push(`🏫 School: ${f.school}`);
-  }
-  if (f.studentInfo) {
-    parts.push(f.studentInfo);
   }
   if (f.notes) {
     parts.push(`Notes: ${f.notes}`);
@@ -313,7 +329,7 @@ export function formatLocationOnlyHashtag(jobOrLocation: FacebookPostJobInput | 
   if (!jobOrLocation) return "#BANGLADESH";
   let rawLoc = typeof jobOrLocation === "string" ? jobOrLocation : (jobOrLocation.tuitionLocationLabel ?? jobOrLocation.locationText ?? "");
   if (typeof jobOrLocation === "object" && jobOrLocation.tuitionType === "online") {
-    return "#ONLINE";
+    return "#ONLINE_TUITION";
   }
   if (rawLoc.includes(",")) {
     rawLoc = rawLoc.split(",")[0].trim() || rawLoc;
@@ -363,16 +379,19 @@ export function getCurriculumShortCode(job: FacebookPostJobInput): string {
 
 /**
  * Resolves class course into a clean curriculum-aware line:
- * - English Medium (EM / Cambridge / Edexcel / British / O/A Levels) -> "🔹 Standard - <val> EM"
- * - Bangla Medium / English Version / Madrasah / Admission / Other -> "🔹 Class - <val> <CODE>"
- * Automatically strips redundant leading "Class"/"Standard"/"Grade"/"Year" and trailing duplicate shortcodes.
+ * - English Medium (EM / Cambridge / Edexcel / British / O/A Levels) -> "🔹 Standard: <val> EM"
+ * - Bangla Medium / English Version / Madrasah / Admission / Other -> "🔹 Class: <val> <CODE>"
+ * Automatically strips redundant leading and repeating "Class"/"Standard"/"Grade" and trailing duplicate shortcodes.
  */
 export function formatJobClassLine(job: FacebookPostJobInput): string {
   const rawClass = (job.classCourse || "General").trim();
   const shortCode = getCurriculumShortCode(job);
   const isEnglishMedium = shortCode === "EM";
 
-  let cleaned = rawClass.replace(/^(Class|Standard|Grade|Year)\s*[-:]?\s*/i, "").trim() || rawClass;
+  let cleaned = rawClass
+    .replace(/^(Class|Standard|Grade|Year)\s*[-:]?\s*/i, "")
+    .replace(/\b(Class|Standard|Grade)\s*[-:]?\s*/gi, "")
+    .trim() || rawClass;
   let codePart = shortCode ? ` ${shortCode}` : "";
 
   if (shortCode && cleaned.toLowerCase().endsWith(shortCode.toLowerCase())) {
@@ -385,21 +404,24 @@ export function formatJobClassLine(job: FacebookPostJobInput): string {
   }
 
   const prefix = isEnglishMedium ? "Standard" : "Class";
-  return `🔹 ${prefix} - ${cleaned}${codePart}`;
+  return `🔹 ${prefix}: ${cleaned}${codePart}`;
 }
 
 /**
  * Formats class name with prefix and curriculum code:
- * "Class 3" (Bangla Medium) -> "🔹 Class- 3 BM"
- * "Standard 3" (English Medium) -> "🔹 Standard- 3 EM"
- * "Class 5" (English Version) -> "🔹 Class- 5 EV"
+ * "Class 3" (Bangla Medium) -> "🔹 Class: 3 BM"
+ * "Standard 3" (English Medium) -> "🔹 Standard: 3 EM"
+ * "Class 5" (English Version) -> "🔹 Class: 5 EV"
  */
 export function formatCompactClass(job: FacebookPostJobInput): string {
   const rawClass = (job.classCourse || "General").trim();
   const shortCode = getCurriculumShortCode(job);
   const isEnglishMedium = shortCode === "EM";
 
-  let cleaned = rawClass.replace(/^(Class|Standard|Grade|Year)\s*[-:]?\s*/i, "").trim() || rawClass;
+  let cleaned = rawClass
+    .replace(/^(Class|Standard|Grade|Year)\s*[-:]?\s*/i, "")
+    .replace(/\b(Class|Standard|Grade)\s*[-:]?\s*/gi, "")
+    .trim() || rawClass;
   let codePart = shortCode ? ` ${shortCode}` : "";
 
   if (shortCode && cleaned.toLowerCase().endsWith(shortCode.toLowerCase())) {
@@ -412,7 +434,7 @@ export function formatCompactClass(job: FacebookPostJobInput): string {
   }
 
   const prefix = isEnglishMedium ? "Standard" : "Class";
-  return `🔹 ${prefix}- ${cleaned}${codePart}`;
+  return `🔹 ${prefix}: ${cleaned}${codePart}`;
 }
 
 /**
@@ -449,11 +471,12 @@ export function formatCompactSubjects(subjects: unknown): string {
  * e.g., "📍 #MOHAMMADPUR_DHAKA (Housing Society)" or "📍 #MOHAMMADPUR_DHAKA"
  */
 export function formatLocationWithAddress(job: FacebookPostJobInput): string {
-  if (job.tuitionType === "online") return "📍 #ONLINE";
+  if (job.tuitionType === "online") return "🌐 #ONLINE_TUITION";
   const rawLoc = (job.tuitionLocationLabel ?? job.locationText ?? "").trim();
   const tag = formatLocationHashtag(rawLoc || "Dhaka");
-  if (job.addressDetails?.trim()) {
-    return `📍 ${tag} (${job.addressDetails.trim()})`;
+  const cleanAddress = job.addressDetails?.trim().replace(/^\(+|\)+$/g, "").trim();
+  if (cleanAddress) {
+    return `📍 ${tag} (${cleanAddress})`;
   }
   return `📍 ${tag}`;
 }
@@ -471,10 +494,11 @@ export function getJobCategoryKey(job: FacebookPostJobInput): string {
  * Format 1: Standard Card (formerly Iconic Emoji)
  * Line 1: 📌 Job ID: 6815 (Male Tutor)
  * Line 2: 📍 #SEGUNBAGICHA_DHAKA (Kachabazar)
- * Line 3: 🔹 Class - 10 BM (or 🔹 Standard - 10 EM)
- * Line 4: 📚 Subjects- English, Bangla  |  🗓️ 5 Days, Time: 7:00 PM  |  💰 Salary 7,000 BDT
- * Line 5: 🏫 School: Birshrestho Munshi Abdur Rouf (only shown if instituteName exists)
- * Line 6: 📋 Notes: ... (only shown if notes exist, preceded by blank line)
+ * Line 3: 🔹 Class: 10 BM (or 🔹 Standard: 10 EM)
+ * Line 4: 📚 Subjects: English, Bangla  |  🗓️ 5 Days, Time: 7:00 PM  |  💰 Salary 7,000 BDT
+ * Line 5: 👨‍🎓 Student: Male Student (only shown if specified)
+ * Line 6: 🏫 School: Birshrestho Munshi Abdur Rouf (only shown if instituteName exists)
+ * Line 7: 📋 Notes: ... (only shown if notes exist, preceded by blank line)
  */
 export function formatJobStandardCard(job: FacebookPostJobInput, _index?: number): string {
   const f = extractJobEnglishFields(job);
@@ -482,9 +506,12 @@ export function formatJobStandardCard(job: FacebookPostJobInput, _index?: number
   const line1 = `📌 Job ID: ${f.code} (${f.tutorPref})`;
   const line2 = formatLocationWithAddress(job);
   const line3 = f.classLine;
-  const line4 = `📚 Subjects- ${f.subjects}  |  🗓️ ${f.schedule}  |  💰 ${f.salary}`;
+  const line4 = `📚 Subjects: ${f.subjects}  |  🗓️ ${f.schedule}  |  💰 ${f.salary}`;
 
   const lines = [line1, line2, line3, line4];
+  if (f.studentLine) {
+    lines.push(f.studentLine);
+  }
   if (f.school) {
     lines.push(`🏫 School: ${f.school}`);
   }
@@ -500,7 +527,7 @@ export const formatJobMobileCard = formatJobStandardCard;
 
 /**
  * Format 3: Gender Grouped (Compact 1-Line)
- * Example: 📌 Job ID: 6821, 📍 #MOHAMMADPUR 🔹 Class- 3 BM, (Physics + Chemistry), 4D, 5,000 BDT
+ * Example: 📌 Job ID: 6821, 📍 #MOHAMMADPUR 🔹 Class: 3 BM, (Physics + Chemistry), 4D, 5,000 BDT
  */
 export function formatJobGenderCompact(job: FacebookPostJobInput, _index?: number): string {
   const f = extractJobEnglishFields(job);
@@ -519,20 +546,26 @@ export const formatJobKeyPriority = formatJobGenderCompact;
 
 /**
  * Formats a single item under an area heading in Format 4: Area Grouped.
- * Line 1: 📌 Job ID: 6815 (Male Tutor)
- * Line 2: 🔹 Class - 10 BM (or 🔹 Standard - 10 EM)
- * Line 3: 📚 Subjects- English, Bangla  |  🗓️ 5 Days, Time: 7:00 PM  |  💰 Salary 7,000 BDT
- * Line 4: 🏫 School: Birshrestho Munshi Abdur Rouf (only shown if instituteName exists)
- * Line 5: 📋 Notes: ... (only shown if notes exist, preceded by blank line)
+ * Line 1: 📌 Job ID: 6815 (Male Tutor) • Tajmahal Road (sub-location if address exists)
+ * Line 2: 🔹 Class: 10 BM (or 🔹 Standard: 10 EM)
+ * Line 3: 📚 Subjects: English, Bangla  |  🗓️ 5 Days, Time: 7:00 PM  |  💰 Salary 7,000 BDT
+ * Line 4: 👨‍🎓 Student: Male Student (only shown if specified)
+ * Line 5: 🏫 School: Birshrestho Munshi Abdur Rouf (only shown if instituteName exists)
+ * Line 6: 📋 Notes: ... (only shown if notes exist, preceded by blank line)
  */
 export function formatJobAreaItem(job: FacebookPostJobInput, _index?: number): string {
   const f = extractJobEnglishFields(job);
 
-  const line1 = `📌 Job ID: ${f.code} (${f.tutorPref})`;
+  const cleanAddress = job.addressDetails?.trim().replace(/^\(+|\)+$/g, "").trim();
+  const subLocPart = cleanAddress ? ` • ${cleanAddress}` : "";
+  const line1 = `📌 Job ID: ${f.code} (${f.tutorPref})${subLocPart}`;
   const line2 = f.classLine;
-  const line3 = `📚 Subjects- ${f.subjects}  |  🗓️ ${f.schedule}  |  💰 ${f.salary}`;
+  const line3 = `📚 Subjects: ${f.subjects}  |  🗓️ ${f.schedule}  |  💰 ${f.salary}`;
 
   const lines = [line1, line2, line3];
+  if (f.studentLine) {
+    lines.push(f.studentLine);
+  }
   if (f.school) {
     lines.push(`🏫 School: ${f.school}`);
   }
