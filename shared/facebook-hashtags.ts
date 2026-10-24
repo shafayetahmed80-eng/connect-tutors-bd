@@ -125,11 +125,11 @@ export function extractSubjectHashtags(job: FacebookPostJobInput): string[] {
  */
 export function extractPreferenceHashtags(job: FacebookPostJobInput): string[] {
   const tags: string[] = [];
-  const inst = (job.instituteName || "").toLowerCase();
+  const combined = [job.instituteName || "", job.notes || ""].join(" ").toLowerCase();
 
-  if (inst.includes("buet")) tags.push("BUETTutors");
-  if (inst.includes("du") || inst.includes("dhaka university")) tags.push("DhakaUniversityTutors");
-  if (inst.includes("medical") || inst.includes("dmc")) tags.push("MedicalTutors");
+  if (combined.includes("buet")) tags.push("BUETTutors");
+  if (combined.includes("dhaka university") || /\bdu\b/.test(combined)) tags.push("DhakaUniversityTutors");
+  if (combined.includes("medical") || combined.includes("dmc")) tags.push("MedicalTutors");
 
   if (job.preferredGender === "female") tags.push("FemaleTutorWanted");
   else if (job.preferredGender === "male") tags.push("MaleTutorWanted");
