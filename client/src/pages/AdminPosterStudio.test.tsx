@@ -126,4 +126,45 @@ describe("the poster studio", () => {
     await waitFor(() => expect(lastRender().textSize).toMatchObject({ all: 1.12, headline: 1.2, points: 1 }));
     expect(JSON.parse(window.localStorage.getItem("connect-poster-studio-v1")!).textSize.all).toBe(1.12);
   });
+
+  it("switches across the new templates and updates the render input", async () => {
+    render(<PosterStudioContent />);
+
+    // Switch to urgent-tuition
+    fireEvent.click(screen.getByRole("button", { name: "জরুরি টিউটর" }));
+    await waitFor(() => expect(lastRender().template.id).toBe("urgent-tuition"));
+    expect(lastRender().content.headline[1].text).toBe("জরুরি অভিজ্ঞ শিক্ষক");
+
+    // Switch to board-admission
+    fireEvent.click(screen.getByRole("button", { name: "ভর্তি ও এসএসসি/এইচএসসি" }));
+    await waitFor(() => expect(lastRender().template.id).toBe("board-admission"));
+
+    // Switch to english-medium
+    fireEvent.click(screen.getByRole("button", { name: "ইংলিশ মিডিয়াম" }));
+    await waitFor(() => expect(lastRender().template.id).toBe("english-medium"));
+
+    // Switch to quran-islamic
+    fireEvent.click(screen.getByRole("button", { name: "কুরআন শিক্ষা" }));
+    await waitFor(() => expect(lastRender().template.id).toBe("quran-islamic"));
+
+    // Switch to tutor-recruitment
+    fireEvent.click(screen.getByRole("button", { name: "টিউটর নিয়োগ" }));
+    await waitFor(() => expect(lastRender().template.id).toBe("tutor-recruitment"));
+  });
+
+  it("copies poster image to clipboard when Copy Image is clicked", async () => {
+    const clipboardWrite = vi.fn(async () => {});
+    Object.assign(navigator, {
+      clipboard: {
+        write: clipboardWrite,
+      },
+    });
+    (globalThis as unknown as { ClipboardItem: unknown }).ClipboardItem = vi.fn((items: unknown) => items);
+
+    render(<PosterStudioContent />);
+    fireEvent.click(screen.getByRole("button", { name: "Copy Image" }));
+
+    await waitFor(() => expect(mocks.canvasToImageBlob).toHaveBeenCalledWith(expect.anything(), "png"));
+    expect(clipboardWrite).toHaveBeenCalled();
+  });
 });
