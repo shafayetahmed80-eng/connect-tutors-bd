@@ -5,7 +5,7 @@ import { TRPCClientError } from "@trpc/client";
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { sendCode, register } = vi.hoisted(() => ({ sendCode: vi.fn(), register: vi.fn() }));
+const { sendCode, register, otpStatus } = vi.hoisted(() => ({ sendCode: vi.fn(), register: vi.fn(), otpStatus: { enabled: true } }));
 
 vi.mock("@/components/SiteHeader", () => ({ default: () => null }));
 vi.mock("@/components/SiteFooter", () => ({ default: () => null }));
@@ -18,6 +18,7 @@ vi.mock("@/lib/trpc", () => ({
     auth: {
       registerTutor: { useMutation: () => ({ mutateAsync: register, isPending: false }) },
       sendTutorPhoneCode: { useMutation: () => ({ mutateAsync: sendCode, isPending: false }) },
+      registrationOtpStatus: { useQuery: () => ({ data: otpStatus, isLoading: false }) },
     },
     catalog: {
       searchGuardianLocations: { useQuery: () => ({ data: [{ id: "dhaka", label: "Dhaka" }], isLoading: false }) },
@@ -33,6 +34,7 @@ import JoinTutor from "./JoinTutor";
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  otpStatus.enabled = true;
   window.localStorage.clear();
   window.sessionStorage.clear();
 });
@@ -189,5 +191,26 @@ describe("Tutor registration with an SMS code", () => {
     expect((screen.getByLabelText(/^Full name/) as HTMLInputElement).value).toBe("");
     expect(screen.queryByText(/সংরক্ষিত ড্রাফট/)).toBeNull();
     expect(window.localStorage.getItem("connect-tutors:draft:tutor-registration")).toBeNull();
+  });
+
+  it("registers a Tutor directly without sending an SMS code when OTP verification is disabled in Admin Control", async () => {
+    otpStatus.enabled = false;
+    const user = userEvent.setup({ document: window.document });
+    register.mockResolvedValue({ success: true, tutorPortalToken: "mock-portal-token" });
+    render(<JoinTutor />);
+    await fillTheForm(user);
+
+    expect(screen.getByRole("button", { name: "Create Tutor account" })).toBeTruthy();
+    expect(screen.queryByLabelText(/Verification code/)).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Create Tutor account" }));
+
+    expect(sendCode).not.toHaveBeenCalled();
+    expect(register).toHaveBeenCalledWith(expect.objectContaining({
+      name: "Karim Uddin",
+      email: "karim@example.com",
+      phone: "+8801712345678",
+      phoneCode: undefined,
+    }));
   });
 });

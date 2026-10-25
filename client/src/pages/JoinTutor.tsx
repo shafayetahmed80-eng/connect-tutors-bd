@@ -81,6 +81,8 @@ export default function JoinTutor() {
   const { user, loading: authLoading } = useAuth();
   const registerTutor = trpc.auth.registerTutor.useMutation();
   const sendPhoneCode = trpc.auth.sendTutorPhoneCode.useMutation();
+  const otpStatusQuery = trpc.auth.registrationOtpStatus.useQuery();
+  const otpRequired = otpStatusQuery.data?.enabled ?? false;
   // Set once a code has gone out: the number it went to, and when another may be asked for.
   const [codeSentTo, setCodeSentTo] = useState<string | null>(null);
   const [phoneCode, setPhoneCode] = useState("");
@@ -206,17 +208,19 @@ export default function JoinTutor() {
       return;
     }
 
-    // First press sends the SMS code; the account is only created with it.
     const phone = formatBangladeshMobile(form.phone);
-    if (codeSentTo !== phone) {
-      await requestPhoneCode(phone);
-      return;
-    }
-    if (!/^\d{4}$/.test(phoneCode)) {
-      const message = "Enter the 4-digit code sent to your mobile.";
-      setFieldErrors((current) => ({ ...current, phoneCode: message }));
-      focusFirstError({ phoneCode: message });
-      return;
+    if (otpRequired) {
+      // First press sends the SMS code; the account is only created with it.
+      if (codeSentTo !== phone) {
+        await requestPhoneCode(phone);
+        return;
+      }
+      if (!/^\d{4}$/.test(phoneCode)) {
+        const message = "Enter the 4-digit code sent to your mobile.";
+        setFieldErrors((current) => ({ ...current, phoneCode: message }));
+        focusFirstError({ phoneCode: message });
+        return;
+      }
     }
 
     let accountCreated = false;
@@ -231,7 +235,7 @@ export default function JoinTutor() {
         cityId: form.cityId,
         locationId: form.locationId,
         termsAccepted: agreed,
-        phoneCode,
+        phoneCode: otpRequired ? phoneCode : undefined,
       });
       accountCreated = true;
       // Only persist the profile pre-fill once the account actually exists — a
@@ -354,7 +358,7 @@ export default function JoinTutor() {
               <RegistrationFieldError id="cityId-error" message={fieldErrors.cityId}><SearchableLocationSelect triggerId="cityId" label="City" slotId="tutor-registration.field.city" required value={form.cityId} options={cities} disabled={cityCatalog.isLoading} placeholder={cityCatalog.isLoading ? "Loading cities…" : "Search a City"} searchPlaceholder="Search City" emptyMessage="No City matches your search." onChange={(cityId) => { setForm((current) => ({ ...current, cityId, locationId: "" })); setFieldErrors((current) => ({ ...current, cityId: undefined, locationId: undefined })); }} invalid={Boolean(fieldErrors.cityId)} describedBy={fieldErrors.cityId ? "cityId-error" : undefined} /></RegistrationFieldError>
               <RegistrationFieldError id="locationId-error" message={fieldErrors.locationId}><SearchableLocationSelect triggerId="locationId" label="Location" slotId="tutor-registration.field.location" required value={form.locationId} options={cityLocations} disabled={!form.cityId || locationCatalog.isLoading} placeholder={!form.cityId ? "Choose a City first" : locationCatalog.isLoading ? "Loading locations…" : cityLocations.length ? "Search a location" : "No location found for this City"} searchPlaceholder="Search location or Sub-area" emptyMessage="No location matches your search." onChange={(locationId) => update("locationId", locationId)} invalid={Boolean(fieldErrors.locationId)} describedBy={fieldErrors.locationId ? "locationId-error" : undefined} /></RegistrationFieldError>
             </div>
-            {codeSentTo ? <div className="mt-6 rounded-xl border border-j-border bg-j-surface-sunken p-4">
+            {otpRequired && codeSentTo ? <div className="mt-6 rounded-xl border border-j-border bg-j-surface-sunken p-4">
               <PhoneCodeField
                 id="phoneCode"
                 label={resolveSlot("tutor-registration.field.phoneCode", "Verification code")}
@@ -385,7 +389,7 @@ export default function JoinTutor() {
                 {registerTutor.isPending || sendPhoneCode.isPending ? (
                   <span aria-hidden="true" className="sign-in-submit-glow pointer-events-none absolute -inset-px rounded-xl motion-reduce:hidden" />
                 ) : null}
-                {registerTutor.isPending ? <><LoaderCircle className="animate-spin" size={17} /> Creating your account…</> : sendPhoneCode.isPending && !codeSentTo ? <><LoaderCircle className="animate-spin" size={17} /> Sending code…</> : codeSentTo ? <SiteText slotId="button-section.tutorRegistration.verify" fallback="Verify and create account" /> : <SiteText slotId="button-section.tutorRegistration.create" fallback="Create Tutor account" />}
+                {registerTutor.isPending ? <><LoaderCircle className="animate-spin" size={17} /> Creating your account…</> : sendPhoneCode.isPending && !codeSentTo ? <><LoaderCircle className="animate-spin" size={17} /> Sending code…</> : otpRequired && codeSentTo ? <SiteText slotId="button-section.tutorRegistration.verify" fallback="Verify and create account" /> : <SiteText slotId="button-section.tutorRegistration.create" fallback="Create Tutor account" />}
               </button>
             </div>
           </section>

@@ -209,6 +209,7 @@ describe("Tutor password authentication", () => {
     });
     vi.spyOn(db, "createTutorPortalSession").mockResolvedValue(undefined);
     vi.spyOn(sdk, "createSessionToken").mockResolvedValue("signed-registration-session");
+    vi.spyOn(db, "getTutorGuardianLoginOtpSettings").mockResolvedValue({ enabled: true, rememberDays: 30, epoch: 0 });
 
     const registrationInput = {
       name: "Test Tutor",

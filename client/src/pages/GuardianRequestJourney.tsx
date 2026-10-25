@@ -374,6 +374,11 @@ function GuardianRequestJourneyBody({ embedded = false }: { embedded?: boolean }
     onSuccess: (result, variables) => {
       setJourneyError("");
       setPhoneCodeError("");
+      if (result.otpRequired === false) {
+        setVerifiedPhone({ phone: variables.phone, at: Date.now() });
+        submitRegistration(variables.phone);
+        return;
+      }
       setCodeSentTo(variables.phone);
       setStage("code");
       setResendAt(Date.now() + result.resendAfterSeconds * 1000);
