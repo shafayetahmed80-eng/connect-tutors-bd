@@ -183,6 +183,69 @@ export function getTutorPrefBadgeClass(gender: string | null | undefined): strin
   return "bg-slate-50 text-slate-700 border-slate-200/80";
 }
 
+/**
+ * Daily Posting Progress Ring widget visualizing team coverage of posted vs unposted live tuitions.
+ */
+export function PostingProgressRing({
+  posted,
+  total,
+}: {
+  posted: number;
+  total: number;
+}) {
+  const pct = total > 0 ? Math.min(100, Math.round((posted / total) * 100)) : 0;
+  const size = 32;
+  const strokeWidth = 3;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (pct / 100) * circumference;
+  const strokeColor =
+    pct >= 80 ? "stroke-emerald-600" : pct >= 40 ? "stroke-sky-600" : "stroke-amber-600";
+  const badgeColor =
+    pct >= 80
+      ? "bg-emerald-50/90 text-emerald-950 border-emerald-200/80"
+      : pct >= 40
+        ? "bg-sky-50/90 text-sky-950 border-sky-200/80"
+        : "bg-amber-50/90 text-amber-950 border-amber-200/80";
+
+  return (
+    <div
+      data-testid="posting-progress-ring"
+      title={`Daily Posting Coverage: ${posted} of ${total} live tuitions posted to Facebook (${pct}%)`}
+      className={`inline-flex items-center gap-2 rounded-lg border px-2.5 py-1 shadow-2xs backdrop-blur-xs transition ${badgeColor}`}
+    >
+      <div className="relative inline-grid size-7 place-items-center">
+        <svg className="size-7 -rotate-90" viewBox={`0 0 ${size} ${size}`}>
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            className="stroke-slate-200 fill-none"
+            strokeWidth={strokeWidth}
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            className={`fill-none transition-all duration-500 ease-out ${strokeColor}`}
+            strokeWidth={strokeWidth}
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+          />
+        </svg>
+        <span className="absolute text-[9px] font-black tracking-tight">{pct}%</span>
+      </div>
+      <div className="text-left">
+        <div className="text-[10px] font-bold leading-tight">Daily Coverage</div>
+        <div className="text-[9px] opacity-80 leading-tight">
+          {posted}/{total} Posted
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AdminFacebookPostsContent() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -822,9 +885,21 @@ export function AdminFacebookPostsContent() {
       key: "salary",
       label: "Salary",
       cell: job => (
-        <span className="font-bold text-j-ink whitespace-nowrap">
-          {formatSalaryAmount(job.budgetAmount)}
-        </span>
+        <div className="space-y-1">
+          <span className="font-bold text-j-ink whitespace-nowrap block">
+            {formatSalaryAmount(job.budgetAmount)}
+          </span>
+          {job.budgetAmount && job.budgetAmount >= 8000 ? (
+            <span
+              data-testid="high-value-tuition-badge"
+              className="inline-flex items-center gap-1 rounded-md border border-amber-300/80 bg-gradient-to-r from-amber-50 to-orange-50/70 px-1.5 py-0.5 text-2xs font-bold text-amber-900 shadow-2xs whitespace-nowrap"
+              title="High Budget Tuition (8,000+ BDT)"
+            >
+              <Sparkles className="size-2.5 text-amber-600 animate-pulse" />
+              <span>High Budget</span>
+            </span>
+          ) : null}
+        </div>
       ),
     },
     {
@@ -993,7 +1068,7 @@ export function AdminFacebookPostsContent() {
                 }}
                 aria-label={`Preview Facebook post for job ${code}`}
                 className="inline-grid size-7.5 place-items-center rounded-md text-slate-600 hover:bg-white hover:text-j-ink hover:shadow-2xs transition active:scale-90 cursor-pointer"
-                title="Preview Post Text"
+                title={`Quick Preview: Job ${code} • ${job.classCourse || "Tuition"} • ${formatSalaryAmount(job.budgetAmount)} • ${job.locationText || "Dhaka"}`}
               >
                 <Eye className="size-3.5" />
               </button>
@@ -1154,7 +1229,8 @@ export function AdminFacebookPostsContent() {
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <PostingProgressRing posted={livePostedCount} total={livePostedCount + liveUnpostedCount} />
           <label className="flex items-center gap-2 cursor-pointer select-none text-2xs font-semibold text-j-ink-soft hover:text-j-ink transition">
             <input
               type="checkbox"
