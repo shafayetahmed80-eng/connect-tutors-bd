@@ -142,6 +142,47 @@ function PickBox({ checked, order, jobId, onChange, card = false }: { checked: b
   );
 }
 
+/**
+ * Returns color classes for curriculum / medium badges (English Medium = Indigo, Bangla Medium = Emerald, English Version = Teal, etc.)
+ */
+export function getCurriculumBadgeClass(medium: string | null | undefined): string {
+  if (!medium) return "bg-slate-50 text-slate-700 border-slate-200/80";
+  const lower = medium.toLowerCase();
+  if (
+    lower.includes("english medium") ||
+    lower.includes("cambridge") ||
+    lower.includes("edexcel") ||
+    lower.includes("british") ||
+    lower.includes("o level") ||
+    lower.includes("a level") ||
+    lower.includes("em")
+  ) {
+    return "bg-indigo-50 text-indigo-700 border-indigo-200/80";
+  }
+  if (lower.includes("bangla medium") || lower.includes("bengali") || lower.includes("bm")) {
+    return "bg-emerald-50 text-emerald-700 border-emerald-200/80";
+  }
+  if (lower.includes("english version") || lower.includes("ev")) {
+    return "bg-teal-50 text-teal-700 border-teal-200/80";
+  }
+  if (lower.includes("madrasah") || lower.includes("madrasha")) {
+    return "bg-amber-50 text-amber-800 border-amber-200/80";
+  }
+  if (lower.includes("admission")) {
+    return "bg-purple-50 text-purple-700 border-purple-200/80";
+  }
+  return "bg-sky-50 text-sky-700 border-sky-200/80";
+}
+
+/**
+ * Returns color classes for tutor preference badges (Female = Rose, Male = Sky, Any = Slate)
+ */
+export function getTutorPrefBadgeClass(gender: string | null | undefined): string {
+  if (gender === "female") return "bg-rose-50 text-rose-700 border-rose-200/80";
+  if (gender === "male") return "bg-sky-50 text-sky-700 border-sky-200/80";
+  return "bg-slate-50 text-slate-700 border-slate-200/80";
+}
+
 export function AdminFacebookPostsContent() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -704,7 +745,7 @@ export function AdminFacebookPostsContent() {
               {job.classCourse || "Not specified"}
             </span>
             {medium ? (
-              <span className="inline-flex rounded bg-sky-50 px-1.5 py-0.5 text-2xs font-semibold text-sky-700">
+              <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-2xs font-semibold border ${getCurriculumBadgeClass(medium)}`}>
                 {medium}
               </span>
             ) : null}
@@ -781,7 +822,7 @@ export function AdminFacebookPostsContent() {
       label: "Tutor Preference",
       cell: job => (
         <div className="space-y-0.5">
-          <span className="font-medium text-j-ink block">
+          <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-2xs font-semibold border ${getTutorPrefBadgeClass(job.preferredGender)}`}>
             {formatTutorPreference(job.preferredGender)}
           </span>
           {job.instituteName ? (
@@ -1010,9 +1051,9 @@ export function AdminFacebookPostsContent() {
               setFbPostFilter("all");
               setPage(1);
             }}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 cursor-pointer ${
               fbPostFilter === "all"
-                ? "bg-j-ink text-white shadow-2xs"
+                ? "bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white shadow-2xs"
                 : "bg-slate-100 text-j-ink-soft hover:bg-slate-200 hover:text-j-ink"
             }`}
           >
@@ -1033,17 +1074,17 @@ export function AdminFacebookPostsContent() {
               setFbPostFilter("not_posted");
               setPage(1);
             }}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 cursor-pointer ${
               fbPostFilter === "not_posted"
-                ? "bg-amber-600 text-white shadow-2xs"
-                : "bg-amber-50 text-amber-800 border border-amber-200/60 hover:bg-amber-100/70"
+                ? "bg-gradient-to-r from-amber-600 to-amber-700 text-white shadow-2xs"
+                : "bg-amber-50/80 text-amber-900 border border-amber-200/70 hover:bg-amber-100/80"
             }`}
           >
-            <Circle className="size-3" />
+            <Circle className={`size-3 ${fbPostFilter === "not_posted" ? "text-white" : "text-amber-500"}`} />
             <span>Not Posted</span>
             <span
               className={`rounded-full px-1.5 py-0.5 text-[10px] ${
-                fbPostFilter === "not_posted" ? "bg-white/20 text-white" : "bg-amber-200/70 text-amber-900 font-semibold"
+                fbPostFilter === "not_posted" ? "bg-white/20 text-white" : "bg-amber-200/70 text-amber-950 font-semibold"
               }`}
             >
               {liveUnpostedCount}
@@ -1057,17 +1098,17 @@ export function AdminFacebookPostsContent() {
               setFbPostFilter("posted");
               setPage(1);
             }}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 cursor-pointer ${
               fbPostFilter === "posted"
-                ? "bg-emerald-600 text-white shadow-2xs"
-                : "bg-emerald-50 text-emerald-800 border border-emerald-200/60 hover:bg-emerald-100/70"
+                ? "bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-700 text-white shadow-2xs"
+                : "bg-emerald-50/80 text-emerald-900 border border-emerald-200/70 hover:bg-emerald-100/80"
             }`}
           >
-            <CheckCircle2 className="size-3" />
+            <CheckCircle2 className={`size-3 ${fbPostFilter === "posted" ? "text-white" : "text-emerald-600"}`} />
             <span>Posted</span>
             <span
               className={`rounded-full px-1.5 py-0.5 text-[10px] ${
-                fbPostFilter === "posted" ? "bg-white/20 text-white" : "bg-emerald-200/70 text-emerald-900 font-semibold"
+                fbPostFilter === "posted" ? "bg-white/20 text-white" : "bg-emerald-200/70 text-emerald-950 font-semibold"
               }`}
             >
               {livePostedCount}

@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AdminFacebookPostsContent } from "./AdminFacebookPosts";
+import { AdminFacebookPostsContent, getCurriculumBadgeClass, getTutorPrefBadgeClass } from "./AdminFacebookPosts";
 
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
@@ -706,6 +706,25 @@ describe("AdminFacebookPostsContent", () => {
     } finally {
       mocks.liveData = { ...mocks.liveData, items: originalItems, total: 1 };
     }
+  });
+
+  it("applies curriculum color coding correctly across different mediums", () => {
+    expect(getCurriculumBadgeClass("English Medium")).toContain("indigo");
+    expect(getCurriculumBadgeClass("Cambridge")).toContain("indigo");
+    expect(getCurriculumBadgeClass("Edexcel O Level")).toContain("indigo");
+    expect(getCurriculumBadgeClass("Bangla Medium")).toContain("emerald");
+    expect(getCurriculumBadgeClass("English Version")).toContain("teal");
+    expect(getCurriculumBadgeClass("Madrasah")).toContain("amber");
+    expect(getCurriculumBadgeClass("Admission Test")).toContain("purple");
+    expect(getCurriculumBadgeClass("General")).toContain("sky");
+    expect(getCurriculumBadgeClass(null)).toContain("slate");
+  });
+
+  it("applies tutor preference color coding correctly", () => {
+    expect(getTutorPrefBadgeClass("female")).toContain("rose");
+    expect(getTutorPrefBadgeClass("male")).toContain("sky");
+    expect(getTutorPrefBadgeClass("any")).toContain("slate");
+    expect(getTutorPrefBadgeClass(null)).toContain("slate");
   });
 });
 
