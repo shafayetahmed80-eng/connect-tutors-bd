@@ -22,7 +22,7 @@ import { AlignLeft, FilePenLine, MapPin, Phone, Plus, RadioTower, RefreshCcw, Sc
 import { LoadingCradle } from "@/components/BrandMark";
 import RecentSearches from "@/components/RecentSearches";
 import SearchInput from "@/components/SearchInput";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { JobIdTag } from "@/components/JobIdTag";
 
@@ -59,6 +59,9 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
   // A tuition an Admin adds goes straight to the Job Board, so the Admin's own board has nothing Pending to show and opens on Live.
   const visibleStages = postedBy === "admin" ? stages.filter(step => step.key !== "pending") : stages;
   const [stage, setStage] = useState<StageKey>(postedBy === "admin" ? "live" : "pending");
+  const userInteractedRef = useRef(false);
+  const autoResolvedRef = useRef(false);
+
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -72,6 +75,18 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
   const jobs = trpc.admin.listPostedJobs.useQuery({ stage, query, page, pageSize, postedBy, filters: filterPanel.input });
   const items = jobs.data?.items ?? [];
   const counts = jobs.data?.counts;
+
+// Smart Adaptive Default: When viewing all posted jobs, if there are pending requests,
+  // stay on "pending" so the Admin reviews new submissions. If pending count is 0,
+  // automatically default to "live" so the Admin directly sees active jobs without seeing an empty list.
+  useEffect(() => {
+    if (postedBy === "admin" || userInteractedRef.current || autoResolvedRef.current) return;
+    if (counts === undefined) return;
+    autoResolvedRef.current = true;
+    if (counts.pending === 0) {
+      setStage("live");
+    }
+  }, [postedBy, counts?.pending]);
   const stageLabel = stages.find(step => step.key === stage)?.label ?? "";
   const narrowed = filterPanel.activeCount > 0 || query.trim().length > 0;
   const totalPages = jobs.data?.totalPages ?? 1;
@@ -102,7 +117,7 @@ export function AdminPostedJobsContent({ postedBy = "all" }: { postedBy?: "all" 
   const approvingCancelJob = approvingCancelId ? items.find(item => item.id === approvingCancelId) ?? null : null;
   const guardianAnswer = useAdminGuardianTuitionRequest(() => setApprovingCancelId(null));
 
-  const changeStage = (next: StageKey) => { setStage(next); setPage(1); setExpandedId(null); filterPanel.onStageChange(next); };
+  const changeStage = (next: StageKey) => { userInteractedRef.current = true; setStage(next); setPage(1); setExpandedId(null); filterPanel.onStageChange(next); };
 
   return <div className="mx-auto w-full max-w-7xl space-y-5 pb-10">
     {/* On a phone the stages keep one line of their own, and search and Add
