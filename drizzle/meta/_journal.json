@@ -946,6 +946,13 @@
       "when": 1796400000000,
       "tag": "0134_expand_bangladesh_location_catalog_phase4",
       "breakpoints": true
+    },
+    {
+      "idx": 135,
+      "version": "5",
+      "when": 1796500000000,
+      "tag": "0135_expand_school_colleges_catalog",
+      "breakpoints": true
     }
   ]
 }

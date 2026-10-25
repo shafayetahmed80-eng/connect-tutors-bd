@@ -28,6 +28,7 @@ vi.mock("@/lib/trpc", () => ({
     catalog: {
       searchGuardianLocations: { useQuery: () => ({ data: [{ id: "dhaka", label: "Dhaka" }] }) },
       searchRegistrationLocations: { useQuery: () => ({ data: [{ id: "mirpur", label: "Mirpur" }] }) },
+      searchSchoolColleges: { useQuery: () => ({ data: [], isFetching: false }) },
     },
     guardianIntake: { phoneStatus: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) }, capturePhone: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) }, verifyPhone: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) } },
     guardianAuth: { register: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) } },

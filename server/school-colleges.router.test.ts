@@ -46,6 +46,12 @@ describe("school and college names", () => {
     expect(dbMocks.searchSchoolColleges).toHaveBeenCalledWith({ userId: 101, query: "Dhaka Col" });
   });
 
+  it("searches as a public visitor or guardian with no user id", async () => {
+    dbMocks.searchSchoolColleges.mockResolvedValue([]);
+    await createCaller(null).catalog.searchSchoolColleges({ query: " Notre " });
+    expect(dbMocks.searchSchoolColleges).toHaveBeenCalledWith({ userId: undefined, query: "Notre" });
+  });
+
   it("creates a name for the Tutor, and says so when they have made too many", async () => {
     dbMocks.createSchoolCollegeForTutor.mockResolvedValueOnce({ outcome: "created", school: { id: 9, name: "Madhupur Shahid Smrity", division: null, own: true } });
     await expect(createCaller().catalog.createSchoolCollege({ name: "Madhupur Shahid Smrity" })).resolves.toMatchObject({ id: 9, own: true });

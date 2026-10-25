@@ -3,6 +3,7 @@ import { SearchableLocationSelect } from "@/pages/JoinTutor";
 import LearningNeedsField, { describeLearningNeedsGap, learningNeedsLimitsFrom } from "@/components/LearningNeedsField";
 import { learningNeedsFromLegacy, type LearningNeed } from "@shared/learning-needs";
 import { formatRequestSource, INSTITUTE_NAME_MAX_LENGTH, REQUEST_SOURCE_VALUES, type RequestSource } from "@shared/request-source";
+import SchoolAutocompleteInput from "@/components/SchoolAutocompleteInput";
 import { formatStudentGender, formatTuitionType } from "@shared/job-card";
 import { jobIdForRequest } from "@shared/job-id";
 import { parseSalaryAmount } from "@shared/salary-amount";
@@ -52,6 +53,24 @@ function Select({ title, required, value, onChange, options, placeholder, format
       <option value="">{placeholder}</option>
       {options.map(option => <option key={option} value={option}>{format ? format(option) : option}</option>)}
     </select>
+  </Field>;
+}
+
+function SchoolText({ title, required, value, onChange, placeholder, maxLength, readOnly }: {
+  title: string; required?: boolean; value: string; onChange: (value: string) => void;
+  placeholder?: string; maxLength?: number; readOnly?: boolean;
+}) {
+  return <Field title={title} required={required}>
+    <SchoolAutocompleteInput
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      maxLength={maxLength}
+      disabled={readOnly}
+      className="mt-1"
+      inputClassName={`${control} ${readOnly ? "cursor-not-allowed bg-j-surface-sunken text-j-ink-soft" : ""}`}
+      aria-label={title}
+    />
   </Field>;
 }
 
@@ -423,7 +442,7 @@ export default function AdminAddTuitionModal({ onClose, onPosted, draft }: {
             <span className="flex items-center border-l border-j-border px-2 text-[10px] font-semibold text-j-ink-muted">Taka</span>
           </span>
         </Field>
-        <Text title="Institute Name" value={instituteName} onChange={setInstituteName} maxLength={INSTITUTE_NAME_MAX_LENGTH} />
+        <SchoolText title="Institute Name" value={instituteName} onChange={setInstituteName} maxLength={INSTITUTE_NAME_MAX_LENGTH} />
         <Select title="Where Did You Hear About Us" required value={heardAboutUs} onChange={value => setHeardAboutUs(value as RequestSource)} options={REQUEST_SOURCE_VALUES} placeholder="Choose an answer" format={value => formatRequestSource(value as RequestSource)} />
         <Text title="Address Details" value={addressDetails} onChange={setAddressDetails} maxLength={160} />
       </div>
