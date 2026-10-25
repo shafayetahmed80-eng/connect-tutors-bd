@@ -46,4 +46,32 @@ describe("the Owner's Tutor limits reach a profile save", () => {
       classLevelIds: ids(shipped["tutor.levels"]),
     })).not.toThrow();
   });
+
+  it("enforces dynamic minimum character limits on descriptive fields when provided", () => {
+    const customLimits = { ...defaultSiteLimits(), "tutor.aboutMeMinChars": 30 };
+    // Empty text is allowed (optional field)
+    expect(() => assertTutorProfileDraftWithinLimits(customLimits, { aboutMe: "" })).not.toThrow();
+    // Too short text throws
+    expect(() => assertTutorProfileDraftWithinLimits(customLimits, { aboutMe: "Too short" })).toThrow(TRPCError);
+    try {
+      assertTutorProfileDraftWithinLimits(customLimits, { aboutMe: "Too short" });
+    } catch (error) {
+      expect((error as TRPCError).message).toContain("About Me must be at least 30 characters");
+    }
+    // Satisfying text passes
+    expect(() => assertTutorProfileDraftWithinLimits(customLimits, {
+      aboutMe: "I am a dedicated teacher with 5+ years of physics tutoring experience.",
+    })).not.toThrow();
+  });
+
+  it("enforces dynamic maximum character limits on descriptive fields", () => {
+    const customLimits = { ...defaultSiteLimits(), "tutor.approachChars": 500 };
+    const longText = "a".repeat(501);
+    expect(() => assertTutorProfileDraftWithinLimits(customLimits, { teachingApproach: longText })).toThrow(TRPCError);
+    try {
+      assertTutorProfileDraftWithinLimits(customLimits, { teachingApproach: longText });
+    } catch (error) {
+      expect((error as TRPCError).message).toContain("Teaching Approach must be 500 characters or fewer");
+    }
+  });
 });

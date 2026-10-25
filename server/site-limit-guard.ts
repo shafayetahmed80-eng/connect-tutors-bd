@@ -43,3 +43,18 @@ export function assertWithinLengthLimit(
     message: `${fieldLabel} must be ${allowed} characters or fewer.`,
   });
 }
+
+/** Enforces the Owner's minimum length when content is provided (non-empty). */
+export function assertMinimumLengthLimit(
+  limits: SiteLimitValues,
+  id: SiteLimitId,
+  actual: number,
+  fieldLabel: string,
+) {
+  const minimum = limits[id];
+  if (!minimum || minimum <= 0 || actual === 0 || actual >= minimum) return;
+  throw new TRPCError({
+    code: "BAD_REQUEST",
+    message: `${fieldLabel} must be at least ${minimum} characters.`,
+  });
+}

@@ -1,9 +1,12 @@
 import type { SiteLimitValues } from "@shared/site-limits";
-import { assertWithinLimit, assertWithinLengthLimit } from "./site-limit-guard";
+import { assertMinimumLengthLimit, assertWithinLimit, assertWithinLengthLimit } from "./site-limit-guard";
 
 /** The lists and lengths a profile save has to stay inside. */
 export type TutorProfileDraftLimitInput = {
   headline?: string;
+  aboutMe?: string;
+  teachingApproach?: string;
+  whyChooseMe?: string;
   educationRecords?: readonly unknown[];
   primarySubjectIds?: readonly unknown[];
   additionalSubjectIds?: readonly unknown[];
@@ -25,6 +28,18 @@ export type TutorProfileDraftLimitInput = {
 export function assertTutorProfileDraftWithinLimits(limits: SiteLimitValues, input: TutorProfileDraftLimitInput) {
   if (input.headline !== undefined) {
     assertWithinLengthLimit(limits, "tutor.headlineChars", input.headline.length, "Headline");
+  }
+  if (input.aboutMe !== undefined && input.aboutMe.trim().length > 0) {
+    assertMinimumLengthLimit(limits, "tutor.aboutMeMinChars", input.aboutMe.trim().length, "About Me");
+    assertWithinLengthLimit(limits, "tutor.aboutMeChars", input.aboutMe.trim().length, "About Me");
+  }
+  if (input.teachingApproach !== undefined && input.teachingApproach.trim().length > 0) {
+    assertMinimumLengthLimit(limits, "tutor.approachMinChars", input.teachingApproach.trim().length, "Teaching Approach");
+    assertWithinLengthLimit(limits, "tutor.approachChars", input.teachingApproach.trim().length, "Teaching Approach");
+  }
+  if (input.whyChooseMe !== undefined && input.whyChooseMe.trim().length > 0) {
+    assertMinimumLengthLimit(limits, "tutor.whyChooseMeMinChars", input.whyChooseMe.trim().length, "Why Choose Me");
+    assertWithinLengthLimit(limits, "tutor.whyChooseMeChars", input.whyChooseMe.trim().length, "Why Choose Me");
   }
   if (input.educationRecords !== undefined) {
     assertWithinLimit(limits, "tutor.educationRecords", input.educationRecords.length, "records");
