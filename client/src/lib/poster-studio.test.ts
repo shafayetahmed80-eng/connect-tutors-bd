@@ -57,6 +57,34 @@ describe("poster studio helpers", () => {
     expect(findPosterTemplate("nope")).toBeUndefined();
   });
 
+  it("ships 6 distinct templates with valid icons, themes and content", () => {
+    expect(posterTemplates).toHaveLength(6);
+    const expectedIds = [
+      "female-tutor",
+      "urgent-tuition",
+      "board-admission",
+      "english-medium",
+      "quran-islamic",
+      "tutor-recruitment",
+    ];
+    expect(posterTemplates.map(t => t.id)).toEqual(expectedIds);
+
+    for (const template of posterTemplates) {
+      expect(template.name).toBeTruthy();
+      expect(template.theme.navy).toMatch(/^#[0-9a-f]{6}$/i);
+      expect(template.theme.accent).toMatch(/^#[0-9a-f]{6}$/i);
+      expect(template.theme.ground).toMatch(/^#[0-9a-f]{6}$/i);
+      expect(template.theme.tint).toMatch(/^#[0-9a-f]{6}$/i);
+      expect(template.theme.band).toHaveLength(2);
+      expect(template.content.headline.length).toBeGreaterThanOrEqual(1);
+      expect(template.content.features.length).toBeGreaterThanOrEqual(1);
+      for (const feature of template.content.features) {
+        expect(posterIconNames).toContain(feature.icon);
+      }
+      expect(findPosterTemplate(template.id)).toBe(template);
+    }
+  });
+
   it("names the file for the template, size and scale", () => {
     expect(posterFileName("female-tutor", { id: "portrait-post", width: 1080, height: 1350 }, "png", 2)).toBe("connect-tutors-poster-female-tutor-portrait-post-2160x2700.png");
   });

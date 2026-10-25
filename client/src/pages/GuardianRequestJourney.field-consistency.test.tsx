@@ -6,6 +6,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { getSiteContentSlots } from "@shared/site-content";
 
 import { fieldGrid, fieldLabel, requiredMark } from "@/components/journeyField";
+vi.mock("@/lib/trpc", () => ({
+  trpc: {
+    catalog: {
+      searchSchoolColleges: { useQuery: () => ({ data: [], isFetching: false }) },
+    },
+  },
+}));
+
 import { RequestStage } from "./GuardianRequestJourney";
 
 afterEach(cleanup);

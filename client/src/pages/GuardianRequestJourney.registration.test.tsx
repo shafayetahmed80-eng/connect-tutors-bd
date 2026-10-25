@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   verifyPhone: vi.fn(),
   register: vi.fn(),
   phoneStatusOptions: null as null | { onSuccess?: (result: { registered: boolean }) => void; onError?: (error: { message: string }) => void },
-  intakeOptions: null as null | { onSuccess?: (result: { resendAfterSeconds: number }, variables: { phone: string }) => void; onError?: (error: { message: string }) => void },
+  intakeOptions: null as null | { onSuccess?: (result: { resendAfterSeconds: number; otpRequired?: boolean }, variables: { phone: string }) => void; onError?: (error: { message: string }) => void },
   verifyOptions: null as null | { onSuccess?: (result: unknown, variables: { phone: string }) => void; onError?: (error: { message: string; data?: unknown }) => void },
   registerOptions: null as null | { onSuccess?: () => void; onError?: (error: { message: string; data?: unknown }) => void },
   authMe: { data: null as unknown, isLoading: false, refetch: vi.fn() },
@@ -176,6 +176,25 @@ describe("GuardianRequestJourney account creation flow", () => {
     expect(mocks.register).not.toHaveBeenCalled();
 
     act(() => mocks.verifyOptions?.onSuccess?.({ success: true }, { phone: "+8801712345678" }));
+    expect(mocks.register).toHaveBeenCalledWith(expect.objectContaining({
+      name: "Rahima Begum", email: "rahima@example.com", password: "GuardianPass1", confirmPassword: "GuardianPass1",
+      phone: "+8801712345678", cityLocationId: "dhaka", locationId: "mirpur-10", termsAccepted: true,
+    }));
+  });
+
+  it("when login OTP is disabled, skips the code screen and creates account immediately", () => {
+    render(<GuardianRequestJourney />);
+    enterNumber();
+    numberIsNew();
+    fillAccountForm();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(mocks.capturePhone).toHaveBeenCalledWith({ phone: "+8801712345678" });
+
+    // capturePhone returns otpRequired: false
+    act(() => mocks.intakeOptions?.onSuccess?.({ resendAfterSeconds: 0, otpRequired: false }, { phone: "+8801712345678" }));
+
+    expect(screen.queryByRole("heading", { name: "Verify your phone number" })).toBeNull();
+    expect(mocks.verifyPhone).not.toHaveBeenCalled();
     expect(mocks.register).toHaveBeenCalledWith(expect.objectContaining({
       name: "Rahima Begum", email: "rahima@example.com", password: "GuardianPass1", confirmPassword: "GuardianPass1",
       phone: "+8801712345678", cityLocationId: "dhaka", locationId: "mirpur-10", termsAccepted: true,

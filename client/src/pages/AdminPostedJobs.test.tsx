@@ -105,6 +105,7 @@ vi.mock("@/lib/trpc", () => ({
     catalog: {
       searchGuardianLocations: { useQuery: () => ({ data: [{ id: "dhaka", label: "Dhaka" }] }) },
       searchRegistrationLocations: { useQuery: () => ({ data: [{ id: "banasree", label: "Banasree" }] }) },
+      searchSchoolColleges: { useQuery: () => ({ data: [], isFetching: false }) },
     },
     siteLimits: { resolved: { useQuery: () => ({ data: undefined }) } },
     useUtils: () => ({
@@ -385,6 +386,47 @@ describe("Admin Posted jobs board", () => {
   it("keeps the applied count off a tuition that is not live yet", () => {
     render(<AdminPostedJobsContent />);
     expect(screen.queryByRole("link", { name: /Applied Tutors/ })).toBeNull();
+  });
+
+  it("smart adaptive default: automatically defaults to Live when pending count is 0", async () => {
+    const originalCounts = { ...mocks.data.counts };
+    mocks.data.counts = { pending: 0, live: 12, appointed: 3, confirmed: 2, closed: 1, cancelled: 0 };
+    try {
+      render(<AdminPostedJobsContent />);
+      expect(screen.getByRole("tab", { name: /Live/ }).getAttribute("aria-selected")).toBe("true");
+      expect(screen.getByRole("tab", { name: /Pending/ }).getAttribute("aria-selected")).toBe("false");
+    } finally {
+      mocks.data.counts = originalCounts;
+    }
+  });
+
+  it("smart adaptive default: stays on Pending when pending count is greater than 0", () => {
+    const originalCounts = { ...mocks.data.counts };
+    mocks.data.counts = { pending: 5, live: 12, appointed: 3, confirmed: 2, closed: 1, cancelled: 0 };
+    try {
+      render(<AdminPostedJobsContent />);
+      expect(screen.getByRole("tab", { name: /Pending/ }).getAttribute("aria-selected")).toBe("true");
+      expect(screen.getByRole("tab", { name: /Live/ }).getAttribute("aria-selected")).toBe("false");
+    } finally {
+      mocks.data.counts = originalCounts;
+    }
+  });
+
+  it("smart adaptive default: respects user manual navigation to Pending when count is 0", async () => {
+    const user = userEvent.setup();
+    const originalCounts = { ...mocks.data.counts };
+    mocks.data.counts = { pending: 0, live: 12, appointed: 3, confirmed: 2, closed: 1, cancelled: 0 };
+    try {
+      render(<AdminPostedJobsContent />);
+      // Initially auto-resolved to Live
+      expect(screen.getByRole("tab", { name: /Live/ }).getAttribute("aria-selected")).toBe("true");
+      // User manually clicks on Pending
+      await user.click(screen.getByRole("tab", { name: /Pending/ }));
+      expect(screen.getByRole("tab", { name: /Pending/ }).getAttribute("aria-selected")).toBe("true");
+      expect(mocks.lastInput).toMatchObject({ stage: "pending" });
+    } finally {
+      mocks.data.counts = originalCounts;
+    }
   });
 });
 

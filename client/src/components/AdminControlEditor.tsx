@@ -475,6 +475,9 @@ function LoginCodeSettings({ settings }: { settings?: { enabled: boolean; rememb
 
   return <section className="mt-3 rounded-xl border border-j-border bg-white p-3 shadow-sm">
     <h2 id="login-code-heading" className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Tutor and Guardian sign-in code</h2>
+    <p className="mt-1 text-xs text-j-ink-soft">
+      When Off, tutors and guardians can register and log in directly without SMS OTP codes. When On, 4-digit SMS OTP verification is required for registration and password sign-in.
+    </p>
     <div role="radiogroup" aria-labelledby="login-code-heading" className="mt-2 inline-flex gap-1 rounded-xl border border-j-border bg-j-surface-sunken p-1">
       {([[true, "On"], [false, "Off"]] as const).map(([value, label]) => <button
         key={label}
