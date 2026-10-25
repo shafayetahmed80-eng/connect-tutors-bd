@@ -197,9 +197,9 @@ const profileShape = {
   feeMax: z.number().int().min(0).max(500000).optional(),
   travelDistanceKm: z.number().int().min(1).max(100).optional(),
 
-  aboutMe: optionalTrimmedText(2000),
-  teachingApproach: optionalTrimmedText(2000),
-  whyChooseMe: optionalTrimmedText(2000),
+  aboutMe: optionalTrimmedText(siteLimitCeiling("tutor.aboutMeChars")),
+  teachingApproach: optionalTrimmedText(siteLimitCeiling("tutor.approachChars")),
+  whyChooseMe: optionalTrimmedText(siteLimitCeiling("tutor.whyChooseMeChars")),
   additionalNotes: optionalTrimmedText(2000),
 
   /** Private to Tutor and authorised Admin reviewers; NID remains excluded until encrypted storage is delivered. */
