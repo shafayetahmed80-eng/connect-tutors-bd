@@ -23,6 +23,7 @@ beforeEach(() => {
   vi.spyOn(db, "recordAuthEvent").mockResolvedValue({ id: 0 });
   vi.spyOn(db, "getPhoneCodeSendState").mockResolvedValue({ lastSentAt: null, sentLastHour: 0 });
   vi.spyOn(db, "createPhoneVerificationCode").mockResolvedValue({ id: 3 });
+  vi.spyOn(db, "getTutorGuardianLoginOtpSettings").mockResolvedValue({ enabled: true, rememberDays: 30, epoch: 0 });
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -76,5 +77,21 @@ describe("auth.registerTutor with the SMS code", () => {
     const check = vi.spyOn(db, "checkPhoneVerificationCode");
     await expect(caller().auth.registerTutor({ ...registration, phoneCode: "12345" })).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(check).not.toHaveBeenCalled();
+  });
+
+  it("registers a Tutor directly without phoneCode when OTP verification is disabled in Admin Control", async () => {
+    vi.spyOn(db, "getTutorGuardianLoginOtpSettings").mockResolvedValue({ enabled: false, rememberDays: 30, epoch: 0 });
+    const check = vi.spyOn(db, "checkPhoneVerificationCode");
+    const create = vi.spyOn(db, "registerPasswordTutor").mockResolvedValue({
+      created: true,
+      user: { id: 1, openId: "tutor", name: "Karim Uddin", email: "karim@example.com", role: "tutor" },
+      registration: { id: 1, tutorNumber: 1503, userId: 1, registeredAt: new Date() },
+    } as any);
+
+    const { phoneCode: _code, ...withoutCode } = registration;
+    const result = await caller().auth.registerTutor(withoutCode);
+    expect(result.success).toBe(true);
+    expect(check).not.toHaveBeenCalled();
+    expect(create).toHaveBeenCalled();
   });
 });

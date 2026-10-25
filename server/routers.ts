@@ -123,8 +123,8 @@ const tutorAuthInputSchema = z.object({
   locationId: z.string().trim().min(1).max(80),
   // The box was always on the form; its answer just never left the browser.
   termsAccepted: z.boolean(),
-  /** The 4-digit SMS code sent by `auth.sendTutorPhoneCode`. */
-  phoneCode: z.string().trim().regex(PHONE_CODE_PATTERN, "Enter the 4-digit code sent to your mobile."),
+  /** The 4-digit SMS code sent by `auth.sendTutorPhoneCode`, required only when Admin Control OTP is enabled. */
+  phoneCode: z.string().trim().regex(PHONE_CODE_PATTERN, "Enter the 4-digit code sent to your mobile.").nullish().or(z.literal("")),
 }).refine(value => value.password === value.confirmPassword, {
   message: "Passwords do not match.",
   path: ["confirmPassword"],
@@ -911,8 +911,37 @@ export const appRouter = router({
           throw error;
         }
 
+        const { enabled: otpRequired } = await db.getTutorGuardianLoginOtpSettings();
+        if (!otpRequired) {
+          const handoff = createGuardianIntakeHandoff({
+            secret: ENV.cookieSecret,
+            ttlMs: GUARDIAN_INTAKE_HANDOFF_TTL_MS,
+          });
+          try {
+            await db.createOrResumeGuardianPhoneIntake({
+              phone,
+              handoffTokenHash: handoff.tokenHash,
+              handoffExpiresAt: handoff.expiresAt,
+              phoneVerifiedAt: new Date(),
+            });
+          } catch {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: "আমরা এখন আপনার নম্বরটি সংরক্ষণ করতে পারছি না। অনুগ্রহ করে আবার চেষ্টা করুন।",
+            });
+          }
+          ctx.res.cookie("guardian-intake-handoff", handoff.cookieValue, {
+            ...getSessionCookieOptions(ctx.req),
+            maxAge: GUARDIAN_INTAKE_HANDOFF_TTL_MS,
+          });
+
+          auditAuth("phone_intake", { role: "guardian", ip, identifier: phone });
+          return { success: true as const, otpRequired: false as const, resendAfterSeconds: 0, expiresInSeconds: 0 };
+        }
+
         // The number is only taken in once its SMS code comes back (verifyPhone).
-        return sendPhoneVerificationCode({ ip, phone, purpose: "guardian_intake", role: "guardian", language: "bn" });
+        const sent = await sendPhoneVerificationCode({ ip, phone, purpose: "guardian_intake", role: "guardian", language: "bn" });
+        return { ...sent, otpRequired: true as const };
       }),
     verifyPhone: publicProcedure
       .input(z.object({ phone: z.string().trim().min(1).max(32), code: z.string().trim().regex(PHONE_CODE_PATTERN, "৪ অঙ্কের কোডটি লিখুন।") }))
@@ -1111,6 +1140,10 @@ export const appRouter = router({
         }
         return sendPhoneVerificationCode({ ip, phone: input.phone, purpose: "tutor_registration", role: "tutor", language: "en" });
       }),
+    registrationOtpStatus: publicProcedure.query(async () => {
+      const { enabled } = await db.getTutorGuardianLoginOtpSettings();
+      return { enabled } as const;
+    }),
     registerTutor: publicProcedure.input(tutorAuthInputSchema).mutation(async ({ ctx, input }) => {
       const ip = getRequestIp(ctx);
       if (ipRegistrationRateLimiter.check(`reg:${ip}`).blocked) {
@@ -1119,8 +1152,16 @@ export const appRouter = router({
       }
       ipRegistrationRateLimiter.record(`reg:${ip}`);
 
-      // Checked, not spent: a clashing email should not cost the Tutor another SMS.
-      const phoneCodeId = await checkPhoneVerification({ ip, phone: input.phone, code: input.phoneCode, purpose: "tutor_registration", role: "tutor", language: "en", consume: false });
+      const { enabled: otpRequired } = await db.getTutorGuardianLoginOtpSettings();
+      let phoneCodeId: number | null = null;
+      if (otpRequired) {
+        if (!input.phoneCode) {
+          const cause = new PhoneCodeFieldError("Enter the 4-digit code sent to your mobile.");
+          throw new TRPCError({ code: "BAD_REQUEST", message: cause.message, cause });
+        }
+        // Checked, not spent: a clashing email should not cost the Tutor another SMS.
+        phoneCodeId = await checkPhoneVerification({ ip, phone: input.phone, code: input.phoneCode, purpose: "tutor_registration", role: "tutor", language: "en", consume: false });
+      }
       const { phoneCode: _phoneCode, ...registration } = input;
       const result = await db.registerPasswordTutor({ ...registration, termsVersion: TERMS_VERSION });
       if (!result.created) {
@@ -1139,7 +1180,9 @@ export const appRouter = router({
               : TUTOR_REGISTRATION_CONFLICTS["email-taken"];
         throw new TRPCError({ code: "CONFLICT", message: conflictMessage });
       }
-      await db.consumePhoneVerificationCode(phoneCodeId);
+      if (phoneCodeId !== null) {
+        await db.consumePhoneVerificationCode(phoneCodeId);
+      }
       await setPasswordSession(ctx, result.user);
       await trustBrowserAfterPhoneProof(ctx, result.user.id);
       const tutorPortalToken = await issueTutorPortalSession(result.user.id);
