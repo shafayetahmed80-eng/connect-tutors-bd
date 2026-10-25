@@ -953,6 +953,13 @@
       "when": 1796500000000,
       "tag": "0135_expand_school_colleges_catalog",
       "breakpoints": true
+    },
+    {
+      "idx": 136,
+      "version": "5",
+      "when": 1792919953454,
+      "tag": "0136_add_prominent_canonical_institutions",
+      "breakpoints": true
     }
   ]
 }

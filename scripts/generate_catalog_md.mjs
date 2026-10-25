@@ -19,10 +19,11 @@ function parseSql(filePath) {
 
 const list1 = parseSql("C:/Projects/connect-tutors-bd/drizzle/0086_school_colleges.sql");
 const list2 = parseSql("C:/Projects/connect-tutors-bd/drizzle/0135_expand_school_colleges_catalog.sql");
+const list3 = parseSql("C:/Projects/connect-tutors-bd/drizzle/0136_add_prominent_canonical_institutions.sql");
 
 // Deduplicate preserving the best casing / division
 const map = new Map();
-for (const item of [...list1, ...list2]) {
+for (const item of [...list1, ...list2, ...list3]) {
   if (!map.has(item.normalizedName)) {
     map.set(item.normalizedName, item);
   } else {
