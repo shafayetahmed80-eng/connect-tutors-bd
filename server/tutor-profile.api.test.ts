@@ -306,7 +306,9 @@ describe("TP-05 owner Tutor Profile procedures", () => {
     profileDbMocks.getTutorProfileByUserId.mockResolvedValue({ ...ownerProfile, profileStatus: "approved" });
     profileDbMocks.saveTutorProfileDraft.mockResolvedValue({ ...ownerProfile, profileStatus: "pending" });
 
-    await (createCaller("tutor", 101).tutor as any).saveProfileDraft({ aboutMe: "Updated bio" });
+    await (createCaller("tutor", 101).tutor as any).saveProfileDraft({
+      aboutMe: "I provide structured lessons, exam preparation, and constructive feedback for all students.",
+    });
 
     expect(profileDbMocks.notifyTutorRegistrationToAdmins).toHaveBeenCalledWith({ userId: 101 });
   });
