@@ -284,3 +284,34 @@ describe("the caption the poster window is given", () => {
     expect(text).not.toContain("Job ID: 6804");
   });
 });
+
+describe("floating batch dock and motion interactions", () => {
+  it("does not render floating batch dock when nothing is picked", () => {
+    useItems(4);
+    render(<AdminFacebookPostsContent />);
+    expect(screen.queryByTestId("floating-batch-dock")).toBeNull();
+  });
+
+  it("renders floating batch dock when one or more jobs are picked and provides quick actions", () => {
+    useItems(5);
+    render(<AdminFacebookPostsContent />);
+
+    fireEvent.click(pickBox(1));
+    fireEvent.click(pickBox(3));
+
+    const dock = screen.getByTestId("floating-batch-dock");
+    expect(dock).toBeTruthy();
+    expect(within(dock).getByText("2 picked")).toBeTruthy();
+
+    // Trigger poster from floating dock
+    const posterBtn = within(dock).getByRole("button", { name: "Create Poster from picked tuitions" });
+    fireEvent.click(posterBtn);
+    expect(mocks.posters.some(p => p.isOpen && p.jobs?.length === 2)).toBe(true);
+
+    // Clear selection from floating dock
+    const clearBtn = within(dock).getByRole("button", { name: "Clear floating selection" });
+    fireEvent.click(clearBtn);
+    expect(screen.queryByTestId("floating-batch-dock")).toBeNull();
+  });
+});
+
