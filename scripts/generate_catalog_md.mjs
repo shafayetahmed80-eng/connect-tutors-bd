@@ -20,10 +20,11 @@ function parseSql(filePath) {
 const list1 = parseSql("C:/Projects/connect-tutors-bd/drizzle/0086_school_colleges.sql");
 const list2 = parseSql("C:/Projects/connect-tutors-bd/drizzle/0135_expand_school_colleges_catalog.sql");
 const list3 = parseSql("C:/Projects/connect-tutors-bd/drizzle/0136_add_prominent_canonical_institutions.sql");
+const list4 = parseSql("C:/Projects/connect-tutors-bd/drizzle/0137_add_deep_research_institutions.sql");
 
 // Deduplicate preserving the best casing / division
 const map = new Map();
-for (const item of [...list1, ...list2, ...list3]) {
+for (const item of [...list1, ...list2, ...list3, ...list4]) {
   if (!map.has(item.normalizedName)) {
     map.set(item.normalizedName, item);
   } else {
@@ -112,9 +113,16 @@ for (const [key, meta] of Object.entries(divisionMeta)) {
 // Write to files
 const outputPathRepo = "C:/Projects/connect-tutors-bd/docs/INSTITUTIONS_CATALOG.md";
 const outputPathArtifact = "C:/Users/Shafayet Ahmed/.gemini/antigravity/brain/e5af699f-9ac6-4813-8caa-40cc8265b05f/updated_institutions_catalog.md";
+const outputPathDownloads = "C:/Users/Shafayet Ahmed/Downloads/INSTITUTIONS_CATALOG.md";
 
 fs.writeFileSync(outputPathRepo, md, "utf8");
 fs.writeFileSync(outputPathArtifact, md, "utf8");
+try {
+  fs.writeFileSync(outputPathDownloads, md, "utf8");
+  console.log(`Saved to Downloads: ${outputPathDownloads}`);
+} catch (e) {
+  console.warn("Could not write to downloads:", e.message);
+}
 
 console.log(`Successfully generated institutions catalog markdown!`);
 console.log(`Saved to: ${outputPathRepo}`);

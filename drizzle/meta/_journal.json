@@ -960,6 +960,13 @@
       "when": 1792919953454,
       "tag": "0136_add_prominent_canonical_institutions",
       "breakpoints": true
+    },
+    {
+      "idx": 137,
+      "version": "5",
+      "when": 1792925553521,
+      "tag": "0137_add_deep_research_institutions",
+      "breakpoints": true
     }
   ]
 }
