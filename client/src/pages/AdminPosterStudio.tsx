@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, ImagePlus, RotateCcw, Trash2 } from "lucide-react";
+import { Copy, Download, ImagePlus, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ImageStudioFontPicker } from "@/components/ImageStudioFontPicker";
 import { trpc } from "@/lib/trpc";
@@ -101,6 +101,7 @@ export function PosterStudioContent() {
   const [format, setFormat] = useState<ImageExportFormat>("png");
   const [scale, setScale] = useState<ImageExportScale>(2);
   const [saving, setSaving] = useState(false);
+  const [copying, setCopying] = useState(false);
   const [fontsReady, setFontsReady] = useState(0);
   const preview = useRef<HTMLCanvasElement>(null);
   const drag = useRef<{ x: number; y: number } | null>(null);
@@ -226,6 +227,26 @@ export function PosterStudioContent() {
     }
   };
 
+  const copyImage = async () => {
+    setCopying(true);
+    try {
+      await Promise.all(fontIds.map(id => loadStudioFont(id)));
+      const canvas = document.createElement("canvas");
+      renderPoster(canvas, renderInput(size.width, size.height, 1));
+      const blob = await canvasToImageBlob(canvas, "png");
+      if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+        toast.success("Image copied to clipboard! You can paste it into Facebook or WhatsApp.");
+      } else {
+        toast.error("Clipboard copy is not supported in this browser. Please use Download.");
+      }
+    } catch (error) {
+      toast.error((error as Error).message || "The poster could not be copied.");
+    } finally {
+      setCopying(false);
+    }
+  };
+
   const setLine = (index: number, change: { text?: string; tone?: PosterTone }) => {
     const headline = content.headline.map((line, at) => (at === index ? { ...line, ...change } : line));
     edit({ headline });
@@ -266,7 +287,7 @@ export function PosterStudioContent() {
       <fieldset>
         <legend className={legend}>Template</legend>
         <div className="flex flex-wrap gap-2">
-          {posterTemplates.map(item => <button key={item.id} type="button" aria-pressed={item.id === template.id} onClick={() => save({ ...draft, templateId: item.id, content: item.content })} className={chip(item.id === template.id)}>{item.name}</button>)}
+          {posterTemplates.map(item => <button key={item.id} type="button" aria-pressed={item.id === template.id} onClick={() => save({ ...draft, templateId: item.id, content: item.content, accent: null })} className={chip(item.id === template.id)}>{item.name}</button>)}
         </div>
       </fieldset>
 
@@ -421,9 +442,18 @@ export function PosterStudioContent() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => void download()} disabled={saving} className="inline-flex h-control items-center justify-center gap-2 rounded-xl bg-j-accent px-5 text-sm font-bold text-white hover:bg-j-accent-hover disabled:opacity-60">
+        <button type="button" onClick={() => void download()} disabled={saving || copying} className="inline-flex h-control items-center justify-center gap-2 rounded-xl bg-j-accent px-5 text-sm font-bold text-white hover:bg-j-accent-hover disabled:opacity-60">
           <Download size={16} aria-hidden="true" />
           Download {format.toUpperCase()} · {size.width * exportScale}×{size.height * exportScale}
+        </button>
+        <button
+          type="button"
+          onClick={() => void copyImage()}
+          disabled={copying || saving}
+          className="inline-flex h-control items-center justify-center gap-2 rounded-xl border border-j-border bg-white px-4 text-sm font-bold text-j-ink hover:bg-j-surface-sunken disabled:opacity-60"
+        >
+          <Copy size={16} aria-hidden="true" />
+          {copying ? "Copying..." : "Copy Image"}
         </button>
         <button type="button" onClick={() => save({ ...draft, content: template.content, accent: null })} className="inline-flex h-control items-center gap-2 rounded-xl border border-j-border px-4 text-sm font-bold text-j-ink-soft">
           <RotateCcw size={16} aria-hidden="true" /> Template text

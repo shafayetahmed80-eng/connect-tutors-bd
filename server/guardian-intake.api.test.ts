@@ -7,6 +7,7 @@ const guardianIntakeDbMocks = vi.hoisted(() => ({
   deletePhoneVerificationCode: vi.fn(),
   checkPhoneVerificationCode: vi.fn(),
   isGuardianPhoneRegistered: vi.fn(),
+  getTutorGuardianLoginOtpSettings: vi.fn(),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -50,6 +51,7 @@ beforeEach(() => {
   guardianIntakeDbMocks.getPhoneCodeSendState.mockResolvedValue({ lastSentAt: null, sentLastHour: 0 });
   guardianIntakeDbMocks.createPhoneVerificationCode.mockResolvedValue({ id: 7 });
   guardianIntakeDbMocks.checkPhoneVerificationCode.mockResolvedValue({ status: "ok", id: 7 });
+  guardianIntakeDbMocks.getTutorGuardianLoginOtpSettings.mockResolvedValue({ enabled: true, rememberDays: 30, epoch: 0 });
 });
 
 describe("guardianIntake.phoneStatus", () => {
@@ -104,6 +106,21 @@ describe("guardianIntake.capturePhone", () => {
     expect(console.info).toHaveBeenCalledWith(expect.stringMatching(/^\[sms-dev\] to 8801516131411: Your Connect Tutors OTP is (\d{4})\n\n@[\w.-]+ #\1$/));
     expect(guardianIntakeDbMocks.createOrResumeGuardianPhoneIntake).not.toHaveBeenCalled();
     expect(cookies).toHaveLength(0);
+  });
+
+  it("when login OTP is disabled, creates intake handoff immediately without sending SMS", async () => {
+    guardianIntakeDbMocks.getTutorGuardianLoginOtpSettings.mockResolvedValue({ enabled: false, rememberDays: 30, epoch: 0 });
+    const { caller, cookies } = createPublicCaller();
+
+    const result = await caller.guardianIntake.capturePhone({ phone: "01516-131411" });
+    expect(result).toEqual({ success: true, otpRequired: false, resendAfterSeconds: 0, expiresInSeconds: 0 });
+    expect(guardianIntakeDbMocks.createPhoneVerificationCode).not.toHaveBeenCalled();
+    expect(guardianIntakeDbMocks.createOrResumeGuardianPhoneIntake).toHaveBeenCalledWith(expect.objectContaining({
+      phone: "+8801516131411",
+      phoneVerifiedAt: expect.any(Date),
+    }));
+    expect(cookies).toHaveLength(1);
+    expect(cookies[0].name).toBe("guardian-intake-handoff");
   });
 
   it("asks for a minute's wait before another code", async () => {

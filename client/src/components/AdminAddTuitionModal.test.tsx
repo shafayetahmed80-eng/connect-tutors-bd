@@ -15,6 +15,7 @@ vi.mock("@/lib/trpc", () => ({
     catalog: {
       searchGuardianLocations: { useQuery: () => ({ data: [{ id: "dhaka-city", label: "Dhaka" }] }) },
       searchRegistrationLocations: { useQuery: () => ({ data: [{ id: "dhaka-shyamoli", label: "Shyamoli" }] }) },
+      searchSchoolColleges: { useQuery: () => ({ data: [], isFetching: false }) },
     },
     siteLimits: { resolved: { useQuery: () => ({ data: undefined }) } },
   },

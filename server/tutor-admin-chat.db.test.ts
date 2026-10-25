@@ -27,6 +27,7 @@ import {
   reopenTutorAdminChatThread,
   sendTutorAdminChatMessageFromAdmin,
   sendTutorAdminChatMessageFromTutor,
+  setChatBusinessHoursSettings,
   setTutorChatAccessMode,
   subscribeAdminToChatPush,
   toggleTutorAdminChatMessageReaction,
@@ -96,10 +97,12 @@ beforeAll(async () => {
 
   await database.insert(tutorJobInterests).values({ tutorJobId, tutorId, status: "matched" });
   await setTutorChatAccessMode("appointed");
+  await setChatBusinessHoursSettings({ enabled: false });
 });
 
 afterAll(async () => {
   await setTutorChatAccessMode("appointed");
+  await setChatBusinessHoursSettings({ enabled: true });
   const database = await getDb();
   if (!database) return;
   await database.delete(tutorJobInterests).where(eq(tutorJobInterests.tutorJobId, tutorJobId));
