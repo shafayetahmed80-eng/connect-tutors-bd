@@ -844,9 +844,9 @@ export function AdminFacebookPostsContent() {
             onClick={() => handleTogglePostStatus(job)}
             aria-label={`Toggle Facebook post status for job ${code}`}
             title="Click to mark as Posted to Facebook"
-            className="group inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-2xs font-semibold text-slate-600 shadow-2xs hover:bg-slate-100 hover:border-slate-300 hover:text-slate-900 transition active:scale-95 cursor-pointer"
+            className="group inline-flex items-center gap-1.5 rounded-full border border-amber-200/80 bg-amber-50/70 px-2.5 py-1 text-2xs font-semibold text-amber-900 shadow-2xs hover:bg-amber-100 hover:border-amber-300 transition active:scale-95 cursor-pointer"
           >
-            <Circle className="size-3 text-slate-400 group-hover:text-slate-600" />
+            <Circle className="size-3 text-amber-500 group-hover:text-amber-700" />
             <span>Not Posted</span>
           </button>
         );
@@ -865,10 +865,10 @@ export function AdminFacebookPostsContent() {
               className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-2xs font-bold border transition ${
                 isPosted
                   ? "border-emerald-300 bg-emerald-50 text-emerald-800"
-                  : "border-slate-200 bg-slate-50 text-slate-600"
+                  : "border-amber-200/80 bg-amber-50/70 text-amber-900"
               }`}
             >
-              {isPosted ? <CheckCircle2 className="size-3 text-emerald-600" /> : <Circle className="size-3 text-slate-400" />}
+              {isPosted ? <CheckCircle2 className="size-3 text-emerald-600" /> : <Circle className="size-3 text-amber-500" />}
               <span>{isPosted ? "FB Posted" : "Not Posted"}</span>
             </button>
             {isPosted && postedAgo ? (
@@ -888,61 +888,66 @@ export function AdminFacebookPostsContent() {
         const isCopied = copiedId === job.id;
         const code = jobIdForRequest(job.id);
         return (
-          <div className="flex items-center justify-end gap-1.5">
+          <div className="flex items-center justify-end gap-2">
+            {/* Primary Action Button: Copy (EN) */}
             <button
               type="button"
               onClick={() => handleCopySingleInline(job)}
               aria-label={`Copy English inline post for job ${code}`}
-              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition shadow-2xs ${
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition shadow-2xs active:scale-95 cursor-pointer ${
                 isCopied
                   ? "border-emerald-600 bg-emerald-50 text-emerald-700"
-                  : "border-[#1877f2] bg-[#1877f2] text-white hover:bg-[#166fe5] active:scale-[0.98]"
+                  : "border-blue-700/30 bg-gradient-to-r from-[#1877f2] via-[#1a73e8] to-[#166fe5] text-white hover:from-[#166fe5] hover:to-[#1558b0] hover:shadow-xs"
               }`}
             >
               {isCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
               <span>{isCopied ? "Copied!" : "Copy (EN)"}</span>
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setPreviewFormat("full");
-                setPreviewJob({ ...job, jobId: code, origin: window.location.origin });
-              }}
-              aria-label={`Preview Facebook post for job ${code}`}
-              className="inline-grid size-8 place-items-center rounded-lg border border-j-border bg-white text-j-ink-soft hover:bg-j-border-light hover:text-j-ink transition"
-              title="Preview Post Text"
-            >
-              <Eye className="size-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setPosterJob({ ...job, jobId: code, origin: window.location.origin });
-              }}
-              aria-label={`Generate social poster for job ${code}`}
-              className="inline-grid size-8 place-items-center rounded-lg border border-j-border bg-white text-[#1877f2] hover:bg-sky-50 hover:border-sky-300 transition"
-              title="Facebook poster"
-            >
-              <ImageIcon className="size-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const text = buildFacebookPostText(
-                  { ...job, jobId: code, origin: window.location.origin },
-                  { origin: window.location.origin, template: templates, includeHashtags }
-                );
-                setGroupHelperPostText(text);
-                setGroupHelperLocation(job.locationText || job.tuitionLocationLabel || "");
-                setGroupHelperCategory(job.category || job.curriculumType || "");
-                setIsGroupHelperOpen(true);
-              }}
-              aria-label={`Open Facebook group helper for job ${code}`}
-              className="inline-grid size-8 place-items-center rounded-lg border border-j-border bg-white text-slate-700 hover:bg-slate-100 hover:text-j-ink transition"
-              title="Open Facebook Group Helper (1-Click Copy & Open Group)"
-            >
-              <Users className="size-3.5" />
-            </button>
+
+            {/* Segmented Secondary Action Capsule */}
+            <div className="inline-flex items-center rounded-lg border border-slate-200/90 bg-slate-50/80 p-0.5 shadow-2xs backdrop-blur-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setPreviewFormat("full");
+                  setPreviewJob({ ...job, jobId: code, origin: window.location.origin });
+                }}
+                aria-label={`Preview Facebook post for job ${code}`}
+                className="inline-grid size-7.5 place-items-center rounded-md text-slate-600 hover:bg-white hover:text-j-ink hover:shadow-2xs transition active:scale-90 cursor-pointer"
+                title="Preview Post Text"
+              >
+                <Eye className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPosterJob({ ...job, jobId: code, origin: window.location.origin });
+                }}
+                aria-label={`Generate social poster for job ${code}`}
+                className="inline-grid size-7.5 place-items-center rounded-md text-[#1877f2] hover:bg-white hover:text-blue-700 hover:shadow-2xs transition active:scale-90 cursor-pointer"
+                title="Facebook poster"
+              >
+                <ImageIcon className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const text = buildFacebookPostText(
+                    { ...job, jobId: code, origin: window.location.origin },
+                    { origin: window.location.origin, template: templates, includeHashtags }
+                  );
+                  setGroupHelperPostText(text);
+                  setGroupHelperLocation(job.locationText || job.tuitionLocationLabel || "");
+                  setGroupHelperCategory(job.category || job.curriculumType || "");
+                  setIsGroupHelperOpen(true);
+                }}
+                aria-label={`Open Facebook group helper for job ${code}`}
+                className="inline-grid size-7.5 place-items-center rounded-md text-slate-600 hover:bg-white hover:text-[#1877f2] hover:shadow-2xs transition active:scale-90 cursor-pointer"
+                title="Open Facebook Group Helper (1-Click Copy & Open Group)"
+              >
+                <Users className="size-3.5" />
+              </button>
+            </div>
           </div>
         );
       },
@@ -1084,114 +1089,124 @@ export function AdminFacebookPostsContent() {
       </div>
 
       {/* Bulk Copy Actions Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-j-border bg-gradient-to-r from-sky-50/50 via-white to-blue-50/40 p-4 shadow-2xs">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5 rounded-2xl border border-j-border bg-gradient-to-r from-sky-50/70 via-white to-blue-50/50 p-4 shadow-2xs">
         <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-[#1877f2]/10 text-[#1877f2]">
+          <div className="flex size-10.5 items-center justify-center rounded-xl bg-gradient-to-br from-[#1877f2]/15 to-[#1877f2]/5 text-[#1877f2] shadow-2xs ring-1 ring-[#1877f2]/20">
             <Share2 className="size-5" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-j-ink">
-              Facebook Post Bulk Generator
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold text-j-ink">
+                Facebook Post Bulk Generator
+              </h2>
+              <span className="rounded-full bg-[#1877f2]/10 px-2 py-0.5 text-[10px] font-bold text-[#1877f2]">
+                {totalMatching} live
+              </span>
+            </div>
             <p className="text-2xs text-j-ink-soft">
-              ফিল্টার অনুযায়ী সবগুলো লাইভ টিউশন একবারে একাধিক আকর্ষণীয় ফরম্যাটে কপি করুন।
+              ফিল্টার অনুযায়ী সবগুলো লাইভ টিউশন একবারে একাধিক আকর্ষণীয় ফরম্যাটে কপি ও সোশ্যাল পোস্টার তৈরি করুন।
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Format Selector Dropdown */}
-          <div className="flex items-center gap-1.5 rounded-xl border border-j-border bg-white px-2.5 py-1.5 shadow-2xs">
-            <label htmlFor="fb-bulk-format-select" className="text-2xs font-semibold text-j-ink-soft whitespace-nowrap flex items-center gap-1 cursor-pointer">
-              <Sparkles className="size-3 text-amber-500" />
-              <span>Format:</span>
-            </label>
-            <select
-              id="fb-bulk-format-select"
-              aria-label="Facebook post format"
-              value={selectedBulkFormat}
-              onChange={e => handleBulkFormatChange(e.target.value as FacebookPostBulkFormat)}
-              className="bg-transparent text-xs font-bold text-j-ink focus:outline-none cursor-pointer pr-1"
-              title="Select Facebook Post Bulk Format"
-            >
-              {BULK_FORMAT_OPTIONS.map(opt => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Cluster 1: Output Format & Settings */}
+          <div className="inline-flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-200/90 bg-slate-50/70 p-1 shadow-2xs backdrop-blur-xs">
+            {/* Format Selector Dropdown */}
+            <div className="flex items-center gap-1.5 rounded-lg border border-slate-200/80 bg-white px-2.5 py-1.5 shadow-2xs">
+              <label htmlFor="fb-bulk-format-select" className="text-2xs font-semibold text-j-ink-soft whitespace-nowrap flex items-center gap-1 cursor-pointer">
+                <Sparkles className="size-3 text-amber-500" />
+                <span>Format:</span>
+              </label>
+              <select
+                id="fb-bulk-format-select"
+                aria-label="Facebook post format"
+                value={selectedBulkFormat}
+                onChange={e => handleBulkFormatChange(e.target.value as FacebookPostBulkFormat)}
+                className="bg-transparent text-xs font-bold text-j-ink focus:outline-none cursor-pointer pr-1"
+                title="Select Facebook Post Bulk Format"
+              >
+                {BULK_FORMAT_OPTIONS.map(opt => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {isOwner ? (
+            {/* Smart Hashtags Toggle */}
             <button
               type="button"
               onClick={() => {
-                setEditBulkHeader(templates.bulkHeader || DEFAULT_BULK_HEADER);
-                setEditBulkFooter(templates.bulkFooter || DEFAULT_BULK_FOOTER);
-                setEditSingleHeader(templates.singleHeader || DEFAULT_SINGLE_HEADER);
-                setEditSingleFooter(templates.singleFooter || DEFAULT_SINGLE_FOOTER);
-                setIsCustomizeModalOpen(true);
+                const next = !includeHashtags;
+                setIncludeHashtags(next);
+                try {
+                  localStorage.setItem(HASHTAGS_STORAGE_KEY, JSON.stringify(next));
+                } catch {}
+                toast.info(next ? "Smart Hashtags ON (পোস্টে হ্যাশট্যাগ যুক্ত হবে)" : "Smart Hashtags OFF");
               }}
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-3.5 py-2 text-xs font-semibold text-j-ink hover:bg-j-border-light/60 transition"
-              title="Customize Header & Footer Text (Project Owner Only)"
+              aria-label="Toggle Smart Hashtags"
+              className={`inline-flex items-center justify-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition active:scale-95 cursor-pointer ${
+                includeHashtags
+                  ? "border-sky-300 bg-sky-50 text-[#1877f2] font-bold shadow-2xs"
+                  : "border-slate-200/80 bg-white text-j-ink-soft hover:bg-slate-50 hover:text-j-ink"
+              }`}
+              title="Toggle Smart Dynamic Hashtags (#ConnectTutors #AreaTuition etc.)"
             >
-              <Sliders className="size-3.5" />
-              <span>Customize Template</span>
+              <Hash className="size-3.5" />
+              <span>Hashtags: {includeHashtags ? "ON" : "OFF"}</span>
             </button>
-          ) : null}
 
-          {/* Smart Hashtags Toggle */}
-          <button
-            type="button"
-            onClick={() => {
-              const next = !includeHashtags;
-              setIncludeHashtags(next);
-              try {
-                localStorage.setItem(HASHTAGS_STORAGE_KEY, JSON.stringify(next));
-              } catch {}
-              toast.info(next ? "Smart Hashtags ON (পোস্টে হ্যাশট্যাগ যুক্ত হবে)" : "Smart Hashtags OFF");
-            }}
-            aria-label="Toggle Smart Hashtags"
-            className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition cursor-pointer ${
-              includeHashtags
-                ? "border-sky-300 bg-sky-50 text-[#1877f2] font-bold"
-                : "border-j-border bg-white text-j-ink-soft hover:bg-slate-50"
-            }`}
-            title="Toggle Smart Dynamic Hashtags (#ConnectTutors #AreaTuition etc.)"
-          >
-            <Hash className="size-3.5" />
-            <span>Hashtags: {includeHashtags ? "ON" : "OFF"}</span>
-          </button>
+            {/* Template Customizer (Owner only) */}
+            {isOwner ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditBulkHeader(templates.bulkHeader || DEFAULT_BULK_HEADER);
+                  setEditBulkFooter(templates.bulkFooter || DEFAULT_BULK_FOOTER);
+                  setEditSingleHeader(templates.singleHeader || DEFAULT_SINGLE_HEADER);
+                  setEditSingleFooter(templates.singleFooter || DEFAULT_SINGLE_FOOTER);
+                  setIsCustomizeModalOpen(true);
+                }}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200/80 bg-white px-2.5 py-1.5 text-xs font-semibold text-j-ink hover:bg-j-border-light/60 transition active:scale-95 cursor-pointer shadow-2xs"
+                title="Customize Header & Footer Text (Project Owner Only)"
+              >
+                <Sliders className="size-3.5" />
+                <span>Customize Template</span>
+              </button>
+            ) : null}
 
-          {/* Facebook Group Helper Directory Button */}
-          <button
-            type="button"
-            onClick={() => {
-              setGroupHelperPostText("");
-              const first = items[0];
-              setGroupHelperLocation(first?.locationText || first?.tuitionLocationLabel || "");
-              setGroupHelperCategory(first?.category || first?.curriculumType || "");
-              setIsGroupHelperOpen(true);
-            }}
-            aria-label="Open Facebook Group Helper Directory"
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-3.5 py-2 text-xs font-semibold text-j-ink hover:bg-j-border-light/60 transition"
-            title="Open Facebook Group Helper & Directory"
-          >
-            <Users className="size-3.5 text-[#1877f2]" />
-            <span>Group Helper</span>
-          </button>
+            {/* Facebook Group Helper Directory Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setGroupHelperPostText("");
+                const first = items[0];
+                setGroupHelperLocation(first?.locationText || first?.tuitionLocationLabel || "");
+                setGroupHelperCategory(first?.category || first?.curriculumType || "");
+                setIsGroupHelperOpen(true);
+              }}
+              aria-label="Open Facebook Group Helper Directory"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200/80 bg-white px-2.5 py-1.5 text-xs font-semibold text-j-ink hover:bg-j-border-light/60 transition active:scale-95 cursor-pointer shadow-2xs"
+              title="Open Facebook Group Helper & Directory"
+            >
+              <Users className="size-3.5 text-[#1877f2]" />
+              <span>Group Helper</span>
+            </button>
+          </div>
 
-          <div className="inline-flex items-center rounded-xl border border-j-border bg-white p-0.5 shadow-2xs">
+          {/* Cluster 2: Batch Part Selector Hub */}
+          <div className="inline-flex items-center rounded-xl border border-slate-200/90 bg-white p-1 shadow-2xs">
             <button
               type="button"
               onClick={() => handleSelectCount(4)}
               disabled={items.length === 0}
-              className="rounded-lg px-2.5 py-1 text-xs font-semibold text-j-ink hover:bg-j-border-light/70 transition disabled:opacity-40"
+              className="rounded-lg px-2.5 py-1 text-xs font-semibold text-j-ink hover:bg-j-border-light/70 transition active:scale-95 disabled:opacity-40 cursor-pointer"
               title="Select top 4 tuitions for a single poster"
             >
               Select 4
             </button>
-            <div className="h-4 w-px bg-j-border" />
+            <div className="h-4 w-px bg-j-border mx-0.5" />
             <div className="relative inline-flex items-center">
               <select
                 aria-label="Select batch part"
@@ -1216,12 +1231,12 @@ export function AdminFacebookPostsContent() {
               </select>
               <ChevronDown className="pointer-events-none absolute right-1.5 size-3.5 text-j-ink-soft" />
             </div>
-            <div className="h-4 w-px bg-j-border" />
+            <div className="h-4 w-px bg-j-border mx-0.5" />
             <button
               type="button"
               onClick={handleNextPart}
               disabled={totalMatching <= BATCH_SIZE || (picked.size > 0 && selectedPart >= totalParts)}
-              className="rounded-lg px-2 py-1 text-xs font-semibold text-j-ink hover:bg-j-border-light/70 transition disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg px-2 py-1 text-xs font-semibold text-j-ink hover:bg-j-border-light/70 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
               title={
                 picked.size === 0
                   ? "Select Part 1 (1–12)"
@@ -1232,75 +1247,82 @@ export function AdminFacebookPostsContent() {
             >
               Next Part ❯
             </button>
+            {picked.size > 0 ? (
+              <>
+                <div className="h-4 w-px bg-j-border mx-0.5" />
+                <button
+                  type="button"
+                  onClick={() => setPicked(new Map())}
+                  aria-label="Clear the tuitions picked for the poster"
+                  className="inline-flex items-center justify-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition active:scale-95 cursor-pointer"
+                  title="Clear selected tuitions"
+                >
+                  <X className="size-3.5" />
+                  <span>Clear</span>
+                </button>
+              </>
+            ) : null}
           </div>
 
-          <button
-            type="button"
-            onClick={handlePreviewBulk}
-            disabled={isBulkCopying || totalMatching === 0}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-3.5 py-2 text-xs font-semibold text-j-ink hover:bg-j-border-light/60 transition disabled:opacity-50"
-          >
-            <Eye className="size-3.5" />
-            <span>Preview Bulk ({totalMatching})</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleGenerateBulkPoster}
-            disabled={isBulkCopying || (picked.size === 0 && totalMatching === 0)}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-3.5 py-2 text-xs font-semibold text-j-ink hover:bg-j-border-light/60 transition disabled:opacity-50"
-            title="Facebook poster for the tuitions you ticked, or for the filtered ones: four in a square or landscape image, up to twelve in the tall list"
-          >
-            <ImageIcon className="size-3.5 text-[#1877f2]" />
-            <span>
-              {picked.size > 0
-                ? `Bulk Poster (${picked.size} picked)`
-                : `Bulk Poster (${Math.min(totalMatching, MAX_TALL_TUITIONS)})`}
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={handleGenerateVideo}
-            disabled={isBulkCopying || (picked.size === 0 && totalMatching === 0)}
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-3.5 py-2 text-xs font-semibold text-j-ink hover:bg-j-border-light/60 transition disabled:opacity-50"
-            title="A Facebook video of the tuitions you ticked, or of the filtered ones (up to thirty), Area Grouped, rising up the frame"
-          >
-            <Film className="size-3.5 text-[#1877f2]" />
-            <span>{picked.size > 0 ? `Video (${picked.size} picked)` : `Video (${Math.min(totalMatching, MAX_VIDEO_TUITIONS)})`}</span>
-          </button>
-          {picked.size > 0 ? (
+          {/* Cluster 3: Creative & Export Actions Hub */}
+          <div className="inline-flex flex-wrap items-center gap-1.5">
             <button
               type="button"
-              onClick={() => setPicked(new Map())}
-              aria-label="Clear the tuitions picked for the poster"
-              className="inline-flex items-center justify-center gap-1 rounded-xl border border-j-border bg-white px-3 py-2 text-xs font-semibold text-j-ink-soft hover:bg-j-border-light/60 transition"
+              onClick={handlePreviewBulk}
+              disabled={isBulkCopying || totalMatching === 0}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-j-border bg-white px-3 py-2 text-xs font-semibold text-j-ink hover:bg-j-border-light/60 transition active:scale-95 disabled:opacity-50 cursor-pointer shadow-2xs"
             >
-              <X className="size-3.5" />
-              <span>Clear</span>
+              <Eye className="size-3.5 text-slate-500" />
+              <span>Preview Bulk ({totalMatching})</span>
             </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={handleCopyAllFiltered}
-            disabled={isBulkCopying || totalMatching === 0}
-            className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-4 py-2 text-xs font-bold transition shadow-2xs ${
-              isBulkCopied
-                ? "border-emerald-600 bg-emerald-50 text-emerald-700"
-                : "border-[#1877f2] bg-[#1877f2] text-white hover:bg-[#166fe5] active:scale-[0.98] disabled:opacity-50"
-            }`}
-          >
-            {isBulkCopying ? (
-              <LoadingCradle className="size-3.5" />
-            ) : isBulkCopied ? (
-              <Check className="size-3.5" />
-            ) : (
-              <Copy className="size-3.5" />
-            )}
-            <span>
-              {isBulkCopied
-                ? "Copied All!"
-                : `Copy All Filtered (${totalMatching})`}
-            </span>
-          </button>
+            <button
+              type="button"
+              onClick={handleGenerateBulkPoster}
+              disabled={isBulkCopying || (picked.size === 0 && totalMatching === 0)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-indigo-200/80 bg-gradient-to-r from-indigo-50/70 to-blue-50/70 px-3.5 py-2 text-xs font-bold text-indigo-900 hover:from-indigo-100/80 hover:to-blue-100/80 hover:border-indigo-300 transition active:scale-95 disabled:opacity-50 cursor-pointer shadow-2xs"
+              title="Facebook poster for the tuitions you ticked, or for the filtered ones: four in a square or landscape image, up to twelve in the tall list"
+            >
+              <ImageIcon className="size-3.5 text-indigo-600" />
+              <span>
+                {picked.size > 0
+                  ? `Bulk Poster (${picked.size} picked)`
+                  : `Bulk Poster (${Math.min(totalMatching, MAX_TALL_TUITIONS)})`}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={handleGenerateVideo}
+              disabled={isBulkCopying || (picked.size === 0 && totalMatching === 0)}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-purple-200/80 bg-gradient-to-r from-purple-50/70 to-pink-50/60 px-3 py-2 text-xs font-bold text-purple-900 hover:from-purple-100/80 hover:to-pink-100/80 hover:border-purple-300 transition active:scale-95 disabled:opacity-50 cursor-pointer shadow-2xs"
+              title="A Facebook video of the tuitions you ticked, or of the filtered ones (up to thirty), Area Grouped, rising up the frame"
+            >
+              <Film className="size-3.5 text-purple-600" />
+              <span>{picked.size > 0 ? `Video (${picked.size} picked)` : `Video (${Math.min(totalMatching, MAX_VIDEO_TUITIONS)})`}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyAllFiltered}
+              disabled={isBulkCopying || totalMatching === 0}
+              className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-4 py-2 text-xs font-bold transition shadow-xs active:scale-[0.98] cursor-pointer ${
+                isBulkCopied
+                  ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                  : "border-blue-700/30 bg-gradient-to-r from-[#1877f2] via-[#1a73e8] to-[#166fe5] text-white hover:from-[#166fe5] hover:to-[#1558b0] hover:shadow-sm disabled:opacity-50"
+              }`}
+            >
+              {isBulkCopying ? (
+                <LoadingCradle className="size-3.5" />
+              ) : isBulkCopied ? (
+                <Check className="size-3.5" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+              <span>
+                {isBulkCopied
+                  ? "Copied All!"
+                  : `Copy All Filtered (${totalMatching})`}
+              </span>
+            </button>
+          </div>
         </div>
       </div>
 
