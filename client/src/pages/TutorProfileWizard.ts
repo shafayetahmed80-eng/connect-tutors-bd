@@ -66,6 +66,9 @@ const stepIndexByField: Partial<Record<TutorProfileSubmissionErrorKey, number>> 
   preferredTimeSlots: 2,
   feeMin: 2,
   feeMax: 2,
+  aboutMe: 3,
+  teachingApproach: 3,
+  whyChooseMe: 3,
 };
 
 /** The part of the profile a field lives in, e.g. "Tuition and location", or null for one that has no part. */

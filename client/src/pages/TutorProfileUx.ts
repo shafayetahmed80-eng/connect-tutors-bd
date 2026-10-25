@@ -1,5 +1,6 @@
 import { educationSectionStatus } from "@shared/tutor-education";
-import type { ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
+import { findTutorProfileFieldMeta, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
+import type { SiteLimitValues } from "@shared/site-limits";
 import { offersOnlineTuitionOnly } from "@shared/tutor-profile-tuition";
 import type { TutorProfileFormState } from "./TutorProfileFormData";
 
@@ -36,6 +37,9 @@ export const tutorProfileCopy = {
     timeSlots: "Preferred Time Slots",
     feeMin: "Minimum Monthly Fee",
     feeMax: "Maximum Monthly Fee",
+    aboutMe: "About Me",
+    teachingApproach: "Teaching Approach",
+    whyChooseMe: "Why Choose Me",
   },
   actions: {
     saveDraft: "Save Draft",
@@ -94,6 +98,9 @@ const completionFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, stri
   preferredTimeSlots: tutorProfileCopy.fields.timeSlots,
   feeMin: tutorProfileCopy.fields.feeMin,
   feeMax: tutorProfileCopy.fields.feeMax,
+  aboutMe: tutorProfileCopy.fields.aboutMe,
+  teachingApproach: tutorProfileCopy.fields.teachingApproach,
+  whyChooseMe: tutorProfileCopy.fields.whyChooseMe,
 };
 
 /** The registry id behind a submission check, where it is not the check's own key. */
@@ -115,8 +122,16 @@ export function registryIdForErrorKey(key: TutorProfileSubmissionErrorKey): stri
  * over a box the form no longer shows. Without settings every detail is asked for.
  */
 function isDetailRequired(config: ResolvedTutorProfileFieldConfig | undefined, key: TutorProfileSubmissionErrorKey): boolean {
-  const field = config?.byId.get(registryIdForErrorKey(key));
-  if (!field || !field.requiredConfigurable) return true;
+  const regId = registryIdForErrorKey(key);
+  const field = config?.byId.get(regId);
+  if (!config) {
+    const meta = findTutorProfileFieldMeta(regId);
+    return meta?.requiredByDefault ?? true;
+  }
+  if (!field || !field.requiredConfigurable) {
+    const meta = findTutorProfileFieldMeta(regId);
+    return meta?.requiredByDefault ?? true;
+  }
   return field.enabled && field.required;
 }
 
@@ -139,7 +154,7 @@ function requiredSelection(errors: TutorProfileSubmissionErrors, key: TutorProfi
 }
 
 /** Shows immediate client-side guidance for predictable submission requirements. */
-export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPreview, config?: ResolvedTutorProfileFieldConfig): TutorProfileSubmissionErrors {
+export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPreview, config?: ResolvedTutorProfileFieldConfig, limits?: SiteLimitValues): TutorProfileSubmissionErrors {
   const errors: TutorProfileSubmissionErrors = {};
   const feeMin = form.feeMin.trim() ? Number(form.feeMin) : undefined;
   const feeMax = form.feeMax.trim() ? Number(form.feeMax) : undefined;
@@ -171,8 +186,38 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
   if (!Number.isInteger(feeMax) || (feeMax ?? 0) < 0) errors.feeMax = "Enter a maximum monthly fee.";
   else if (feeMin !== undefined && feeMax !== undefined && feeMin > feeMax) errors.feeMax = "The maximum fee cannot be lower than the minimum fee.";
 
+  if (limits) {
+    const aboutMeLen = form.aboutMe?.trim().length ?? 0;
+    if (aboutMeLen > 0 && limits["tutor.aboutMeMinChars"] > 0 && aboutMeLen < limits["tutor.aboutMeMinChars"]) {
+      errors.aboutMe = `Write at least ${limits["tutor.aboutMeMinChars"]} characters in About Me.`;
+    } else if (aboutMeLen > limits["tutor.aboutMeChars"]) {
+      errors.aboutMe = `About Me must be ${limits["tutor.aboutMeChars"]} characters or fewer.`;
+    }
+    const approachLen = form.teachingApproach?.trim().length ?? 0;
+    if (approachLen > 0 && limits["tutor.approachMinChars"] > 0 && approachLen < limits["tutor.approachMinChars"]) {
+      errors.teachingApproach = `Write at least ${limits["tutor.approachMinChars"]} characters in Teaching Approach.`;
+    } else if (approachLen > limits["tutor.approachChars"]) {
+      errors.teachingApproach = `Teaching Approach must be ${limits["tutor.approachChars"]} characters or fewer.`;
+    }
+    const whyChooseMeLen = form.whyChooseMe?.trim().length ?? 0;
+    if (whyChooseMeLen > 0 && limits["tutor.whyChooseMeMinChars"] > 0 && whyChooseMeLen < limits["tutor.whyChooseMeMinChars"]) {
+      errors.whyChooseMe = `Write at least ${limits["tutor.whyChooseMeMinChars"]} characters in Why Choose Me.`;
+    } else if (whyChooseMeLen > limits["tutor.whyChooseMeChars"]) {
+      errors.whyChooseMe = `Why Choose Me must be ${limits["tutor.whyChooseMeChars"]} characters or fewer.`;
+    }
+  }
+
+  if (isDetailRequired(config, "aboutMe") && !form.aboutMe?.trim()) errors.aboutMe = "Write About Me before submitting.";
+  if (isDetailRequired(config, "teachingApproach") && !form.teachingApproach?.trim()) errors.teachingApproach = "Write Teaching Approach before submitting.";
+  if (isDetailRequired(config, "whyChooseMe") && !form.whyChooseMe?.trim()) errors.whyChooseMe = "Write Why Choose Me before submitting.";
+
   for (const key of Object.keys(errors) as TutorProfileSubmissionErrorKey[]) {
-    if (!isDetailRequired(config, key)) delete errors[key];
+    if (!isDetailRequired(config, key)) {
+      if (key === "aboutMe" && (form.aboutMe?.trim().length ?? 0) > 0) continue;
+      if (key === "teachingApproach" && (form.teachingApproach?.trim().length ?? 0) > 0) continue;
+      if (key === "whyChooseMe" && (form.whyChooseMe?.trim().length ?? 0) > 0) continue;
+      delete errors[key];
+    }
   }
   return errors;
 }
@@ -193,8 +238,8 @@ export function educationStatus(form: TutorProfileSubmissionPreview, config?: Re
 }
 
 /** Creates a concise client-side completion cue; the server remains authoritative. */
-export function getTutorProfileCompletionSummary(form: TutorProfileSubmissionPreview, config?: ResolvedTutorProfileFieldConfig): TutorProfileCompletionSummary {
-  const errors = getTutorProfileSubmissionErrors(form, config);
+export function getTutorProfileCompletionSummary(form: TutorProfileSubmissionPreview, config?: ResolvedTutorProfileFieldConfig, limits?: SiteLimitValues): TutorProfileCompletionSummary {
+  const errors = getTutorProfileSubmissionErrors(form, config, limits);
   const missingKeys = Object.keys(errors) as TutorProfileSubmissionErrorKey[];
   const firstMissingKey = missingKeys[0];
   const missingCount = missingKeys.length;

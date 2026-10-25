@@ -390,13 +390,23 @@ function FormSelect({ label, options, placeholder, error, showRequiredMarker = f
   </label>;
 }
 
-function FormTextArea({ label, hint, error, required = false, showRequiredMarker = required, rows = 3, maxLength, value, ...props }: { label: string; hint?: string; error?: string; required?: boolean; showRequiredMarker?: boolean; maxLength?: number; value?: string } & Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "maxLength" | "value">) {
+function FormTextArea({ label, hint, error, required = false, showRequiredMarker = required, rows = 3, minLength, maxLength, value, ...props }: { label: string; hint?: string; error?: string; required?: boolean; showRequiredMarker?: boolean; minLength?: number; maxLength?: number; value?: string } & Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "maxLength" | "value">) {
+  const currentLength = (value ?? "").trim().length;
+  const isTooShort = Boolean(minLength && minLength > 0 && currentLength > 0 && currentLength < minLength);
   return <label className={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`}>
     <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
       <span className={tp.fieldLabel}>{label}{showRequiredMarker ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span>
-      {maxLength ? <CharacterRemaining value={value ?? ""} maxLength={maxLength} /> : null}
+      <span className="flex items-center gap-2">
+        {minLength && minLength > 0 ? (
+          <span className={`text-2xs font-semibold tabular-nums ${isTooShort ? "text-amber-600" : "text-slate-400"}`}>
+            Min {minLength} chars {currentLength > 0 ? `(${currentLength}/${minLength})` : ""}
+          </span>
+        ) : null}
+        {maxLength ? <CharacterRemaining value={value ?? ""} maxLength={maxLength} /> : null}
+      </span>
     </span>
-    <textarea {...props} value={value} maxLength={maxLength} rows={rows} required={required} aria-required={showRequiredMarker || undefined} aria-invalid={Boolean(error)} className={`${fieldClassName} !h-auto resize-y ${error ? "border-tp-danger" : ""}`} />
+    <textarea {...props} value={value} maxLength={maxLength} rows={rows} required={required} aria-required={showRequiredMarker || undefined} aria-invalid={Boolean(error || isTooShort)} className={`${fieldClassName} !h-auto resize-y ${error ? "border-tp-danger" : isTooShort ? "border-amber-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100" : ""}`} />
+    {isTooShort && !error ? <span role="status" className="mt-1 block text-2xs font-medium leading-4 text-amber-600">Please write at least {minLength} characters for a quality introduction.</span> : null}
     {hint ? <span className="mt-1 block text-2xs font-normal leading-4 text-tp-label">{hint}</span> : null}
     {error ? <span role="alert" className="mt-1 block text-2xs font-medium leading-4 text-tp-danger-ink">{error}</span> : null}
   </label>;
@@ -798,7 +808,7 @@ function TutorProfileWorkspaceBody({
 
   const previewPayload = createProfileDraftPayload(form);
   const groupedClassLevels = useMemo(() => getGroupedClassLevelSelector(classLevels.data ?? [], form.classLevelIds), [classLevels.data, form.classLevelIds]);
-  const completionSummary = getTutorProfileCompletionSummary(form, fieldConfig);
+  const completionSummary = getTutorProfileCompletionSummary(form, fieldConfig, limits);
   const completionPercentage = completionSummary.completionPercentage;
   const isSavingProfile = saveDraftMutation.isPending || submitProfileMutation.isPending || uploadingPhoto || uploadingUniversityId || uploadingDocumentType !== null;
   const [activeTab, setActiveTab] = useState<TutorProfileSectionId>("a");
@@ -996,6 +1006,26 @@ function TutorProfileWorkspaceBody({
     setFeedback(null);
     const draft = createTutorProfileSectionDraftPayload(target, form, fieldConfig);
     if (!acceptPhoneNumbers(draft)) return false;
+    if (target === "e") {
+      const sectionErrors: TutorProfileSubmissionErrors = {};
+      const aboutMeLen = form.aboutMe?.trim().length ?? 0;
+      if (aboutMeLen > 0 && limits["tutor.aboutMeMinChars"] > 0 && aboutMeLen < limits["tutor.aboutMeMinChars"]) {
+        sectionErrors.aboutMe = `Write at least ${limits["tutor.aboutMeMinChars"]} characters in About Me.`;
+      }
+      const approachLen = form.teachingApproach?.trim().length ?? 0;
+      if (approachLen > 0 && limits["tutor.approachMinChars"] > 0 && approachLen < limits["tutor.approachMinChars"]) {
+        sectionErrors.teachingApproach = `Write at least ${limits["tutor.approachMinChars"]} characters in Teaching Approach.`;
+      }
+      const whyChooseMeLen = form.whyChooseMe?.trim().length ?? 0;
+      if (whyChooseMeLen > 0 && limits["tutor.whyChooseMeMinChars"] > 0 && whyChooseMeLen < limits["tutor.whyChooseMeMinChars"]) {
+        sectionErrors.whyChooseMe = `Write at least ${limits["tutor.whyChooseMeMinChars"]} characters in Why Choose Me.`;
+      }
+      if (Object.keys(sectionErrors).length > 0) {
+        setFieldErrors(current => ({ ...current, ...sectionErrors }));
+        setFeedback({ type: "error", message: "Review the highlighted details and try again." });
+        return false;
+      }
+    }
     try {
       await saveDraftMutation.mutateAsync(draft);
       clearTutorOnboardingDraft();
@@ -1102,7 +1132,7 @@ function TutorProfileWorkspaceBody({
   };
 
   const submitForReview = async () => {
-    const submissionErrors = getTutorProfileSubmissionErrors(form, fieldConfig);
+    const submissionErrors = getTutorProfileSubmissionErrors(form, fieldConfig, limits);
     if (Object.keys(submissionErrors).length > 0) {
       setFieldErrors(submissionErrors);
       const target = firstErroredSection(submissionErrors);
@@ -1376,9 +1406,9 @@ function TutorProfileWorkspaceBody({
       case "feeMax": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.feeMax)} showRequiredMarker={isRequired(fieldId)} type="number" min="0" max="500000" inputMode="numeric" value={form.feeMax} onChange={event => update("feeMax", event.target.value)} error={fieldErrors.feeMax} />;
       case "travelDistanceKm": return <FormInput required={isRequired(fieldId)} label={fieldLabel(fieldId, "Travel Distance (km)")} placeholder="Ex- 5" type="number" min="1" max="100" inputMode="numeric" value={form.travelDistanceKm} onChange={event => update("travelDistanceKm", event.target.value)} />;
 
-      case "aboutMe": return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "About Me")} rows={5} maxLength={2000} value={form.aboutMe} onChange={event => update("aboutMe", event.target.value)} placeholder="Describe your strengths, experience, and the learners you teach." />;
-      case "teachingApproach": return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "Teaching Approach")} rows={5} maxLength={2000} value={form.teachingApproach} onChange={event => update("teachingApproach", event.target.value)} placeholder="Explain how you plan lessons and support learning." />;
-      case "whyChooseMe": return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "Why Choose Me")} rows={5} maxLength={2000} value={form.whyChooseMe} onChange={event => update("whyChooseMe", event.target.value)} placeholder="Explain the value a Guardian can expect from your tuition." />;
+      case "aboutMe": return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "About Me")} rows={5} minLength={limits["tutor.aboutMeMinChars"]} maxLength={limits["tutor.aboutMeChars"]} value={form.aboutMe} onChange={event => update("aboutMe", event.target.value)} placeholder="Describe your strengths, experience, and the learners you teach." error={fieldErrors.aboutMe} />;
+      case "teachingApproach": return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "Teaching Approach")} rows={5} minLength={limits["tutor.approachMinChars"]} maxLength={limits["tutor.approachChars"]} value={form.teachingApproach} onChange={event => update("teachingApproach", event.target.value)} placeholder="Explain how you plan lessons and support learning." error={fieldErrors.teachingApproach} />;
+      case "whyChooseMe": return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "Why Choose Me")} rows={5} minLength={limits["tutor.whyChooseMeMinChars"]} maxLength={limits["tutor.whyChooseMeChars"]} value={form.whyChooseMe} onChange={event => update("whyChooseMe", event.target.value)} placeholder="Explain the value a Guardian can expect from your tuition." error={fieldErrors.whyChooseMe} />;
       case "additionalNotes": return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "Additional Notes")} rows={4} maxLength={2000} value={form.additionalNotes} onChange={event => update("additionalNotes", event.target.value)} placeholder="Non-sensitive information for the review team." />;
 
       default:
