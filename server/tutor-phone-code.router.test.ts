@@ -23,6 +23,7 @@ beforeEach(() => {
   vi.spyOn(db, "recordAuthEvent").mockResolvedValue({ id: 0 });
   vi.spyOn(db, "getPhoneCodeSendState").mockResolvedValue({ lastSentAt: null, sentLastHour: 0 });
   vi.spyOn(db, "createPhoneVerificationCode").mockResolvedValue({ id: 3 });
+  vi.spyOn(db, "createTutorPortalSession").mockResolvedValue(undefined as any);
   vi.spyOn(db, "getTutorGuardianLoginOtpSettings").mockResolvedValue({ enabled: true, rememberDays: 30, epoch: 0 });
 });
 afterEach(() => vi.restoreAllMocks());
