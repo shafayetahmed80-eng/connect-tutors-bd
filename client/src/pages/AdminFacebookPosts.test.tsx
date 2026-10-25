@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AdminFacebookPostsContent, getCurriculumBadgeClass, getTutorPrefBadgeClass } from "./AdminFacebookPosts";
+import { AdminFacebookPostsContent, getCurriculumBadgeClass, getTutorPrefBadgeClass, PostingProgressRing } from "./AdminFacebookPosts";
 
 const mocks = vi.hoisted(() => ({
   lastInput: null as unknown,
@@ -726,6 +726,30 @@ describe("AdminFacebookPostsContent", () => {
     expect(getTutorPrefBadgeClass("any")).toContain("slate");
     expect(getTutorPrefBadgeClass(null)).toContain("slate");
   });
+
+  it("renders daily posting progress ring with correct percentages and styling", () => {
+    const { unmount } = render(<PostingProgressRing posted={8} total={10} />);
+    const ring = screen.getByTestId("posting-progress-ring");
+    expect(ring.textContent).toContain("80%");
+    expect(ring.textContent).toContain("8/10 Posted");
+    expect(ring.className).toContain("emerald");
+    unmount();
+
+    render(<PostingProgressRing posted={2} total={10} />);
+    const amberRing = screen.getByTestId("posting-progress-ring");
+    expect(amberRing.textContent).toContain("20%");
+    expect(amberRing.className).toContain("amber");
+  });
+
+  it("renders hover preview title on eye action button and daily progress ring in page", () => {
+    render(<AdminFacebookPostsContent />);
+    expect(screen.getByTestId("posting-progress-ring")).toBeTruthy();
+    expect(screen.getByTestId("high-value-tuition-badge")).toBeTruthy();
+
+    const eyeButton = screen.getByRole("button", { name: /Preview Facebook post for job/i });
+    expect(eyeButton.getAttribute("title")).toContain("Quick Preview: Job");
+  });
 });
+
 
 
