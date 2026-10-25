@@ -55,10 +55,13 @@ export default function SchoolAutocompleteInput({
   }, [value]);
 
   const searchable = open && normalizeSchoolName(search).length >= 2;
-  const resultsQuery = trpc.catalog.searchSchoolColleges.useQuery(
-    { query: search },
-    { enabled: searchable, placeholderData: previous => previous }
-  );
+  const searchHook = trpc.catalog?.searchSchoolColleges?.useQuery;
+  const resultsQuery = searchHook
+    ? searchHook(
+        { query: search },
+        { enabled: searchable, placeholderData: (previous: any) => previous }
+      )
+    : { data: [], isFetching: false };
 
   const options: SchoolItem[] = searchable ? ((resultsQuery.data ?? []) as SchoolItem[]) : [];
   const showDropdown = open && options.length > 0;
