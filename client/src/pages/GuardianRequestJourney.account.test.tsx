@@ -3,6 +3,14 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/lib/trpc", () => ({
+  trpc: {
+    catalog: {
+      searchSchoolColleges: { useQuery: () => ({ data: [], isFetching: false }) },
+    },
+  },
+}));
+
 import { AccountStage, canStartGuardianRequestSubmission, getGuardianLocationSelectionState, RequestStage, SuccessState } from "./GuardianRequestJourney";
 
 afterEach(() => cleanup());

@@ -5540,21 +5540,24 @@ export async function decideAccountChangeRequest(input: {
  * the shared list, and the ones this Tutor created - never another Tutor's.
  * A name that starts with what was typed comes before one that only contains it.
  */
-export async function searchSchoolColleges(input: { userId: number; query: string }) {
+export async function searchSchoolColleges(input: { userId?: number | null; query: string }) {
   const database = await getDb();
   if (!database) throw new Error("Database is not available");
   const key = normalizeSchoolName(input.query);
   if (key.length < 2) return [];
   const escaped = key.replace(/[\\%_]/g, character => `\\${character}`);
+  const userFilter = input.userId
+    ? or(isNull(schoolColleges.createdByUserId), eq(schoolColleges.createdByUserId, input.userId))
+    : isNull(schoolColleges.createdByUserId);
   return database
     .select({ id: schoolColleges.id, name: schoolColleges.name, division: schoolColleges.division, own: sql<number>`${schoolColleges.createdByUserId} is not null` })
     .from(schoolColleges)
     .where(and(
       eq(schoolColleges.active, 1),
-      or(isNull(schoolColleges.createdByUserId), eq(schoolColleges.createdByUserId, input.userId)),
+      userFilter,
       like(schoolColleges.normalizedName, `%${escaped}%`),
     ))
-    .orderBy(sql`${schoolColleges.normalizedName} like ${`${escaped}%`} desc`, asc(schoolColleges.name))
+    .orderBy(sql`${schoolColleges.normalizedName} like ${escaped + "%"} desc`, asc(schoolColleges.name))
     .limit(SCHOOL_SEARCH_LIMIT)
     .then(rows => rows.map(row => ({ ...row, own: Boolean(Number(row.own)) })));
 }

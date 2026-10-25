@@ -1315,8 +1315,8 @@ export const appRouter = router({
   catalog: router({
     searchUniversities: activeTutorProcedure.input(catalogSearchInputSchema).query(({ input }) => db.searchUniversities(input)),
     /** Secondary / Higher Secondary Institute Name: the shared list plus this Tutor's own names. */
-    searchSchoolColleges: activeTutorProcedure.input(z.object({ query: z.string().trim().max(SCHOOL_NAME_MAX).default("") }))
-      .query(({ ctx, input }) => db.searchSchoolColleges({ userId: ctx.user.id, query: input.query })),
+    searchSchoolColleges: publicProcedure.input(z.object({ query: z.string().trim().max(SCHOOL_NAME_MAX).default("") }))
+      .query(({ ctx, input }) => db.searchSchoolColleges({ userId: ctx.user?.id, query: input.query })),
     createSchoolCollege: activeTutorProcedure.input(z.object({
       name: z.string().trim().min(SCHOOL_NAME_MIN, `Enter at least ${SCHOOL_NAME_MIN} characters.`).max(SCHOOL_NAME_MAX),
     })).mutation(async ({ ctx, input }) => {

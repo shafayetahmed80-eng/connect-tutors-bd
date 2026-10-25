@@ -4,6 +4,7 @@ import { Link as WouterLink, useLocation } from "wouter";
 import { ArrowLeft, Check, Edit3, Eye, Facebook, Globe, House, Layers, Loader2, Megaphone, MoreHorizontal, Phone, School, Users } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { formatInstituteName, formatRequestSource, isRequestSource, INSTITUTE_NAME_MAX_LENGTH, INSTITUTE_NAME_PLACEHOLDER, normalizeInstituteName, REQUEST_SOURCE_VALUES, type RequestSource } from "@shared/request-source";
+import SchoolAutocompleteInput from "@/components/SchoolAutocompleteInput";
 import { normalizeTutoringTime } from "@shared/tutoring-time";
 import { jobIdForRequest } from "@shared/job-id";
 import { buildJobTitle } from "@shared/job-title";
@@ -1199,7 +1200,7 @@ export function RequestStage(props: RequestStageProps) {
         {input.tuitionType === "group" ? <NumberField label="Maximum students" slotId="request-tutor.field.groupCapacity" labelIcon={<RecordIcon name="students" size={15} />} id="group-capacity" min={2} max={100} value={input.groupCapacity} onChange={props.onSetGroupCapacity} /> : null}
         {input.tuitionType === "package" ? <NumberField label="Package duration (months)" slotId="request-tutor.field.packageDuration" labelIcon={<RecordIcon name="packageDuration" size={15} />} id="package-duration-months" min={1} max={24} value={input.packageDurationMonths} onChange={props.onSetPackageDurationMonths} /> : null}
         <SelectField label="Days per week" slotId="request-tutor.field.daysPerWeek" icon={<RecordIcon name="daysPerWeek" size={17} />} value={input.daysPerWeek} onChange={props.onSetDays} options={["1", "2", "3", "4", "5", "6", "7"]} placeholder="Choose days" formatOption={(value) => `${value} day${value === "1" ? "" : "s"}`} />
-        <InputField label="Institute Name" slotId="request-tutor.field.instituteName" optional value={input.instituteName} onChange={props.onSetInstituteName} maxLength={INSTITUTE_NAME_MAX_LENGTH} placeholder={INSTITUTE_NAME_PLACEHOLDER} icon={<School size={17} />} />
+        <InstituteAutocompleteField label="Institute Name" slotId="request-tutor.field.instituteName" optional value={input.instituteName} onChange={props.onSetInstituteName} maxLength={INSTITUTE_NAME_MAX_LENGTH} placeholder={INSTITUTE_NAME_PLACEHOLDER} icon={<School size={17} />} />
         <SelectField label="Where Did You Hear About Us" slotId="request-tutor.field.heardAboutUs" value={input.heardAboutUs} onChange={(value) => props.onSetHeardAboutUs(value as RequestSource)} options={REQUEST_SOURCE_VALUES} placeholder="Choose an answer" formatOption={formatRequestSource} icon={input.heardAboutUs ? REQUEST_SOURCE_ICONS[input.heardAboutUs] : <Megaphone size={17} />} />
         <SelectField label="Preferred Tutor gender" slotId="request-tutor.field.preferredGender" icon={<TutorPreferenceIcon preference={input.preferredGender || "any"} className="text-j-accent" />} value={input.preferredGender} onChange={(value) => props.onSetPreferredGender(value as PreferredGender)} options={["any", "female", "male"]} placeholder="Choose a preference" formatOption={formatPreferredGender} />
         <MoneyField label="Monthly salary" slotId="request-tutor.field.salary" labelIcon={<RecordIcon name="salary" size={15} />} value={input.salaryAmount} onChange={props.onSetSalaryAmount} placeholder={SALARY_INPUT_PLACEHOLDER} />
@@ -1334,6 +1335,23 @@ function FieldLabelText({ label, slotId, labelIcon, labelHidden, optional }: { l
     <span className="inline-flex items-center gap-1.5">{labelIcon ? <span aria-hidden="true" className="text-j-accent">{labelIcon}</span> : null}{text}</span>
     {optional ? null : <span className={requiredMark}> *</span>}
   </span>;
+}
+
+function InstituteAutocompleteField({ label, slotId, labelIcon, labelHidden, value, onChange, optional, maxLength, placeholder, icon }: { label: string; slotId?: string; labelIcon?: ReactNode; labelHidden?: boolean; icon?: ReactNode; value: string; onChange: (value: string) => void; optional?: boolean; maxLength?: number; placeholder?: string }) {
+  return <label className="block">
+    <FieldLabelText label={label} slotId={slotId} labelIcon={labelIcon} labelHidden={labelHidden} optional={optional} />
+    <span className={`relative block ${labelHidden ? "" : "mt-2"}`}>
+      <SchoolAutocompleteInput
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        maxLength={maxLength}
+        icon={icon}
+        inputClassName={filledField}
+        aria-label={label}
+      />
+    </span>
+  </label>;
 }
 
 function InputField({ label, slotId, labelIcon, labelHidden, value, onChange, type = "text", autoComplete, optional, maxLength, inputMode, placeholder, icon, id }: { label: string; slotId?: string; labelIcon?: ReactNode; labelHidden?: boolean; icon?: ReactNode; id?: string; value: string; onChange: (value: string) => void; type?: string; autoComplete?: string; optional?: boolean; maxLength?: number; placeholder?: string; inputMode?: "numeric" | "text" | "email" | "tel" | "url" | "search" | "decimal" | "none" }) {
