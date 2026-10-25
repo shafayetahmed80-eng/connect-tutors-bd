@@ -461,6 +461,44 @@ export function AdminFacebookPostsContent() {
     }
   };
 
+  const handleCopyPicked = async () => {
+    if (isBulkCopying || picked.size === 0) return;
+    setIsBulkCopying(true);
+    try {
+      const list = Array.from(picked.values());
+      const bulkText = buildEnglishBulkFacebookPostText(
+        list.map(j => ({ ...j, jobId: jobIdForRequest(j.id) })),
+        {
+          origin: window.location.origin,
+          template: templates,
+          format: selectedBulkFormat,
+          includeHashtags,
+        },
+      );
+      const ok = await copyToClipboard(bulkText);
+      if (ok) {
+        toast.success(`${list.length}টি বাছাইকৃত টিউশনের ক্যাপশন কপি হয়েছে!`);
+        if (autoMarkOnCopy) {
+          const idsToMark = list.map(j => j.id);
+          setPostStatusMutation.mutate(
+            { requestIds: idsToMark, isPosted: true },
+            {
+              onSuccess: () => {
+                toast.success(`${list.length}টি বাছাইকৃত টিউশন 'Posted' হিসেবে চিহ্নিত করা হয়েছে!`);
+              },
+            }
+          );
+        }
+      } else {
+        toast.error("টেক্সট কপি করতে ব্যর্থ হয়েছে।");
+      }
+    } catch {
+      toast.error("ক্যাপশন কপি করতে ব্যর্থ হয়েছে।");
+    } finally {
+      setIsBulkCopying(false);
+    }
+  };
+
   const handlePreviewBulk = async () => {
     if (isBulkCopying) return;
     setIsBulkCopying(true);
@@ -935,13 +973,13 @@ export function AdminFacebookPostsContent() {
               type="button"
               onClick={() => handleCopySingleInline(job)}
               aria-label={`Copy English inline post for job ${code}`}
-              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition shadow-2xs active:scale-95 cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold shadow-2xs cursor-pointer transition-all duration-150 active:scale-90 ${
                 isCopied
-                  ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                  ? "border-emerald-600 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-400/50 scale-105"
                   : "border-blue-700/30 bg-gradient-to-r from-[#1877f2] via-[#1a73e8] to-[#166fe5] text-white hover:from-[#166fe5] hover:to-[#1558b0] hover:shadow-xs"
               }`}
             >
-              {isCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+              {isCopied ? <Check className="size-3.5 text-emerald-600 animate-in zoom-in-75 duration-150" /> : <Copy className="size-3.5" />}
               <span>{isCopied ? "Copied!" : "Copy (EN)"}</span>
             </button>
 
@@ -1807,6 +1845,67 @@ export function AdminFacebookPostsContent() {
             </div>
           </ModalFooter>
         </Modal>
+      ) : null}
+
+      {/* Floating Batch Dock when 1 or more tuitions are picked */}
+      {picked.size > 0 ? (
+        <div
+          role="region"
+          aria-label="Floating Batch Actions"
+          data-testid="floating-batch-dock"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 sm:gap-3 rounded-2xl bg-slate-900/95 backdrop-blur-md px-3.5 py-2 text-white shadow-2xl border border-slate-700/80 animate-in fade-in slide-in-from-bottom-5 duration-200"
+        >
+          <div className="flex items-center gap-1.5 pl-1 pr-2.5 border-r border-slate-700/80 text-xs font-bold text-sky-400">
+            <Sparkles className="size-3.5 text-amber-400 animate-pulse" />
+            <span>{picked.size} picked</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGenerateBulkPoster}
+            aria-label="Create Poster from picked tuitions"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-primary to-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-all duration-150 active:scale-90 hover:brightness-110 cursor-pointer"
+            title="Open multi-tuition poster for picked jobs"
+          >
+            <ImageIcon className="size-3.5" />
+            <span className="hidden sm:inline">Create Poster</span>
+            <span className="sm:hidden">Poster</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleGenerateVideo}
+            aria-label="Create Video from picked tuitions"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 text-xs font-semibold text-slate-200 transition-all duration-150 active:scale-90 cursor-pointer"
+            title="Generate Video from picked tuitions"
+          >
+            <Film className="size-3.5 text-rose-400" />
+            <span className="hidden sm:inline">Video</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleCopyPicked}
+            aria-label="Copy captions of picked tuitions"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-700 hover:bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white transition-all duration-150 active:scale-90 cursor-pointer"
+            title="Copy captions of picked tuitions"
+          >
+            <Copy className="size-3.5 text-indigo-200" />
+            <span className="hidden sm:inline">Copy ({picked.size})</span>
+            <span className="sm:hidden">Copy</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPicked(new Map())}
+            aria-label="Clear floating selection"
+            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-all duration-150 active:scale-90 cursor-pointer"
+            title="Clear picked selection"
+          >
+            <X className="size-3.5" />
+            <span className="hidden sm:inline">Clear</span>
+          </button>
+        </div>
       ) : null}
 
       {/* Social Media Poster Modals */}

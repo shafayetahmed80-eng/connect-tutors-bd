@@ -23,6 +23,9 @@ describe("site limits", () => {
     // where the person sees a message, to the insert, where they see a crash.
     expect(siteLimitCeiling("tutor.headlineChars")).toBe(240);
     expect(siteLimitCeiling("request.addressChars")).toBe(160);
+    expect(siteLimitCeiling("tutor.aboutMeChars")).toBe(2000);
+    expect(siteLimitCeiling("tutor.approachChars")).toBe(2000);
+    expect(siteLimitCeiling("tutor.whyChooseMeChars")).toBe(2000);
   });
 
   it("keeps a request's subjects apart from a Tutor's", () => {

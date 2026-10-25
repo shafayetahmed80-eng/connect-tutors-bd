@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createProfileDraftPayload, emptyEducationRecord, getProfileDraftFeedback, hydrateTutorProfileForm } from "./TutorProfileFormData";
 import { describeMissingDetails, getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy } from "./TutorProfileUx";
+import { defaultSiteLimits } from "@shared/site-limits";
 import { resolveTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import { tutorProfileDraftSchema } from "../../../server/tutor-profile.validation";
 
@@ -387,6 +388,25 @@ describe("Tutor Profile form hydration", () => {
   });
 });
 
+
+  it("enforces dynamic minimum character limits on descriptive fields when provided", () => {
+    const state = { ...hydrateTutorProfileForm(serverProfile, onboardingFallback), ...emptySelections };
+    const limits = { ...defaultSiteLimits(), "tutor.aboutMeMinChars": 30, "tutor.approachMinChars": 40 };
+
+    // Empty is allowed (optional by default)
+    expect(getTutorProfileSubmissionErrors({ ...state, aboutMe: "" }, undefined, limits)).not.toHaveProperty("aboutMe");
+
+    // Too short gets error
+    expect(getTutorProfileSubmissionErrors({ ...state, aboutMe: "Too short" }, undefined, limits)).toHaveProperty("aboutMe", "Write at least 30 characters in About Me.");
+    expect(getTutorProfileSubmissionErrors({ ...state, teachingApproach: "Too brief" }, undefined, limits)).toHaveProperty("teachingApproach", "Write at least 40 characters in Teaching Approach.");
+
+    // Sufficient length passes
+    expect(getTutorProfileSubmissionErrors({
+      ...state,
+      aboutMe: "I am a dedicated teacher with 5+ years of physics tutoring experience.",
+      teachingApproach: "I focus on conceptual clarity and problem solving techniques.",
+    }, undefined, limits)).not.toHaveProperty("aboutMe");
+  });
 
 describe("what an untouched education record sends", () => {
   it("leaves a blank field out rather than sending an empty string", () => {
