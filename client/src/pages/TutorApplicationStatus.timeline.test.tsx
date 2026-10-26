@@ -184,13 +184,14 @@ describe("Interactive Timeline Tracker Modal", () => {
     expect(within(modal).getByRole("link", { name: "Message +880 1712 345678 on WhatsApp" })).toBeTruthy();
   });
 
-  it("displays Cancelled step and appropriate guidance when application is cancelled", async () => {
+  it("displays Cancelled step and full trajectory when an appointed application is cancelled", async () => {
     const user = userEvent.setup({ document: window.document });
     applications.current = [
       makeJob({
         interestId: 99,
         publicJobId: "CT-J-9999",
-        status: "withdrawn",
+        status: "declined",
+        appointedAt: "2026-09-04T10:00:00.000Z",
         endedAt: "2026-09-08T12:00:00.000Z",
       }),
     ];
@@ -208,7 +209,36 @@ describe("Interactive Timeline Tracker Modal", () => {
 
     // Cancelled guidance
     expect(within(modal).getByText("Tuition Cancelled or Withdrawn")).toBeTruthy();
-    expect(within(modal).getByText("Cancelled / Ended")).toBeTruthy();
+    expect(within(modal).getByText("Appointed for Demo")).toBeTruthy();
+    expect(within(modal).getByText("Cancelled / Removed")).toBeTruthy();
+  });
+
+  it("displays graceful unappointed closed guidance when application ends without appointment", async () => {
+    const user = userEvent.setup({ document: window.document });
+    applications.current = [
+      makeJob({
+        interestId: 101,
+        publicJobId: "CT-J-1010",
+        status: "declined",
+        endedAt: "2026-09-08T12:00:00.000Z",
+      }),
+    ];
+
+    render(<TutorApplicationStatus />);
+
+    // Remains in Applied Jobs tab with Not Selected badge
+    expect(screen.getByText("Not Selected")).toBeTruthy();
+
+    // Open Timeline modal
+    await user.click(screen.getByRole("button", { name: "View timeline for CT-J-1010" }));
+
+    const modal = screen.getByTestId("tutor-application-timeline-modal");
+    expect(modal).toBeTruthy();
+
+    // Shows graceful guidance and closed step
+    expect(within(modal).getByText("Application Not Selected")).toBeTruthy();
+    expect(within(modal).getByText(/এই টিউশনটির জন্য অভিভাবক অন্য শিক্ষক নির্বাচন করেছেন/)).toBeTruthy();
+    expect(within(modal).getByText(/অন্য টিউটর নির্বাচিত/)).toBeTruthy();
   });
 
   it("handles mobile phone card view timeline button gracefully", async () => {

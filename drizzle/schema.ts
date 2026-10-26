@@ -1377,6 +1377,10 @@ export const tutorJobInterests = mysqlTable("tutor_job_interests", {
     .notNull(),
   /** When an Admin shortlisted this application; cleared if it is taken off the shortlist. */
   shortlistedAt: timestamp("shortlistedAt"),
+  /** When this tutor was appointed for demo/trial; preserved permanently once appointed. */
+  appointedAt: timestamp("appointedAt"),
+  /** When the Admin confirmed this tutor appointment; preserved permanently once confirmed. */
+  appointmentConfirmedAt: timestamp("appointmentConfirmedAt"),
   /** When this application ended - the Tutor withdrew, or an Admin declined them. */
   endedAt: timestamp("endedAt"),
   /** When the Guardian shortlisted this applicant; null when they have not. `status` is the Admin's, not this. */

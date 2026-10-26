@@ -36,14 +36,21 @@ describe("the stage a Tutor's application sits at", () => {
     expect(getTutorApplicationStage({ status: "matched", appointmentConfirmedAt: confirmedAt, paymentStatus: "full_paid", tuitionCancelled: 1 })).toBe("cancelled");
   });
 
-  it("reads both endings - the Tutor's and the Admin's - as Cancelled", () => {
-    expect(getTutorApplicationStage({ status: "withdrawn" })).toBe("cancelled");
-    expect(getTutorApplicationStage({ status: "declined" })).toBe("cancelled");
+  it("only moves to Cancelled if the tutor was appointed or confirmed first", () => {
+    // When a tutor was never appointed, declined/withdrawn applications remain under applied
+    expect(getTutorApplicationStage({ status: "withdrawn" })).toBe("applied");
+    expect(getTutorApplicationStage({ status: "declined" })).toBe("applied");
+
+    // When a tutor was appointed or confirmed, cancellation moves to cancelled
+    expect(getTutorApplicationStage({ status: "matched", tuitionCancelled: 1 })).toBe("cancelled");
+    expect(getTutorApplicationStage({ status: "declined", appointedAt: new Date("2026-09-01") })).toBe("cancelled");
+    expect(getTutorApplicationStage({ status: "declined", wasAppointed: true })).toBe("cancelled");
+    expect(getTutorApplicationStage({ status: "withdrawn", appointmentConfirmedAt: new Date("2026-09-01") })).toBe("cancelled");
   });
 
-  it("ends every application on a cancelled tuition, whatever stage it had reached", () => {
-    expect(getTutorApplicationStage({ status: "interested", tuitionCancelled: true })).toBe("cancelled");
-    expect(getTutorApplicationStage({ status: "shortlisted", tuitionCancelled: 1 })).toBe("cancelled");
+  it("keeps unappointed applications in applied or shortlisted even if tuition is cancelled", () => {
+    expect(getTutorApplicationStage({ status: "interested", tuitionCancelled: true })).toBe("applied");
+    expect(getTutorApplicationStage({ status: "shortlisted", tuitionCancelled: 1 })).toBe("shortlisted");
     expect(getTutorApplicationStage({ status: "matched", appointmentConfirmedAt: new Date("2026-09-01"), tuitionCancelled: 1 })).toBe("cancelled");
     // MySQL hands the flag back as 0 for an open tuition.
     expect(getTutorApplicationStage({ status: "matched", appointmentConfirmedAt: null, tuitionCancelled: 0 })).toBe("appointed");
@@ -60,8 +67,11 @@ describe("the stage a Tutor's application sits at", () => {
   });
 
   it("filters to one stage without losing the rest of each row", () => {
-    const records = [{ status: "interested" as const, publicJobId: "CT-1" }, { status: "declined" as const, publicJobId: "CT-2" }];
-    expect(filterTutorApplicationsByStage(records, "cancelled")).toEqual([{ status: "declined", publicJobId: "CT-2" }]);
+    const records = [
+      { status: "interested" as const, publicJobId: "CT-1" },
+      { status: "declined" as const, appointedAt: new Date(), publicJobId: "CT-2" },
+    ];
+    expect(filterTutorApplicationsByStage(records, "cancelled")).toEqual([{ status: "declined", appointedAt: expect.any(Date), publicJobId: "CT-2" }]);
   });
 });
 

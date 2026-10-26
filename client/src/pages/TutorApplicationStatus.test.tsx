@@ -47,7 +47,7 @@ describe("the Tutor's Status tab", () => {
     const user = userEvent.setup({ document: window.document });
     applications.current = [
       job({ interestId: 1, publicJobId: "CT-J-1001" }),
-      job({ interestId: 2, publicJobId: "CT-J-2002", status: "withdrawn" }),
+      job({ interestId: 2, publicJobId: "CT-J-2002", status: "declined", appointedAt: "2026-09-02T00:00:00.000Z" }),
     ];
     render(<TutorApplicationStatus />);
 
@@ -64,13 +64,30 @@ describe("the Tutor's Status tab", () => {
     window.history.replaceState(null, "", "/tutor/dashboard/status?stage=cancelled");
     applications.current = [
       job({ interestId: 1, publicJobId: "CT-J-1001" }),
-      job({ interestId: 2, publicJobId: "CT-J-2002", status: "declined" }),
+      job({ interestId: 2, publicJobId: "CT-J-2002", status: "declined", appointedAt: "2026-09-02T00:00:00.000Z" }),
     ];
     render(<TutorApplicationStatus />);
 
     expect(screen.getByRole("tab", { name: /Cancelled Jobs/ }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByText(/CT-J-2002/)).toBeTruthy();
     expect(screen.queryByText(/CT-J-1001/)).toBeNull();
+  });
+
+  it("keeps unappointed closed or declined applications in Applied Jobs with badges", () => {
+    applications.current = [
+      job({ interestId: 1, publicJobId: "CT-J-1001", status: "declined" }),
+      job({ interestId: 2, publicJobId: "CT-J-2002", status: "interested", tuitionCancelled: 1 }),
+      job({ interestId: 3, publicJobId: "CT-J-3003", status: "withdrawn" }),
+    ];
+    render(<TutorApplicationStatus />);
+
+    // All stay in Applied Jobs
+    expect(screen.getByText(/CT-J-1001/)).toBeTruthy();
+    expect(within(screen.getByRole("table")).getByText("Not Selected")).toBeTruthy();
+    expect(screen.getByText(/CT-J-2002/)).toBeTruthy();
+    expect(within(screen.getByRole("table")).getByText("Closed")).toBeTruthy();
+    expect(screen.getByText(/CT-J-3003/)).toBeTruthy();
+    expect(within(screen.getByRole("table")).getByText("Withdrawn")).toBeTruthy();
   });
 
   it("ignores a stage it does not know and opens on Applied", () => {
@@ -114,7 +131,7 @@ describe("the Tutor's Status tab", () => {
         interestId: 2, status: "matched", appointedAt: "2026-09-04T00:00:00.000Z",
         appointmentConfirmedAt: "2026-09-05T00:00:00.000Z", paymentStatus: "half_paid",
       }),
-      job({ interestId: 3, status: "declined", endedAt: "2026-09-06T00:00:00.000Z" }),
+      job({ interestId: 3, status: "declined", appointedAt: "2026-09-02T00:00:00.000Z", endedAt: "2026-09-06T00:00:00.000Z" }),
     ];
     render(<TutorApplicationStatus />);
 
@@ -172,7 +189,7 @@ describe("the Tutor's Status tab", () => {
 
   it("falls back to the tuition's own cancellation date when the application itself never ended", async () => {
     const user = userEvent.setup({ document: window.document });
-    applications.current = [job({ interestId: 1, tuitionCancelled: 1, tuitionCancelledAt: "2026-09-07T00:00:00.000Z" })];
+    applications.current = [job({ interestId: 1, appointedAt: "2026-09-02T00:00:00.000Z", tuitionCancelled: 1, tuitionCancelledAt: "2026-09-07T00:00:00.000Z" })];
     render(<TutorApplicationStatus />);
 
     await user.click(screen.getByRole("tab", { name: /Cancelled Jobs/ }));
