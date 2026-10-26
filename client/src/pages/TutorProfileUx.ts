@@ -1,6 +1,6 @@
 import { educationSectionStatus, validateEducationTimelineSequence, validateResultGpa } from "@shared/tutor-education";
 import { findDuplicateTutorPhoneErrors } from "@shared/phone";
-import { validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation } from "@shared/tutor-personal-details";
+import { validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation, validateHeadline } from "@shared/tutor-personal-details";
 import { findTutorProfileFieldMeta, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import type { SiteLimitValues } from "@shared/site-limits";
 import { offersOnlineTuitionOnly, validateTuitionFees } from "@shared/tutor-profile-tuition";
@@ -196,7 +196,12 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
       }
     }
   }
-  if (form.headline.trim().length < 10) errors.headline = "Enter a headline with at least 10 characters.";
+  if (form.headline.trim().length < 10) {
+    errors.headline = "Enter a headline with at least 10 characters.";
+  } else {
+    const headlineErr = validateHeadline(form.headline);
+    if (headlineErr) errors.headline = headlineErr;
+  }
   if (!/^\+8801[3-9]\d{8}$/.test(form.phone.trim())) {
     errors.phone = "Enter a valid Bangladesh mobile number.";
   } else {

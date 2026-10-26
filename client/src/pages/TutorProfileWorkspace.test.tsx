@@ -1233,6 +1233,20 @@ describe("Permanent Address and the Availability choices", () => {
     expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
   });
 
+  it("blocks saving Identity and contact draft when headline has repetitive words", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    const dialog = screen.getByRole("dialog");
+    const headline = within(dialog).getByLabelText(/^Professional Headline/) as HTMLInputElement;
+    fireEvent.change(headline, { target: { value: "tutor tutor tutor" } });
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    expect(within(dialog).getByText(/Provide a meaningful professional headline/)).toBeTruthy();
+    expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
+  });
+
   it("blocks saving Family and emergency contact draft when emergency contact name is self-referencing", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);

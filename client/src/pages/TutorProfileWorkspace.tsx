@@ -1,6 +1,6 @@
 import CharacterRemaining from "@/components/CharacterRemaining";
 import { SearchableMultiSelect, SearchableSingleSelect, type SelectorOption } from "@/components/TutorProfileSelectors";
-import { calculateAgeInYears, tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation } from "@shared/tutor-personal-details";
+import { calculateAgeInYears, tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation, validateHeadline } from "@shared/tutor-personal-details";
 import { isTutorCvDraft } from "@shared/tutor-cv-status";
 import { offersOnlineTuitionOnly, validateTuitionFees } from "@shared/tutor-profile-tuition";
 import { Button } from "@/components/ui/button";
@@ -1047,6 +1047,12 @@ function TutorProfileWorkspaceBody({
     if (!acceptPhoneNumbers(draft)) return false;
     if (target === "a" || target === "a-identity" || target === "a-family") {
       const sectionErrors: TutorProfileSubmissionErrors = {};
+      if (form.headline) {
+        const headlineErr = validateHeadline(form.headline);
+        if (headlineErr) {
+          sectionErrors.headline = headlineErr;
+        }
+      }
       if (form.dateOfBirth) {
         const age = calculateAgeInYears(form.dateOfBirth);
         const minAge = limits["tutor.minAgeYears"];

@@ -11,7 +11,7 @@ import {
   validateEducationTimelineSequence,
   validateResultGpa } from "@shared/tutor-education";
 import { defaultTutorProfileFieldConfig, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
-import { tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation } from "@shared/tutor-personal-details";
+import { tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation, validateHeadline } from "@shared/tutor-personal-details";
 import { offersOnlineTuitionOnly, validateTuitionFees } from "@shared/tutor-profile-tuition";
 import { findDuplicateTutorPhoneErrors } from "@shared/phone";
 
@@ -190,7 +190,12 @@ const profileShape = {
   name: z.string().trim().min(2, "Enter your full name.").max(160).optional(),
   gender: z.enum(["male", "female"]).optional(),
   dateOfBirth: profileDateSchema.optional(),
-  headline: z.string().trim().min(10, "Headline must be at least 10 characters.").max(siteLimitCeiling("tutor.headlineChars")).optional(),
+  headline: z.string().trim().min(10, "Headline must be at least 10 characters.").max(siteLimitCeiling("tutor.headlineChars")).superRefine((val, ctx) => {
+    if (val) {
+      const err = validateHeadline(val);
+      if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, message: err });
+    }
+  }).optional(),
 
   phone: bangladeshPhoneSchema.optional(),
   contactEmail: z.string().trim().email("Enter a valid email address.").max(320).optional(),

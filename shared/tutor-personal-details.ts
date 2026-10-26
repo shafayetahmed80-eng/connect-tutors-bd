@@ -149,3 +149,56 @@ export function validateEmergencyContactRelation(relation: string | null | undef
   }
   return null;
 }
+
+export const MIN_HEADLINE_LENGTH = 10;
+
+const REPETITIVE_CHAR_REGEX = /^(.)\1+$/;
+const DUMMY_HEADLINE_TOKENS: ReadonlySet<string> = new Set([
+  "test", "demo", "asdf", "qwerty", "na", "n/a", "nil", "none", "nothing", "null", "undefined"
+]);
+
+/**
+ * Validates tutor professional headline quality and specificity.
+ * Prevents repetitive words (e.g. "tutor tutor"), repeated characters, dummy keywords,
+ * or headlines lacking substantive detail.
+ * Returns an error message string if invalid, or null if valid.
+ */
+export function validateHeadline(headline: string | null | undefined): string | null {
+  if (headline === null || headline === undefined) return null;
+  const trimmed = headline.trim();
+  if (trimmed.length === 0) return null;
+
+  if (trimmed.length < MIN_HEADLINE_LENGTH) {
+    return `Enter a headline with at least ${MIN_HEADLINE_LENGTH} characters.`;
+  }
+
+  // Check if string is composed of a single repeated character (e.g. "aaaaaaaaaa", "----------")
+  if (REPETITIVE_CHAR_REGEX.test(trimmed.replace(/\s+/g, ""))) {
+    return "Provide a meaningful professional headline (mention your subject, target classes, or background, e.g. 'Experienced Mathematics Tutor for SSC & HSC').";
+  }
+
+  // Normalize "n/a" to "na" before splitting
+  const normalized = trimmed.toLowerCase().replace(/n\/a/g, "na");
+  // Tokenize into words (letters, numbers, Bengali words)
+  const tokens = normalized.split(/[\s,·\-|/]+/).filter(t => t.length > 0);
+
+  // Check if all tokens are single characters (e.g. "a b c d e f g h i j")
+  const substantialTokens = tokens.filter(t => t.length > 1);
+  if (substantialTokens.length === 0) {
+    return "Provide a meaningful professional headline (mention your subject, target classes, or background, e.g. 'Experienced Mathematics Tutor for SSC & HSC').";
+  }
+
+  // Check if all tokens are identical (e.g. "tutor tutor tutor", "teacher teacher")
+  const uniqueTokens = new Set(tokens);
+  if (uniqueTokens.size === 1 && tokens.length > 1) {
+    return "Provide a meaningful professional headline (mention your subject, target classes, or background, e.g. 'Experienced Mathematics Tutor for SSC & HSC').";
+  }
+
+  // Check if all tokens are dummy words (e.g. "test test test", "n/a n/a n/a")
+  const nonDummyTokens = tokens.filter(t => !DUMMY_HEADLINE_TOKENS.has(t));
+  if (nonDummyTokens.length === 0) {
+    return "Provide a meaningful professional headline (mention your subject, target classes, or background, e.g. 'Experienced Mathematics Tutor for SSC & HSC').";
+  }
+
+  return null;
+}
