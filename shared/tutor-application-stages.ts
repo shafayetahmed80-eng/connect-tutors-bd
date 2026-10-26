@@ -43,22 +43,49 @@ export type TutorApplicationRecord = {
   status: "interested" | "shortlisted" | "declined" | "matched" | "withdrawn";
   /** Set only once an Admin finalises the Guardian and Tutor appointment. */
   appointmentConfirmedAt?: Date | string | null;
+  /** Set when the tutor was appointed (or matched) for trial / demo. */
+  appointedAt?: Date | string | null;
   /** How much of the fee is paid; Full Paid is what turns a Confirmed tuition into a Closed one. */
   paymentStatus?: string | null;
   /** Set when the tuition itself was cancelled: every application on it ends with it. */
   tuitionCancelled?: boolean | number | null;
+  /** Whether this application was previously appointed or confirmed before removal/cancellation. */
+  wasAppointed?: boolean | number | null;
 };
 
-export function getTutorApplicationStage(record: TutorApplicationRecord): TutorApplicationStage {
-  // A cancelled tuition ends every application on it, a Confirmed or Closed one included.
-  if (record.tuitionCancelled || record.status === "declined" || record.status === "withdrawn") return "cancelled";
-  // Appointed and Confirmed are the same interest status either side of the
-  // Admin's confirmation, which is the only thing that tells them apart; a
-  // Confirmed tuition whose fee is Full Paid is Closed.
+export function getTutorApplicationStage(
+  record: TutorApplicationRecord,
+  options?: { adminView?: boolean }
+): TutorApplicationStage {
+  if (options?.adminView) {
+    if (record.tuitionCancelled || record.status === "declined" || record.status === "withdrawn") return "cancelled";
+    if (record.status === "matched") {
+      if (!record.appointmentConfirmedAt) return "appointed";
+      return record.paymentStatus === "full_paid" ? "closed" : "confirmed";
+    }
+    if (record.status === "shortlisted") return "shortlisted";
+    return "applied";
+  }
+
+  const hadAppointment = Boolean(
+    record.appointedAt ||
+    record.appointmentConfirmedAt ||
+    record.status === "matched" ||
+    record.wasAppointed
+  );
+
+  // For a Tutor, an application only moves to "Cancelled Jobs" if they were actually appointed or confirmed first,
+  // and then the tuition or their appointment was cancelled/declined/withdrawn.
+  if (hadAppointment && (record.tuitionCancelled || record.status === "declined" || record.status === "withdrawn")) {
+    return "cancelled";
+  }
+
   if (record.status === "matched") {
     if (!record.appointmentConfirmedAt) return "appointed";
     return record.paymentStatus === "full_paid" ? "closed" : "confirmed";
   }
+
+  // Applications that were never appointed remain under their applied or shortlisted stage
   if (record.status === "shortlisted") return "shortlisted";
   return "applied";
 }

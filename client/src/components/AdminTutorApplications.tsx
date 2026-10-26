@@ -73,7 +73,7 @@ export default function AdminTutorApplications({ tutorId }: { tutorId: string })
               </p>
             : <ul aria-label={stageLabel} className="divide-y divide-[#eef4f9]">
                 {visible.map(application => {
-                  const currentStage = getTutorApplicationStage(application);
+                  const currentStage = getTutorApplicationStage(application, { adminView: true });
                   return <li key={application.interestId}>
                     <Link
                       href={`/admin/applied-tutors/${application.requestId}`}

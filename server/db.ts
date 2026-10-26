@@ -3818,6 +3818,12 @@ export async function confirmTutorRequestAppointment(input: {
     });
     await settleGuardianTuitionRequests(tx, input.requestId, "confirmed", input.adminUserId);
     if (request.tutorId) {
+      const [job] = await tx.select({ id: tutorJobs.id }).from(tutorJobs).where(eq(tutorJobs.tutorRequestId, input.requestId)).limit(1);
+      if (job) {
+        await tx.update(tutorJobInterests)
+          .set({ appointmentConfirmedAt: now })
+          .where(and(eq(tutorJobInterests.tutorJobId, job.id), eq(tutorJobInterests.tutorId, request.tutorId)));
+      }
       await refreshTutorVerification(tx, request.tutorId);
       const note = appointmentConfirmedTutorNotification(jobIdForRequest(input.requestId));
       await createTutorNotification(tx, {
@@ -4249,7 +4255,7 @@ export async function listTutorJobInterestsForTutor(tutorId: string) {
       // One date per stage: the Status tab shows the one its own stage earned.
       shortlistedAt: tutorJobInterests.shortlistedAt,
       endedAt: tutorJobInterests.endedAt,
-      appointedAt: tutorRequests.appointedAt,
+      appointedAt: sql<Date | null>`COALESCE(${tutorJobInterests.appointedAt}, CASE WHEN ${tutorRequests.tutorId} = ${tutorId} THEN ${tutorRequests.appointedAt} ELSE NULL END)`,
       tuitionCancelledAt: tutorRequests.cancelledAt,
       paymentStatus: tutorRequests.paymentStatus,
       // The day the last payment made the fee Full Paid: when a Confirmed tuition became Closed.
@@ -4267,9 +4273,10 @@ export async function listTutorJobInterestsForTutor(tutorId: string) {
       requestId: tutorJobs.tutorRequestId,
       // Appointed and Confirmed are the same interest status; only the request
       // knows which, so a Tutor cannot be shown their own stage without it.
-      appointmentConfirmedAt: tutorRequests.appointmentConfirmedAt,
+      appointmentConfirmedAt: sql<Date | null>`COALESCE(${tutorJobInterests.appointmentConfirmedAt}, CASE WHEN ${tutorRequests.tutorId} = ${tutorId} THEN ${tutorRequests.appointmentConfirmedAt} ELSE NULL END)`,
       // A cancelled tuition ends every application on it, whatever the interest says.
       tuitionCancelled: sql<number>`(${tutorRequests.status} = 'closed' or ${tutorRequests.publicationState} = 'closed')`,
+      wasAppointed: sql<boolean>`(${tutorJobInterests.appointedAt} IS NOT NULL OR ${tutorJobInterests.appointmentConfirmedAt} IS NOT NULL OR (${tutorRequests.tutorId} = ${tutorId} AND ${tutorRequests.appointedAt} IS NOT NULL))`,
     })
     .from(tutorJobInterests)
     .innerJoin(tutorJobs, eq(tutorJobInterests.tutorJobId, tutorJobs.id))
@@ -9518,7 +9525,7 @@ export async function appointApplicantByAdmin(input: { adminUserId: number; inte
       .set({ tutorId: target.tutorId, status: "matched", contactConsent: "approved", appointedAt: now, lastActivityAt: now })
       .where(eq(tutorRequests.id, request.id));
     await tx.update(tutorJobInterests)
-      .set({ status: "matched", appointmentRequestedAt: null, ...tutorInterestStageStamps("matched") })
+      .set({ status: "matched", appointedAt: now, appointmentRequestedAt: null, ...tutorInterestStageStamps("matched") })
       .where(eq(tutorJobInterests.id, target.interestId));
     // The appointment answers every request still waiting on this tuition.
     await tx.update(tutorJobInterests)

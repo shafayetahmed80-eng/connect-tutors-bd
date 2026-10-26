@@ -123,34 +123,58 @@ export function TutorApplicationStatus() {
   const columns: RecordColumn<ApplicationRow>[] = [
     {
       key: "jobId", label: "Job ID", place: "head",
-      cell: application => (
-        <div className="flex flex-col items-start gap-1">
-          <JobIdTag bare className="text-2xs" jobId={application.publicJobId} />
-          <button
-            type="button"
-            onClick={() => setSelectedTimelineApp(application)}
-            aria-label={`View timeline for ${application.publicJobId}`}
-            className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-1.5 py-0.5 text-2xs font-bold text-j-accent hover:bg-sky-100 transition-colors"
-          >
-            <Clock size={10} aria-hidden="true" />
-            Timeline
-          </button>
-        </div>
-      ),
-      cardCell: application => (
-        <div className="flex items-center gap-2">
-          <JobIdTag className="text-xs" jobId={application.publicJobId} />
-          <button
-            type="button"
-            onClick={() => setSelectedTimelineApp(application)}
-            aria-label={`View timeline for ${application.publicJobId}`}
-            className="inline-flex items-center gap-1 rounded-lg bg-sky-50 px-2 py-0.5 text-2xs font-bold text-j-accent hover:bg-sky-100 transition-colors"
-          >
-            <Clock size={11} aria-hidden="true" />
-            Timeline
-          </button>
-        </div>
-      ),
+      cell: application => {
+        const isClosedOrEnded = Boolean(application.tuitionCancelled || application.status === "declined" || application.status === "withdrawn");
+        const hadAppointment = Boolean(application.appointedAt || application.appointmentConfirmedAt || application.status === "matched" || application.wasAppointed);
+        const showUnappointedNotice = !hadAppointment && isClosedOrEnded;
+
+        return (
+          <div className="flex flex-col items-start gap-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <JobIdTag bare className="text-2xs" jobId={application.publicJobId} />
+              {showUnappointedNotice && (
+                <span className="inline-flex items-center rounded px-1.5 py-0.5 text-3xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                  {application.status === "declined" ? "Not Selected" : application.status === "withdrawn" ? "Withdrawn" : "Closed"}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedTimelineApp(application)}
+              aria-label={`View timeline for ${application.publicJobId}`}
+              className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-1.5 py-0.5 text-2xs font-bold text-j-accent hover:bg-sky-100 transition-colors"
+            >
+              <Clock size={10} aria-hidden="true" />
+              Timeline
+            </button>
+          </div>
+        );
+      },
+      cardCell: application => {
+        const isClosedOrEnded = Boolean(application.tuitionCancelled || application.status === "declined" || application.status === "withdrawn");
+        const hadAppointment = Boolean(application.appointedAt || application.appointmentConfirmedAt || application.status === "matched" || application.wasAppointed);
+        const showUnappointedNotice = !hadAppointment && isClosedOrEnded;
+
+        return (
+          <div className="flex items-center gap-2 flex-wrap">
+            <JobIdTag className="text-xs" jobId={application.publicJobId} />
+            {showUnappointedNotice && (
+              <span className="inline-flex items-center rounded-md px-1.5 py-0.5 text-3xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                {application.status === "declined" ? "Not Selected" : application.status === "withdrawn" ? "Withdrawn" : "Closed"}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setSelectedTimelineApp(application)}
+              aria-label={`View timeline for ${application.publicJobId}`}
+              className="inline-flex items-center gap-1 rounded-lg bg-sky-50 px-2 py-0.5 text-2xs font-bold text-j-accent hover:bg-sky-100 transition-colors"
+            >
+              <Clock size={11} aria-hidden="true" />
+              Timeline
+            </button>
+          </div>
+        );
+      },
     },
     { key: "classCourse", label: "Class / Course", cell: application => <span className="font-bold text-j-ink">{application.classCourse}</span> },
     { key: "category", label: "Category", cell: application => <span className="text-j-ink-strong">{application.category}</span> },

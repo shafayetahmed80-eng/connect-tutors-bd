@@ -255,7 +255,7 @@ export function AdminAppliedTutorsContent({ requestId }: { requestId: number }) 
               appointmentConfirmedAt: job?.appointmentConfirmedAt ?? null,
               paymentStatus: job?.paymentStatus ?? null,
               tuitionCancelled: tuitionStage === "cancelled",
-            }),
+            }, { adminView: true }),
           }))}
           caption="Tutors who applied to this tuition"
           emptyLabel={activeFilterCount ? "No applicant matches the active filters." : "No Tutor has applied to this tuition yet."}

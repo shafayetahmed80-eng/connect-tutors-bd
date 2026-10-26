@@ -45,6 +45,8 @@ export type ApplicationTimelineData = {
   paymentCompletedAt?: string | Date | null;
   guardianName?: string | null;
   guardianPhone?: string | null;
+  tuitionCancelled?: boolean | number | null;
+  wasAppointed?: boolean | number | null;
 };
 
 export type TutorApplicationTimelineModalProps = {
@@ -156,7 +158,38 @@ export function TutorApplicationTimelineModal({
   if (!application) return null;
 
   const currentStage = getTutorApplicationStage(application);
-  const stageConfig = STAGE_CONFIG[currentStage] ?? STAGE_CONFIG.applied;
+  const isUnappointedClosed =
+    (currentStage === "applied" || currentStage === "shortlisted") &&
+    Boolean(application.tuitionCancelled || application.status === "declined" || application.status === "withdrawn");
+
+  const stageConfig = useMemo(() => {
+    if (isUnappointedClosed) {
+      const isDeclined = application.status === "declined";
+      const isWithdrawn = application.status === "withdrawn";
+      return {
+        badgeLabel: isDeclined ? "Not Selected" : isWithdrawn ? "Withdrawn" : "Tuition Closed",
+        badgeClass: isDeclined
+          ? "bg-amber-50 text-amber-700 border-amber-200"
+          : isWithdrawn
+          ? "bg-slate-50 text-slate-700 border-slate-200"
+          : "bg-slate-100 text-slate-700 border-slate-300",
+        guidanceTitle: isDeclined
+          ? "Application Not Selected"
+          : isWithdrawn
+          ? "Application Withdrawn"
+          : "Tuition Request Closed",
+        guidanceText: isDeclined
+          ? "এই টিউশনটির জন্য অভিভাবক অন্য শিক্ষক নির্বাচন করেছেন। নতুন টিউশনের জন্য অনুগ্রহ করে নিয়মিত জব বোর্ডে আবেদন করুন।"
+          : isWithdrawn
+          ? "আপনি এই টিউশনের আবেদনটি প্রত্যাহার করে নিয়েছেন।"
+          : "এই টিউশন রিকোয়েস্টটি অভিভাবক বা প্ল্যাটফর্ম কর্তৃক সমাপ্ত বা ক্লোজ করা হয়েছে। নতুন টিউশন পেতে অনুগ্রহ করে নিয়মিত জব বোর্ড পর্যবেক্ষণ করুন।",
+        guidanceIcon: AlertCircle,
+        guidanceBoxClass: "bg-slate-50/80 border-slate-200 text-slate-800",
+      };
+    }
+    return STAGE_CONFIG[currentStage] ?? STAGE_CONFIG.applied;
+  }, [application, currentStage, isUnappointedClosed]);
+
   const GuidanceIcon = stageConfig.guidanceIcon;
 
   const timelineSteps: TimelineStep[] = useMemo(() => {
@@ -187,19 +220,72 @@ export function TutorApplicationTimelineModal({
       if (application.appointedAt) {
         steps.push({
           key: "appointed",
-          title: "Appointed",
-          titleBn: "নিয়োগ দেওয়া হয়েছিল",
+          title: "Appointed for Demo",
+          titleBn: "ডেমোর জন্য অ্যাপয়েন্ট করা হয়েছিল",
           description: "Was appointed for trial / demo class.",
           timestamp: application.appointedAt,
           status: "completed",
         });
       }
 
+      if (application.appointmentConfirmedAt) {
+        steps.push({
+          key: "confirmed",
+          title: "Appointment Confirmed",
+          titleBn: "চূড়ান্ত নিয়োগ নিশ্চিত হয়েছিল",
+          description: "Guardian and admin confirmed ongoing regular tuition.",
+          timestamp: application.appointmentConfirmedAt,
+          status: "completed",
+        });
+      }
+
       steps.push({
         key: "cancelled",
-        title: "Cancelled / Ended",
-        titleBn: "বাতিল বা সমাপ্ত",
-        description: "Application or tuition was withdrawn or cancelled.",
+        title: "Cancelled / Removed",
+        titleBn: "বাতিল বা অব্যাহতি",
+        description: "Application or tuition was cancelled or withdrawn.",
+        timestamp: application.endedAt ?? application.tuitionCancelledAt ?? null,
+        status: "cancelled",
+      });
+
+      return steps;
+    }
+
+    if (isUnappointedClosed) {
+      const steps: TimelineStep[] = [
+        {
+          key: "applied",
+          title: "Application Submitted",
+          titleBn: "আবেদন জমা হয়েছে",
+          description: "Your application was registered in Connect Tutors system.",
+          timestamp: application.createdAt,
+          status: "completed",
+        },
+      ];
+
+      if (application.shortlistedAt) {
+        steps.push({
+          key: "shortlisted",
+          title: "Shortlisted",
+          titleBn: "প্রাথমিক বাছাই (Shortlisted)",
+          description: "Profile reviewed and shortlisted by academic coordinator.",
+          timestamp: application.shortlistedAt,
+          status: "completed",
+        });
+      }
+
+      const isDeclined = application.status === "declined";
+      const isWithdrawn = application.status === "withdrawn";
+
+      steps.push({
+        key: "closed_not_selected",
+        title: isDeclined ? "Not Selected" : isWithdrawn ? "Application Withdrawn" : "Tuition Closed",
+        titleBn: isDeclined ? "অন্য টিউটর নির্বাচিত" : isWithdrawn ? "আবেদন প্রত্যাহারকৃত" : "টিউশন সমাপ্ত",
+        description: isDeclined
+          ? "Another candidate was chosen for this tuition."
+          : isWithdrawn
+          ? "You withdrew your application for this tuition."
+          : "This tuition request was closed by the guardian or platform.",
         timestamp: application.endedAt ?? application.tuitionCancelledAt ?? null,
         status: "cancelled",
       });
@@ -262,7 +348,7 @@ export function TutorApplicationTimelineModal({
         status: getStepStatus("closed", isClosedPast),
       },
     ];
-  }, [application, currentStage]);
+  }, [application, currentStage, isUnappointedClosed]);
 
   const hasGuardianContact = stageShowsGuardianContact(currentStage) && Boolean(application.guardianPhone || application.guardianName);
 
@@ -376,16 +462,21 @@ export function TutorApplicationTimelineModal({
                   <div className="min-w-0 flex-1 pt-0.5 sm:pt-1">
                     <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
                       <div className="flex items-center gap-2">
-                        <span
-                          className={cn(
-                            "font-heading text-sm font-bold tracking-tight",
-                            isCurrent && "text-sky-700 font-extrabold",
-                            isCompleted && "text-slate-800",
-                            isCancelled && "text-rose-700",
-                            isUpcoming && "text-slate-400"
-                          )}
-                        >
-                          {step.title}
+                        <span className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={cn(
+                              "font-heading text-sm font-bold tracking-tight",
+                              isCurrent && "text-sky-700 font-extrabold",
+                              isCompleted && "text-slate-800",
+                              isCancelled && "text-rose-700",
+                              isUpcoming && "text-slate-400"
+                            )}
+                          >
+                            {step.title}
+                          </span>
+                          <span className="text-2xs font-normal text-slate-500 font-sans">
+                            ({step.titleBn})
+                          </span>
                         </span>
                         {isCurrent && (
                           <span className="inline-flex items-center rounded-full bg-sky-100 px-2 py-0.5 text-3xs font-black uppercase tracking-wide text-sky-800">
