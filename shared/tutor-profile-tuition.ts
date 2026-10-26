@@ -1,3 +1,5 @@
+import { calculateAgeInYears } from "./tutor-personal-details";
+
 /**
  * A Tutor who offers only online tuition has no place to teach in, so Teaching
  * Areas is theirs to leave empty. Anyone who offers anything else, alone or
@@ -85,4 +87,106 @@ export function validateTuitionFees(
   }
 
   return result;
+}
+
+/**
+ * Validates teaching experience years and cross-validates against tutor's age.
+ * In Bangladesh, student tuition typically commences after Class 9/10 (around age 15).
+ * Enforces that teaching experience cannot exceed (age - 15) when age is known.
+ */
+export function validateTeachingExperience(
+  years: number | string | null | undefined,
+  dateOfBirth?: string | null,
+): string | null {
+  if (years === null || years === undefined || years === "") return null;
+  const num = typeof years === "number" ? years : Number(years);
+  if (!Number.isInteger(num) || num < 0 || num > 60) {
+    return "Enter teaching experience between 0 and 60 years.";
+  }
+
+  if (dateOfBirth) {
+    const age = calculateAgeInYears(dateOfBirth);
+    if (age !== null) {
+      const maxRealistic = Math.max(0, age - 15);
+      if (num > maxRealistic) {
+        return `At age ${age}, teaching experience cannot exceed ${maxRealistic} years (tuition experience typically starts from age 15).`;
+      }
+    }
+  }
+
+  return null;
+}
+
+export const DUMMY_EXPERTISE_TOKENS = new Set([
+  "test",
+  "demo",
+  "asdf",
+  "qwerty",
+  "testing",
+  "sample",
+  "blah",
+  "na",
+  "nil",
+  "none",
+  "nothing",
+  "null",
+  "undefined",
+  "fake",
+  "xxx",
+  "xyz",
+]);
+
+/**
+ * Validates free-form teaching expertise fields (Prior Teaching Experience,
+ * Special Expertise, Academic Achievement).
+ */
+export function validateTeachingExpertiseText(
+  text: string | null | undefined,
+  fieldLabel: string,
+): string | null {
+  if (!text) return null;
+  const trimmed = text.trim();
+  if (trimmed.length === 0) return null;
+
+  const normalized = trimmed.toLowerCase().replace(/n\/a/g, "na");
+
+  if (trimmed.length < 10) {
+    return `Provide meaningful details about your ${fieldLabel.toLowerCase()} (at least 10 characters).`;
+  }
+
+  // Repeated single characters (e.g. "aaaaaaaaaa" or "............")
+  const strippedNonSpace = normalized.replace(/\s+/g, "");
+  if (strippedNonSpace.length > 5 && /^(.)\1+$/.test(strippedNonSpace)) {
+    return `Provide meaningful details about your ${fieldLabel.toLowerCase()} rather than repetitive or placeholder text.`;
+  }
+  if (/(.)\1{6,}/.test(normalized)) {
+    return `Provide meaningful details about your ${fieldLabel.toLowerCase()} rather than repetitive or placeholder text.`;
+  }
+
+  // Tokenize into words
+  const tokens = normalized
+    .split(/[\s,·\-|/.;:!?()[\]{}"'\n\r\t]+/)
+    .map(t => t.trim())
+    .filter(t => t.length > 0);
+
+  if (tokens.length === 0) {
+    return `Provide meaningful details about your ${fieldLabel.toLowerCase()} rather than repetitive or placeholder text.`;
+  }
+
+  // Repetitive word loops
+  const uniqueTokens = new Set(tokens);
+  if (tokens.length >= 3 && uniqueTokens.size === 1) {
+    return `Provide meaningful details about your ${fieldLabel.toLowerCase()} rather than repetitive or placeholder text.`;
+  }
+  if (tokens.length >= 4 && uniqueTokens.size <= 2) {
+    return `Provide meaningful details about your ${fieldLabel.toLowerCase()} rather than repetitive or placeholder text.`;
+  }
+
+  // Dummy placeholder tokens
+  const nonDummyTokens = tokens.filter(t => !DUMMY_EXPERTISE_TOKENS.has(t));
+  if (nonDummyTokens.length === 0) {
+    return `Provide meaningful details about your ${fieldLabel.toLowerCase()} rather than repetitive or placeholder text.`;
+  }
+
+  return null;
 }

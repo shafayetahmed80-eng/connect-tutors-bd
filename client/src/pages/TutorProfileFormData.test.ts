@@ -432,6 +432,33 @@ describe("Tutor Profile form hydration", () => {
       whyChooseMe: "test test test test test test test test test test",
     }, undefined, limits);
     expect(dummyWhy).toHaveProperty("whyChooseMe", "Highlight your key strengths, dedication, and why guardians/students should choose you.");
+
+    // Unrealistic experience vs age
+    const now = new Date();
+    const currentYear = now.getUTCFullYear();
+    const dob19 = `${currentYear - 19}-01-01`;
+    const expErrors = getTutorProfileSubmissionErrors({
+      ...state,
+      dateOfBirth: dob19,
+      teachingExperienceYears: "10",
+    }, undefined, limits);
+    expect(expErrors).toHaveProperty("teachingExperienceYears", "At age 19, teaching experience cannot exceed 4 years (tuition experience typically starts from age 15).");
+
+    // Dummy institute in education records
+    const dummyEduErrors = getTutorProfileSubmissionErrors({
+      ...state,
+      educationRecords: [
+        { ...emptyEducationRecord(), qualificationLevel: "SSC", instituteName: "none", degreeExamTitle: "SSC", majorGroup: "Science", curriculum: "Bangla Version" as const, passingYear: "2018" },
+      ],
+    }, undefined, limits);
+    expect(dummyEduErrors).toHaveProperty("educationRecords", "Enter a genuine institute name rather than placeholder text.");
+
+    // Dummy prior teaching experience
+    const dummyExpErrors = getTutorProfileSubmissionErrors({
+      ...state,
+      priorTeachingExperience: "test test test demo demo demo",
+    } as any, undefined, limits);
+    expect(dummyExpErrors).toHaveProperty("priorTeachingExperience", "Provide meaningful details about your prior teaching experience rather than repetitive or placeholder text.");
   });
 
   it("enforces dynamic minimum and maximum age requirements on dateOfBirth", () => {

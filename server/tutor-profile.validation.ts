@@ -9,11 +9,13 @@ import {
   qualificationCurricula,
   qualificationEducationLevels,
   validateEducationTimelineSequence,
-  validateResultGpa } from "@shared/tutor-education";
+  validateResultGpa,
+  validateEducationTextField,
+  validateEducationExamNumber } from "@shared/tutor-education";
 import { defaultTutorProfileFieldConfig, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import { tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation, validateHeadline } from "@shared/tutor-personal-details";
 import { validateIntroductionQuality } from "@shared/tutor-introduction";
-import { offersOnlineTuitionOnly, validateTuitionFees } from "@shared/tutor-profile-tuition";
+import { offersOnlineTuitionOnly, validateTuitionFees, validateTeachingExperience, validateTeachingExpertiseText } from "@shared/tutor-profile-tuition";
 import { findDuplicateTutorPhoneErrors } from "@shared/phone";
 
 const bangladeshPhoneSchema = z
@@ -167,6 +169,26 @@ const educationRecordSchema = z.object({
       });
     }
   }
+  if (value.instituteName) {
+    const err = validateEducationTextField(value.instituteName, "Institute Name");
+    if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["instituteName"], message: err });
+  }
+  if (value.degreeExamTitle) {
+    const err = validateEducationTextField(value.degreeExamTitle, "Degree / Exam Title");
+    if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["degreeExamTitle"], message: err });
+  }
+  if (value.majorGroup) {
+    const err = validateEducationTextField(value.majorGroup, "Major / Group");
+    if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["majorGroup"], message: err });
+  }
+  if (value.rollNumber) {
+    const err = validateEducationExamNumber(value.rollNumber, "Roll Number");
+    if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["rollNumber"], message: err });
+  }
+  if (value.registrationNumber) {
+    const err = validateEducationExamNumber(value.registrationNumber, "Registration Number");
+    if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["registrationNumber"], message: err });
+  }
 
   // A board exam has no span to check and no ongoing state: SSC and HSC are
   // passed in one year, so the university rule below would be asking a school
@@ -208,7 +230,12 @@ const profileShape = {
   universityId: positiveIdSchema.optional(),
   facultyDepartmentId: positiveIdSchema.optional(),
   degreeMajorId: positiveIdSchema.optional(),
-  degreeExamTitle: optionalTrimmedText(160),
+  degreeExamTitle: optionalTrimmedText(160).superRefine((val, ctx) => {
+    if (val) {
+      const err = validateEducationTextField(val, "Degree / Exam Title");
+      if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, message: err });
+    }
+  }),
   resultGpa: optionalTrimmedText(80).superRefine((val, ctx) => {
     if (val) {
       const gpaIssue = validateResultGpa(val, "Honours");
@@ -228,10 +255,25 @@ const profileShape = {
   classLevelIds: optionalUniqueIdList(20),
   curriculumIds: optionalUniqueIdList(8),
   teachingExperienceYears: z.number().int().min(0).max(60).optional(),
-  priorTeachingExperience: optionalTrimmedText(2000),
-  specialExpertise: optionalTrimmedText(500),
+  priorTeachingExperience: optionalTrimmedText(2000).superRefine((val, ctx) => {
+    if (val) {
+      const err = validateTeachingExpertiseText(val, "Prior Teaching Experience");
+      if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, message: err });
+    }
+  }),
+  specialExpertise: optionalTrimmedText(500).superRefine((val, ctx) => {
+    if (val) {
+      const err = validateTeachingExpertiseText(val, "Special Expertise");
+      if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, message: err });
+    }
+  }),
   studentTypeIds: optionalUniqueIdList(8),
-  academicAchievement: optionalTrimmedText(1000),
+  academicAchievement: optionalTrimmedText(1000).superRefine((val, ctx) => {
+    if (val) {
+      const err = validateTeachingExpertiseText(val, "Academic Achievement");
+      if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, message: err });
+    }
+  }),
 
   tuitionTypes: uniqueEnumList(["home", "online", "group", "package"], 4).optional(),
   preferredStudentGender: z.enum(["male", "female", "both"]).optional(),
@@ -370,6 +412,16 @@ function addCrossFieldIssues(
         code: z.ZodIssueCode.custom,
         path: ["privateDetails", "emergencyContactName"],
         message: err,
+      });
+    }
+  }
+  if (value.teachingExperienceYears !== undefined && value.dateOfBirth) {
+    const expErr = validateTeachingExperience(value.teachingExperienceYears, value.dateOfBirth);
+    if (expErr) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["teachingExperienceYears"],
+        message: expErr,
       });
     }
   }

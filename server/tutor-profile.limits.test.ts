@@ -124,4 +124,21 @@ describe("the Owner's Tutor limits reach a profile save", () => {
       whyChooseMe: "test test test test test test test test test test",
     })).toThrow(TRPCError);
   });
+
+  it("cross-validates teaching experience against tutor's age", () => {
+    const limits = defaultSiteLimits();
+    const now = new Date();
+    const currentYear = now.getUTCFullYear();
+    const dob19 = `${currentYear - 19}-01-01`;
+
+    expect(() => assertTutorProfileDraftWithinLimits(limits, {
+      dateOfBirth: dob19,
+      teachingExperienceYears: 4,
+    })).not.toThrow();
+
+    expect(() => assertTutorProfileDraftWithinLimits(limits, {
+      dateOfBirth: dob19,
+      teachingExperienceYears: 10,
+    })).toThrow(TRPCError);
+  });
 });

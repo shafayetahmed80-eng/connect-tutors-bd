@@ -893,4 +893,51 @@ it("rejects feeMin below 1,000 BDT to avoid per-class rate confusion", () => {
       expect(parsedWhy.error.issues.some(i => i.path.includes("whyChooseMe"))).toBe(true);
     }
   });
+
+  it("rejects dummy text in education institute, degree, and roll number", () => {
+    const dummyEdu = {
+      ...approvedExpandedSubmission,
+      degreeExamTitle: "none",
+      educationRecords: [
+        { ...approvedExpandedSubmission.educationRecords[0], instituteName: ".." },
+        { ...approvedExpandedSubmission.educationRecords[1], rollNumber: "000000" },
+      ],
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(dummyEdu);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues.some(i => i.path.includes("degreeExamTitle"))).toBe(true);
+      expect(parsed.error.issues.some(i => i.message.includes("institute name"))).toBe(true);
+      expect(parsed.error.issues.some(i => i.message.includes("roll number"))).toBe(true);
+    }
+  });
+
+  it("rejects unrealistic teaching experience relative to tutor age", () => {
+    const now = new Date();
+    const currentYear = now.getUTCFullYear();
+    const unrealisticExp = {
+      ...approvedExpandedSubmission,
+      dateOfBirth: `${currentYear - 19}-01-01`,
+      teachingExperienceYears: 10,
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(unrealisticExp);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues.some(i => i.path.includes("teachingExperienceYears") && i.message.includes("cannot exceed 4 years"))).toBe(true);
+    }
+  });
+
+  it("rejects repetitive or placeholder text in priorTeachingExperience and specialExpertise", () => {
+    const invalidExpertise = {
+      ...approvedExpandedSubmission,
+      priorTeachingExperience: "tutor tutor tutor tutor tutor tutor",
+      specialExpertise: "test test test demo demo demo",
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(invalidExpertise);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues.some(i => i.path.includes("priorTeachingExperience"))).toBe(true);
+      expect(parsed.error.issues.some(i => i.path.includes("specialExpertise"))).toBe(true);
+    }
+  });
 });
