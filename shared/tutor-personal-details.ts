@@ -202,3 +202,148 @@ export function validateHeadline(headline: string | null | undefined): string | 
 
   return null;
 }
+
+export const MIN_PARENT_NAME_LENGTH = 3;
+
+const DUMMY_PARENT_TOKENS: ReadonlySet<string> = new Set([
+  "test", "demo", "asdf", "qwerty", "na", "n/a", "nil", "none", "nothing", "null", "undefined",
+  "father", "mother", "baba", "ma", "বাবা", "মা", "পিতা", "মাতা", "নাই", "নেই", "না", "unknown", "abc"
+]);
+
+/**
+ * Validates father's or mother's name quality and authenticity.
+ * Prevents dummy placeholders ("None", "N/A"), role names ("Father", "Mother"), single characters, or repetitive words.
+ */
+export function validateParentName(name: string | null | undefined, relation: "father" | "mother"): string | null {
+  if (name === null || name === undefined) return null;
+  const trimmed = name.trim();
+  if (trimmed.length === 0) return null;
+
+  const label = relation === "father" ? "father's name" : "mother's name";
+
+  if (trimmed.length < MIN_PARENT_NAME_LENGTH) {
+    return `Enter a valid ${label} (at least ${MIN_PARENT_NAME_LENGTH} characters).`;
+  }
+
+  // Check if string is composed of a single repeated character (e.g. "aaaaaa", "------")
+  if (REPETITIVE_CHAR_REGEX.test(trimmed.replace(/\s+/g, ""))) {
+    return `Enter a genuine ${label} rather than placeholder text.`;
+  }
+
+  const normalized = trimmed.toLowerCase().replace(/n\/a/g, "na");
+  const tokens = normalized.split(/[\s,·\-|/.]+/).filter(t => t.length > 0);
+
+  if (tokens.length === 0) {
+    return `Enter a genuine ${label} rather than placeholder text.`;
+  }
+
+  // Check if all tokens are single characters (e.g. "a b c")
+  const substantialTokens = tokens.filter(t => t.length > 1);
+  if (substantialTokens.length === 0) {
+    return `Enter a genuine ${label}.`;
+  }
+
+  // Check if all tokens are identical (e.g. "karim karim")
+  const uniqueTokens = new Set(tokens);
+  if (uniqueTokens.size === 1 && tokens.length > 1) {
+    return `Enter a genuine ${label} rather than repetitive words.`;
+  }
+
+  // Check if all tokens are dummy words
+  const nonDummyTokens = tokens.filter(t => !DUMMY_PARENT_TOKENS.has(t));
+  if (nonDummyTokens.length === 0) {
+    return `Enter a genuine ${label} rather than placeholder text.`;
+  }
+
+  return null;
+}
+
+const DUMMY_SOCIAL_TOKENS: ReadonlySet<string> = new Set([
+  "none", "na", "n/a", "nil", "no", "nothing", "null", "undefined", "test", "demo", "asdf", "qwerty", "নাই", "নেই"
+]);
+
+const SOCIAL_DOMAINS: ReadonlySet<string> = new Set([
+  "facebook.com", "fb.com", "fb.me", "linkedin.com", "github.com",
+  "twitter.com", "x.com", "instagram.com", "instagr.am", "youtube.com", "youtu.be", "t.me"
+]);
+
+/**
+ * Validates social profile links for genuine URL format and prevents placeholder text.
+ */
+export function validateSocialProfileLinks(links: string | null | undefined): string | null {
+  if (links === null || links === undefined) return null;
+  const trimmed = links.trim();
+  if (trimmed.length === 0) return null;
+
+  const lower = trimmed.toLowerCase();
+  if (DUMMY_SOCIAL_TOKENS.has(lower)) {
+    return "Enter a valid social profile link (e.g. https://facebook.com/username or https://linkedin.com/in/username).";
+  }
+
+  const entries = trimmed.split(/[\s,\n\r;]+/).filter(e => e.length > 0);
+  if (entries.length === 0) {
+    return "Enter a valid social profile link (e.g. https://facebook.com/username or https://linkedin.com/in/username).";
+  }
+
+  const genericUrlPattern = /^(https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(\/[^\s]*)?$/i;
+
+  for (const entry of entries) {
+    const entryLower = entry.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "");
+    const domainPart = entryLower.split("/")[0];
+
+    const hasKnownDomain = Array.from(SOCIAL_DOMAINS).some(domain => domainPart === domain || domainPart.endsWith("." + domain));
+    const isValidUrl = genericUrlPattern.test(entry);
+
+    if (!hasKnownDomain && !isValidUrl) {
+      return "Enter a valid social profile link (e.g. https://facebook.com/username or https://linkedin.com/in/username).";
+    }
+  }
+
+  return null;
+}
+
+export const MIN_EMERGENCY_CONTACT_ADDRESS_LENGTH = 10;
+
+const DUMMY_EMERGENCY_ADDRESS_WORDS: ReadonlySet<string> = new Set([
+  "same", "as", "above", "none", "na", "n/a", "nil", "nothing", "null", "undefined", "test", "demo", "asdf", "একই", "নাই", "নেই"
+]);
+
+/**
+ * Validates emergency contact address quality and specificity.
+ * Prevents shortcuts ("same as above", "none", "na") or short vague addresses < 10 chars.
+ */
+export function validateEmergencyContactAddress(address: string | null | undefined): string | null {
+  if (address === null || address === undefined) return null;
+  const trimmed = address.trim();
+  if (trimmed.length === 0) return null;
+
+  if (trimmed.length < MIN_EMERGENCY_CONTACT_ADDRESS_LENGTH) {
+    return `Enter detailed emergency contact address (at least ${MIN_EMERGENCY_CONTACT_ADDRESS_LENGTH} characters including House/Village, Road/Thana, Area).`;
+  }
+
+  // Check repetitive single character
+  if (REPETITIVE_CHAR_REGEX.test(trimmed.replace(/\s+/g, ""))) {
+    return "Enter a detailed emergency contact address rather than placeholder text.";
+  }
+
+  const normalized = trimmed.toLowerCase().replace(/n\/a/g, "na");
+  const tokens = normalized.split(/[\s,·\-|/.]+/).filter(t => t.length > 0);
+
+  if (tokens.length === 0) {
+    return "Enter a detailed emergency contact address rather than placeholder text.";
+  }
+
+  // Check if all tokens are single characters
+  const substantialTokens = tokens.filter(t => t.length > 1);
+  if (substantialTokens.length === 0) {
+    return "Enter a detailed emergency contact address rather than placeholder text.";
+  }
+
+  // Check if all tokens are dummy/vague words
+  const nonDummyTokens = tokens.filter(t => !DUMMY_EMERGENCY_ADDRESS_WORDS.has(t));
+  if (nonDummyTokens.length === 0) {
+    return "Enter a detailed emergency contact address rather than placeholder text.";
+  }
+
+  return null;
+}
