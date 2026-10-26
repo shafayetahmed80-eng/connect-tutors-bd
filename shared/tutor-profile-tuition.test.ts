@@ -4,6 +4,8 @@ import {
   MAX_MONTHLY_TUITION_FEE,
   offersOnlineTuitionOnly,
   validateTuitionFees,
+  validateTeachingExperience,
+  validateTeachingExpertiseText,
 } from "./tutor-profile-tuition";
 
 describe("offersOnlineTuitionOnly", () => {
@@ -83,5 +85,82 @@ describe("validateTuitionFees", () => {
     const trimmed = validateTuitionFees("  5000  ", "  7000  ");
     expect(trimmed.feeMinError).toBeUndefined();
     expect(trimmed.feeMaxError).toBeUndefined();
+  });
+});
+
+describe("validateTeachingExperience", () => {
+  it("allows empty or null inputs", () => {
+    expect(validateTeachingExperience(null)).toBeNull();
+    expect(validateTeachingExperience(undefined)).toBeNull();
+    expect(validateTeachingExperience("")).toBeNull();
+  });
+
+  it("rejects non-numeric or out of range experience", () => {
+    expect(validateTeachingExperience("xyz")).toBe("Enter teaching experience between 0 and 60 years.");
+    expect(validateTeachingExperience(-1)).toBe("Enter teaching experience between 0 and 60 years.");
+    expect(validateTeachingExperience(65)).toBe("Enter teaching experience between 0 and 60 years.");
+  });
+
+  it("accepts realistic experience without DOB", () => {
+    expect(validateTeachingExperience(5)).toBeNull();
+    expect(validateTeachingExperience("3")).toBeNull();
+  });
+
+  it("cross-validates experience against tutor's age", () => {
+    const now = new Date();
+    const currentYear = now.getUTCFullYear();
+    // 19-year-old tutor
+    const dob19 = `${currentYear - 19}-01-01`;
+
+    // 4 years is realistic (19 - 15 = 4)
+    expect(validateTeachingExperience(4, dob19)).toBeNull();
+
+    // 10 years is unrealistic
+    const err = validateTeachingExperience(10, dob19);
+    expect(err).toBe("At age 19, teaching experience cannot exceed 4 years (tuition experience typically starts from age 15).");
+
+    // 25-year-old tutor: up to 10 years is realistic
+    const dob25 = `${currentYear - 25}-01-01`;
+    expect(validateTeachingExperience(10, dob25)).toBeNull();
+    expect(validateTeachingExperience(15, dob25)).toContain("At age 25, teaching experience cannot exceed 10 years");
+  });
+});
+
+describe("validateTeachingExpertiseText", () => {
+  it("allows null or empty strings", () => {
+    expect(validateTeachingExpertiseText(null, "Prior Teaching Experience")).toBeNull();
+    expect(validateTeachingExpertiseText("", "Prior Teaching Experience")).toBeNull();
+  });
+
+  it("accepts valid, descriptive text", () => {
+    const valid = "Taught SSC Physics and Higher Math at Mastermind Coaching for 3 years.";
+    expect(validateTeachingExpertiseText(valid, "Prior Teaching Experience")).toBeNull();
+  });
+
+  it("rejects text shorter than 10 characters", () => {
+    expect(validateTeachingExpertiseText("Math", "Special Expertise")).toBe(
+      "Provide meaningful details about your special expertise (at least 10 characters).",
+    );
+  });
+
+  it("rejects single repeated characters", () => {
+    expect(validateTeachingExpertiseText("aaaaaaaaaaaaaaaaaaaa", "Special Expertise")).toBe(
+      "Provide meaningful details about your special expertise rather than repetitive or placeholder text.",
+    );
+  });
+
+  it("rejects repeated word loops", () => {
+    expect(validateTeachingExpertiseText("physics physics physics physics physics", "Special Expertise")).toBe(
+      "Provide meaningful details about your special expertise rather than repetitive or placeholder text.",
+    );
+  });
+
+  it("rejects dummy placeholder text", () => {
+    expect(validateTeachingExpertiseText("test test test demo demo demo asdf", "Academic Achievement")).toBe(
+      "Provide meaningful details about your academic achievement rather than repetitive or placeholder text.",
+    );
+    expect(validateTeachingExpertiseText("N/A N/A N/A N/A N/A", "Academic Achievement")).toBe(
+      "Provide meaningful details about your academic achievement rather than repetitive or placeholder text.",
+    );
   });
 });

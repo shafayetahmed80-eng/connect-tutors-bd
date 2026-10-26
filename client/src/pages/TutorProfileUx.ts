@@ -1,10 +1,10 @@
-import { educationSectionStatus, validateEducationTimelineSequence, validateResultGpa } from "@shared/tutor-education";
+import { educationSectionStatus, validateEducationTimelineSequence, validateResultGpa, validateEducationTextField, validateEducationExamNumber } from "@shared/tutor-education";
 import { findDuplicateTutorPhoneErrors } from "@shared/phone";
 import { validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation, validateHeadline } from "@shared/tutor-personal-details";
 import { validateIntroductionField } from "@shared/tutor-introduction";
 import { findTutorProfileFieldMeta, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import type { SiteLimitValues } from "@shared/site-limits";
-import { offersOnlineTuitionOnly, validateTuitionFees } from "@shared/tutor-profile-tuition";
+import { offersOnlineTuitionOnly, validateTuitionFees, validateTeachingExperience, validateTeachingExpertiseText } from "@shared/tutor-profile-tuition";
 import { calculateAgeInYears } from "@shared/tutor-personal-details";
 import type { TutorProfileFormState } from "./TutorProfileFormData";
 
@@ -58,6 +58,9 @@ export type TutorProfileSubmissionPreview = TutorProfileFormState & {
   curriculumIds: string[];
   teachingExperienceYears: string;
   studentTypeIds: string[];
+  priorTeachingExperience?: string;
+  specialExpertise?: string;
+  academicAchievement?: string;
 };
 
 export type TutorProfileSubmissionErrorKey =
@@ -70,7 +73,10 @@ export type TutorProfileSubmissionErrorKey =
   | "privateDetails.fatherPhone"
   | "privateDetails.motherPhone"
   | "privateDetails.emergencyContactPhone"
-  | "privateDetails.additionalPhone";
+  | "privateDetails.additionalPhone"
+  | "priorTeachingExperience"
+  | "specialExpertise"
+  | "academicAchievement";
 export type TutorProfileSubmissionErrors = Partial<Record<TutorProfileSubmissionErrorKey, string>>;
 
 export type TutorProfileCompletionSummary = {
@@ -119,6 +125,9 @@ const completionFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, stri
   aboutMe: tutorProfileCopy.fields.aboutMe,
   teachingApproach: tutorProfileCopy.fields.teachingApproach,
   whyChooseMe: tutorProfileCopy.fields.whyChooseMe,
+  priorTeachingExperience: "Prior Teaching Experience",
+  specialExpertise: "Special Expertise",
+  academicAchievement: "Academic Achievement",
 };
 
 /** The registry id behind a submission check, where it is not the check's own key. */
@@ -263,6 +272,11 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
     if (uniGpaError) errors.resultGpa = uniGpaError;
   }
 
+  if (form.degreeExamTitle?.trim()) {
+    const titleErr = validateEducationTextField(form.degreeExamTitle, "Degree / Exam Title");
+    if (titleErr) errors.degreeExamTitle = titleErr;
+  }
+
   for (const record of form.educationRecords ?? []) {
     if (record.resultGpa) {
       const recGpaError = validateResultGpa(record.resultGpa, record.qualificationLevel);
@@ -271,11 +285,51 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
         break;
       }
     }
+    if (record.instituteName?.trim()) {
+      const err = validateEducationTextField(record.instituteName, "Institute Name");
+      if (err) {
+        errors.educationRecords = err;
+        break;
+      }
+    }
+    if (record.degreeExamTitle?.trim()) {
+      const err = validateEducationTextField(record.degreeExamTitle, "Degree / Exam Title");
+      if (err) {
+        errors.educationRecords = err;
+        break;
+      }
+    }
+    if (record.majorGroup?.trim()) {
+      const err = validateEducationTextField(record.majorGroup, "Major / Group");
+      if (err) {
+        errors.educationRecords = err;
+        break;
+      }
+    }
+    if (record.rollNumber?.trim()) {
+      const err = validateEducationExamNumber(record.rollNumber, "Roll Number");
+      if (err) {
+        errors.educationRecords = err;
+        break;
+      }
+    }
+    if (record.registrationNumber?.trim()) {
+      const err = validateEducationExamNumber(record.registrationNumber, "Registration Number");
+      if (err) {
+        errors.educationRecords = err;
+        break;
+      }
+    }
   }
   requiredSelection(errors, "primarySubjectIds", "Select at least one primary subject.", form.primarySubjectIds);
   requiredSelection(errors, "classLevelIds", "Select at least one class or level.", form.classLevelIds);
   requiredSelection(errors, "curriculumIds", "Select at least one curriculum.", form.curriculumIds);
-  if (!/^\d+$/.test(form.teachingExperienceYears) || Number(form.teachingExperienceYears) < 0 || Number(form.teachingExperienceYears) > 60) errors.teachingExperienceYears = "Enter teaching experience between 0 and 60 years.";
+  if (!/^\d+$/.test(form.teachingExperienceYears) || Number(form.teachingExperienceYears) < 0 || Number(form.teachingExperienceYears) > 60) {
+    errors.teachingExperienceYears = "Enter teaching experience between 0 and 60 years.";
+  } else {
+    const expErr = validateTeachingExperience(form.teachingExperienceYears, form.dateOfBirth);
+    if (expErr) errors.teachingExperienceYears = expErr;
+  }
   requiredSelection(errors, "tuitionTypes", "Select at least one tuition type.", form.tuitionTypes);
   if (!form.preferredStudentGender) errors.preferredStudentGender = "Select a preferred student gender.";
   requiredSelection(errors, "preferredTeachingDays", "Select at least one teaching day.", form.preferredTeachingDays);
@@ -310,6 +364,20 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
     if (err) errors.whyChooseMe = err;
   }
 
+  const formAny = form as Record<string, unknown>;
+  if (typeof formAny.priorTeachingExperience === "string" && formAny.priorTeachingExperience.trim()) {
+    const err = validateTeachingExpertiseText(formAny.priorTeachingExperience, "Prior Teaching Experience");
+    if (err) errors.priorTeachingExperience = err;
+  }
+  if (typeof formAny.specialExpertise === "string" && formAny.specialExpertise.trim()) {
+    const err = validateTeachingExpertiseText(formAny.specialExpertise, "Special Expertise");
+    if (err) errors.specialExpertise = err;
+  }
+  if (typeof formAny.academicAchievement === "string" && formAny.academicAchievement.trim()) {
+    const err = validateTeachingExpertiseText(formAny.academicAchievement, "Academic Achievement");
+    if (err) errors.academicAchievement = err;
+  }
+
   if (isDetailRequired(config, "aboutMe") && !form.aboutMe?.trim()) errors.aboutMe = "Write About Me before submitting.";
   if (isDetailRequired(config, "teachingApproach") && !form.teachingApproach?.trim()) errors.teachingApproach = "Write Teaching Approach before submitting.";
   if (isDetailRequired(config, "whyChooseMe") && !form.whyChooseMe?.trim()) errors.whyChooseMe = "Write Why Choose Me before submitting.";
@@ -322,6 +390,10 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
       if (key === "resultGpa" && (form.resultGpa?.trim().length ?? 0) > 0) continue;
       if (key === "educationRecords") continue;
       if ((key as string).startsWith("privateDetails.")) continue;
+      if (key === "priorTeachingExperience" && (form.priorTeachingExperience?.trim().length ?? 0) > 0) continue;
+      if (key === "specialExpertise" && (form.specialExpertise?.trim().length ?? 0) > 0) continue;
+      if (key === "academicAchievement" && (form.academicAchievement?.trim().length ?? 0) > 0) continue;
+      if (key === "teachingExperienceYears" && (form.teachingExperienceYears?.trim().length ?? 0) > 0) continue;
       delete errors[key];
     }
   }

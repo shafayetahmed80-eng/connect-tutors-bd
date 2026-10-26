@@ -1262,6 +1262,39 @@ describe("Permanent Address and the Availability choices", () => {
     expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
   });
 
+  it("blocks saving Teaching Expertise draft when teaching experience is unrealistic for tutor age", async () => {
+    const user = userEvent.setup({ document: window.document });
+    const now = new Date();
+    const currentYear = now.getUTCFullYear();
+    const dob19 = `${currentYear - 19}-01-01`;
+    render(<TutorProfileWorkspace profile={{ ...completeProfile, dateOfBirth: dob19 }} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Tuition/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
+    const dialog = screen.getByRole("dialog");
+    const expInput = within(dialog).getByLabelText(/^Teaching Experience/) as HTMLInputElement;
+    fireEvent.change(expInput, { target: { value: "10" } });
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    expect(within(dialog).getByText(/At age 19, teaching experience cannot exceed 4 years/)).toBeTruthy();
+    expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
+  });
+
+  it("blocks saving Education draft when degree title is dummy text", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Education/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Secondary" }));
+    const dialog = screen.getByRole("dialog");
+    const degreeTitle = within(dialog).getByLabelText(/Degree.+Exam Title/) as HTMLInputElement;
+    fireEvent.change(degreeTitle, { target: { value: "none" } });
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    expect(within(dialog).getByText(/Enter a genuine degree.+exam title rather than placeholder text/)).toBeTruthy();
+    expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
+  });
+
   it("blocks saving Family and emergency contact draft when emergency contact name is self-referencing", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);

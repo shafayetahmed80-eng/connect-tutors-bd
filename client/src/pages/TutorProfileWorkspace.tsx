@@ -3,7 +3,7 @@ import { SearchableMultiSelect, SearchableSingleSelect, type SelectorOption } fr
 import { calculateAgeInYears, tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation, validateHeadline } from "@shared/tutor-personal-details";
 import { validateIntroductionField } from "@shared/tutor-introduction";
 import { isTutorCvDraft } from "@shared/tutor-cv-status";
-import { offersOnlineTuitionOnly, validateTuitionFees } from "@shared/tutor-profile-tuition";
+import { offersOnlineTuitionOnly, validateTuitionFees, validateTeachingExperience, validateTeachingExpertiseText } from "@shared/tutor-profile-tuition";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { clearTutorOnboardingDraft } from "@/lib/tutorOnboarding";
@@ -20,6 +20,8 @@ import {
   schoolSubjectGroups,
   validateEducationTimelineSequence,
   validateResultGpa,
+  validateEducationTextField,
+  validateEducationExamNumber,
 } from "@shared/tutor-education";
 import {
   MAX_TUTOR_DOCUMENT_BYTES,
@@ -1113,6 +1115,10 @@ function TutorProfileWorkspaceBody({
     }
     if (target === "c" || target === "c-university" || target === "c-higher-secondary" || target === "c-secondary") {
       const sectionErrors: TutorProfileSubmissionErrors = {};
+      if (form.degreeExamTitle?.trim()) {
+        const err = validateEducationTextField(form.degreeExamTitle, "Degree / Exam Title");
+        if (err) sectionErrors.degreeExamTitle = err;
+      }
       if (form.resultGpa) {
         const uniGpaError = validateResultGpa(form.resultGpa, "Honours");
         if (uniGpaError) sectionErrors.resultGpa = uniGpaError;
@@ -1122,6 +1128,41 @@ function TutorProfileWorkspaceBody({
           const recGpaError = validateResultGpa(record.resultGpa, record.qualificationLevel);
           if (recGpaError) {
             sectionErrors.educationRecords = recGpaError;
+            break;
+          }
+        }
+        if (record.instituteName?.trim()) {
+          const err = validateEducationTextField(record.instituteName, "Institute Name");
+          if (err) {
+            sectionErrors.educationRecords = err;
+            break;
+          }
+        }
+        if (record.degreeExamTitle?.trim()) {
+          const err = validateEducationTextField(record.degreeExamTitle, "Degree / Exam Title");
+          if (err) {
+            sectionErrors.educationRecords = err;
+            break;
+          }
+        }
+        if (record.majorGroup?.trim()) {
+          const err = validateEducationTextField(record.majorGroup, "Major / Group");
+          if (err) {
+            sectionErrors.educationRecords = err;
+            break;
+          }
+        }
+        if (record.rollNumber?.trim()) {
+          const err = validateEducationExamNumber(record.rollNumber, "Roll Number");
+          if (err) {
+            sectionErrors.educationRecords = err;
+            break;
+          }
+        }
+        if (record.registrationNumber?.trim()) {
+          const err = validateEducationExamNumber(record.registrationNumber, "Registration Number");
+          if (err) {
+            sectionErrors.educationRecords = err;
             break;
           }
         }
@@ -1138,6 +1179,22 @@ function TutorProfileWorkspaceBody({
     }
     if (target === "d" || target === "d-teaching") {
       const sectionErrors: TutorProfileSubmissionErrors = {};
+      if (form.teachingExperienceYears) {
+        const expErr = validateTeachingExperience(form.teachingExperienceYears, form.dateOfBirth);
+        if (expErr) sectionErrors.teachingExperienceYears = expErr;
+      }
+      if (form.priorTeachingExperience?.trim()) {
+        const err = validateTeachingExpertiseText(form.priorTeachingExperience, "Prior Teaching Experience");
+        if (err) sectionErrors.priorTeachingExperience = err;
+      }
+      if (form.specialExpertise?.trim()) {
+        const err = validateTeachingExpertiseText(form.specialExpertise, "Special Expertise");
+        if (err) sectionErrors.specialExpertise = err;
+      }
+      if (form.academicAchievement?.trim()) {
+        const err = validateTeachingExpertiseText(form.academicAchievement, "Academic Achievement");
+        if (err) sectionErrors.academicAchievement = err;
+      }
       const feeErrors = validateTuitionFees(form.feeMin, form.feeMax);
       if (feeErrors.feeMinError) sectionErrors.feeMin = feeErrors.feeMinError;
       if (feeErrors.feeMaxError) sectionErrors.feeMax = feeErrors.feeMaxError;
@@ -1541,10 +1598,13 @@ function TutorProfileWorkspaceBody({
       case "studyStatus": return <label className={tp.fieldRow}><span className={tp.fieldLabel}>{fieldLabel(fieldId, tutorProfileCopy.fields.studyStatus)}{isRequired(fieldId) ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span><select aria-label={fieldLabel(fieldId, tutorProfileCopy.fields.studyStatus)} value={form.studyStatus} onChange={event => update("studyStatus", event.target.value as TeachingProfileState["studyStatus"])} aria-invalid={Boolean(fieldErrors.studyStatus)} aria-required="true" className={`${fieldClassName} ${fieldErrors.studyStatus ? "border-tp-danger" : ""}`}><option value="">Select a status</option><option value="studying">Studying</option><option value="graduated">Graduated</option><option value="professional">Professional</option></select><InlineError message={fieldErrors.studyStatus} /></label>;
       case "universityId": return <CatalogSearchField label={fieldLabel(fieldId, "Institute")} query={universityQuery} onQueryChange={setUniversityQuery} options={universities.data} selectedId={form.universityId} onSelectedIdChange={id => update("universityId", id)} limit={CATALOG_SEARCH_LIMIT} required={isRequired(fieldId)} error={fieldErrors.universityId} />;
       case "facultyDepartmentId": return <CatalogSearchField label={fieldLabel(fieldId, "Department / Subject")} query={departmentQuery} onQueryChange={setDepartmentQuery} options={facultyDepartments.data} selectedId={form.facultyDepartmentId} onSelectedIdChange={id => update("facultyDepartmentId", id)} limit={CATALOG_SEARCH_LIMIT} required={isRequired(fieldId)} error={fieldErrors.facultyDepartmentId} />;
-      case "degreeExamTitle": return <>
-        <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.degreeExamTitle)} showRequiredMarker={isRequired(fieldId)} list={UNIVERSITY_DEGREE_LIST_ID} autoComplete="off" value={form.degreeExamTitle} onChange={event => update("degreeExamTitle", event.target.value)} placeholder="Ex- BSc/MSc" error={fieldErrors.degreeExamTitle} />
-        <datalist id={UNIVERSITY_DEGREE_LIST_ID}>{degreeTitleSuggestions(form.highestEducation).map(title => <option key={title} value={title} />)}</datalist>
-      </>;
+      case "degreeExamTitle": {
+        const degreeError = form.degreeExamTitle ? validateEducationTextField(form.degreeExamTitle, "Degree / Exam Title") : null;
+        return <>
+          <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.degreeExamTitle)} showRequiredMarker={isRequired(fieldId)} list={UNIVERSITY_DEGREE_LIST_ID} autoComplete="off" value={form.degreeExamTitle} onChange={event => update("degreeExamTitle", event.target.value)} placeholder="Ex- BSc/MSc" error={fieldErrors.degreeExamTitle ?? degreeError ?? undefined} />
+          <datalist id={UNIVERSITY_DEGREE_LIST_ID}>{degreeTitleSuggestions(form.highestEducation).map(title => <option key={title} value={title} />)}</datalist>
+        </>;
+      }
       case "resultGpa": {
         const gpaError = form.resultGpa ? validateResultGpa(form.resultGpa, "Honours") : null;
         return (
@@ -1585,10 +1645,22 @@ function TutorProfileWorkspaceBody({
       case "additionalSubjectIds": return <SearchableMultiSelect required={isRequired(fieldId)} className={wideFieldClassName} label={fieldLabel(fieldId, tutorProfileCopy.fields.additionalSubjects)} options={toSelectorOptions(subjects.data)} selectedIds={form.additionalSubjectIds} onChange={value => update("additionalSubjectIds", value)} emptyMessage="No subjects found." maxSelections={Math.max(0, limits["tutor.subjects"] - form.primarySubjectIds.length)} />;
       case "classLevelIds": return <SearchableMultiSelect className={wideFieldClassName} label={fieldLabel(fieldId, tutorProfileCopy.fields.classLevels)} required={isRequired(fieldId)} options={groupedClassLevels.options} selectedIds={groupedClassLevels.selectedIds} onChange={value => update("classLevelIds", expandGroupedClassLevelIds(value, groupedClassLevels.groupedIds))} emptyMessage="No classes or levels found." error={fieldErrors.classLevelIds} maxSelections={limits["tutor.levels"]} />;
       case "curriculumIds": return <SearchableMultiSelect className={wideFieldClassName} label={fieldLabel(fieldId, tutorProfileCopy.fields.curricula)} required={isRequired(fieldId)} options={toSelectorOptions(curricula.data)} selectedIds={form.curriculumIds} onChange={value => update("curriculumIds", value)} emptyMessage="No curricula found." error={fieldErrors.curriculumIds} />;
-      case "teachingExperienceYears": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.teachingExperience)} showRequiredMarker={isRequired(fieldId)} type="number" min="0" max="60" value={form.teachingExperienceYears} onChange={event => update("teachingExperienceYears", event.target.value)} error={fieldErrors.teachingExperienceYears} />;
-      case "priorTeachingExperience": return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "Prior Teaching Experience")} value={form.priorTeachingExperience} onChange={event => update("priorTeachingExperience", event.target.value)} placeholder="Briefly describe previous tutoring, coaching, or classroom experience." />;
-      case "specialExpertise": return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "Special Expertise")} value={form.specialExpertise} onChange={event => update("specialExpertise", event.target.value)} placeholder="e.g. SSC board exam preparation, Olympiad coaching" />;
-      case "academicAchievement": return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "Academic Achievement")} value={form.academicAchievement} onChange={event => update("academicAchievement", event.target.value)} placeholder="Optional scholarships, honours, or relevant achievements" />;
+      case "teachingExperienceYears": {
+        const expError = validateTeachingExperience(form.teachingExperienceYears, form.dateOfBirth);
+        return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.teachingExperience)} showRequiredMarker={isRequired(fieldId)} type="number" min="0" max="60" value={form.teachingExperienceYears} onChange={event => update("teachingExperienceYears", event.target.value)} error={fieldErrors.teachingExperienceYears ?? expError ?? undefined} />;
+      }
+      case "priorTeachingExperience": {
+        const priorError = form.priorTeachingExperience ? validateTeachingExpertiseText(form.priorTeachingExperience, "Prior Teaching Experience") : null;
+        return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "Prior Teaching Experience")} value={form.priorTeachingExperience} onChange={event => update("priorTeachingExperience", event.target.value)} placeholder="Briefly describe previous tutoring, coaching, or classroom experience." error={fieldErrors.priorTeachingExperience ?? priorError ?? undefined} />;
+      }
+      case "specialExpertise": {
+        const expError = form.specialExpertise ? validateTeachingExpertiseText(form.specialExpertise, "Special Expertise") : null;
+        return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "Special Expertise")} value={form.specialExpertise} onChange={event => update("specialExpertise", event.target.value)} placeholder="e.g. SSC board exam preparation, Olympiad coaching" error={fieldErrors.specialExpertise ?? expError ?? undefined} />;
+      }
+      case "academicAchievement": {
+        const achError = form.academicAchievement ? validateTeachingExpertiseText(form.academicAchievement, "Academic Achievement") : null;
+        return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "Academic Achievement")} value={form.academicAchievement} onChange={event => update("academicAchievement", event.target.value)} placeholder="Optional scholarships, honours, or relevant achievements" error={fieldErrors.academicAchievement ?? achError ?? undefined} />;
+      }
 
       case "tuitionType": return <SearchableMultiSelect className={wideFieldClassName} label={fieldLabel(fieldId, tutorProfileCopy.fields.tuitionType)} required={isRequired(fieldId)} options={[{ id: "home", label: "Home tuition" }, { id: "online", label: "Online tuition" }, { id: "group", label: "Group tuition" }, { id: "package", label: "Package tuition" }]} selectedIds={form.tuitionTypes} onChange={value => update("tuitionTypes", value)} emptyMessage="No tuition types found." error={fieldErrors.tuitionTypes} />;
       case "preferredStudentGender": return <ChoiceGroup label={fieldLabel(fieldId, tutorProfileCopy.fields.preferredStudentGender)} name="student-gender" dropdownOnWide required={isRequired(fieldId)} value={form.preferredStudentGender} onChange={value => update("preferredStudentGender", value as TeachingProfileState["preferredStudentGender"])} error={fieldErrors.preferredStudentGender} options={[["male", "Male"], ["female", "Female"], ["both", "Both"]]} />;
@@ -1648,20 +1720,32 @@ function TutorProfileWorkspaceBody({
     switch (fieldId) {
       case "educationRecords.qualificationLevel": return <FormSelect label={fieldLabel(fieldId, tutorProfileCopy.fields.educationLevel)} showRequiredMarker={marked(fieldId)} options={historyQualificationLevels.filter(level => level === record.qualificationLevel || levelsLeft.includes(level))} placeholder="Select a level" value={record.qualificationLevel} onChange={event => updateEducationRecord(index, "qualificationLevel", event.target.value)} />;
       // A school or college is chosen from the list, or created for this Tutor alone.
-      case "educationRecords.instituteName": return school
-        ? <SchoolNameField label={fieldLabel(fieldId, "Institute Name")} required={marked(fieldId)} value={record.instituteName} onChange={name => updateEducationRecord(index, "instituteName", name)} placeholder="Ex- Dhaka Residential Model College" rootClassName={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`} labelClassName={tp.fieldLabel} markerClassName={tp.requiredMark} inputClassName={fieldClassName} />
-        : <FormInput label={fieldLabel(fieldId, "Institute Name")} required={marked(fieldId)} list={QUALIFICATION_INSTITUTE_LIST_ID} autoComplete="off" value={record.instituteName} onChange={event => updateEducationRecord(index, "instituteName", event.target.value)} placeholder="Ex- University of Dhaka" />;
-      case "educationRecords.degreeExamTitle": return <>
-        <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.degreeExamTitle)} required={marked(fieldId)} list={qualificationDegreeListId(record.qualificationLevel)} autoComplete="off" value={record.degreeExamTitle} onChange={event => updateEducationRecord(index, "degreeExamTitle", event.target.value)} placeholder={school ? "Ex- SSC/HSC" : "Ex- BSc/MSc"} />
-        {/* The history draws its lists together; each school section brings its own. */}
-        {school ? <datalist id={qualificationDegreeListId(record.qualificationLevel)}>{degreeTitleSuggestions(record.qualificationLevel).map(title => <option key={title} value={title} />)}</datalist> : null}
-      </>;
+      case "educationRecords.instituteName": {
+        const instituteError = record.instituteName ? validateEducationTextField(record.instituteName, "Institute Name") : null;
+        return school
+          ? <div className="space-y-1">
+              <SchoolNameField label={fieldLabel(fieldId, "Institute Name")} required={marked(fieldId)} value={record.instituteName} onChange={name => updateEducationRecord(index, "instituteName", name)} placeholder="Ex- Dhaka Residential Model College" rootClassName={`${tp.fieldRow} ${tutorProfileResponsiveClasses.fieldRoot}`} labelClassName={tp.fieldLabel} markerClassName={tp.requiredMark} inputClassName={`${fieldClassName} ${instituteError ? "border-tp-danger" : ""}`} />
+              <InlineError message={instituteError ?? undefined} />
+            </div>
+          : <FormInput label={fieldLabel(fieldId, "Institute Name")} required={marked(fieldId)} list={QUALIFICATION_INSTITUTE_LIST_ID} autoComplete="off" value={record.instituteName} onChange={event => updateEducationRecord(index, "instituteName", event.target.value)} placeholder="Ex- University of Dhaka" error={instituteError ?? undefined} />;
+      }
+      case "educationRecords.degreeExamTitle": {
+        const degreeError = record.degreeExamTitle ? validateEducationTextField(record.degreeExamTitle, "Degree / Exam Title") : null;
+        return <>
+          <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.degreeExamTitle)} required={marked(fieldId)} list={qualificationDegreeListId(record.qualificationLevel)} autoComplete="off" value={record.degreeExamTitle} onChange={event => updateEducationRecord(index, "degreeExamTitle", event.target.value)} placeholder={school ? "Ex- SSC/HSC" : "Ex- BSc/MSc"} error={degreeError ?? undefined} />
+          {/* The history draws its lists together; each school section brings its own. */}
+          {school ? <datalist id={qualificationDegreeListId(record.qualificationLevel)}>{degreeTitleSuggestions(record.qualificationLevel).map(title => <option key={title} value={title} />)}</datalist> : null}
+        </>;
+      }
       // A board exam is sat under one of three groups. A degree's subject is
       // whatever the department is called: the department list is offered as
       // suggestions, and a name that is not on it can still be typed.
-      case "educationRecords.majorGroup": return school
-        ? <FormSelect label={fieldLabel(fieldId, "Subject / Group")} showRequiredMarker={marked(fieldId)} options={schoolSubjectGroups} placeholder="Select a group" value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} />
-        : <FormInput label={fieldLabel(fieldId, "Subject / Group")} required={marked(fieldId)} list={QUALIFICATION_DEPARTMENT_LIST_ID} autoComplete="off" value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} placeholder="Ex- Physics" />;
+      case "educationRecords.majorGroup": {
+        const majorError = !school && record.majorGroup ? validateEducationTextField(record.majorGroup, "Major / Group") : null;
+        return school
+          ? <FormSelect label={fieldLabel(fieldId, "Subject / Group")} showRequiredMarker={marked(fieldId)} options={schoolSubjectGroups} placeholder="Select a group" value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} />
+          : <FormInput label={fieldLabel(fieldId, "Subject / Group")} required={marked(fieldId)} list={QUALIFICATION_DEPARTMENT_LIST_ID} autoComplete="off" value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} placeholder="Ex- Physics" error={majorError ?? undefined} />;
+      }
       case "educationRecords.curriculum": return <FormSelect label={fieldLabel(fieldId, "Curriculum")} showRequiredMarker={marked(fieldId)} options={qualificationCurricula} placeholder="Select a curriculum" value={record.curriculum} onChange={event => updateEducationRecord(index, "curriculum", event.target.value)} />;
       case "educationRecords.resultGpa": {
         const isSchool = isSchoolQualification(record.qualificationLevel);
@@ -1704,8 +1788,14 @@ function TutorProfileWorkspaceBody({
           />
         );
       }
-      case "educationRecords.rollNumber": return <FormInput required={marked(fieldId)} label={fieldLabel(fieldId, "Roll Number")} placeholder="Ex- 123456" value={record.rollNumber} onChange={event => updateEducationRecord(index, "rollNumber", event.target.value)} />;
-      case "educationRecords.registrationNumber": return <FormInput required={marked(fieldId)} label={fieldLabel(fieldId, "Registration Number")} placeholder="Ex- 1234567890" value={record.registrationNumber} onChange={event => updateEducationRecord(index, "registrationNumber", event.target.value)} />;
+      case "educationRecords.rollNumber": {
+        const rollError = record.rollNumber ? validateEducationExamNumber(record.rollNumber, "Roll Number") : null;
+        return <FormInput required={marked(fieldId)} label={fieldLabel(fieldId, "Roll Number")} placeholder="Ex- 123456" value={record.rollNumber} onChange={event => updateEducationRecord(index, "rollNumber", event.target.value)} error={rollError ?? undefined} />;
+      }
+      case "educationRecords.registrationNumber": {
+        const regError = record.registrationNumber ? validateEducationExamNumber(record.registrationNumber, "Registration Number") : null;
+        return <FormInput required={marked(fieldId)} label={fieldLabel(fieldId, "Registration Number")} placeholder="Ex- 1234567890" value={record.registrationNumber} onChange={event => updateEducationRecord(index, "registrationNumber", event.target.value)} error={regError ?? undefined} />;
+      }
       default: return null;
     }
   };

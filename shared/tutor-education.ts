@@ -322,3 +322,96 @@ export function validateEducationTimelineSequence(
 
   return null;
 }
+export const DUMMY_EDUCATION_TOKENS = new Set([
+  "test",
+  "demo",
+  "asdf",
+  "qwerty",
+  "testing",
+  "sample",
+  "blah",
+  "na",
+  "nil",
+  "none",
+  "nothing",
+  "null",
+  "undefined",
+  "fake",
+  "xxx",
+  "xyz",
+  "foo",
+  "bar",
+]);
+
+/**
+ * Validates descriptive education text fields (Institute Name, Degree / Exam Title, Major / Group).
+ * Rejects pure punctuation, placeholder tokens ("na", "none", "test"), and single repeated characters.
+ */
+export function validateEducationTextField(
+  text: string | null | undefined,
+  fieldLabel: string,
+): string | null {
+  if (!text) return null;
+  const trimmed = text.trim();
+  if (trimmed.length === 0) return null;
+
+  if (trimmed.length < 2) {
+    return `Enter a valid ${fieldLabel.toLowerCase()} (at least 2 characters).`;
+  }
+
+  // Punctuation/symbols only (e.g. "..", "--", "//")
+  if (/^[^a-zA-Z0-9\u0980-\u09FF]+$/.test(trimmed)) {
+    return `Enter a valid ${fieldLabel.toLowerCase()}.`;
+  }
+
+  const normalized = trimmed.toLowerCase().replace(/n\/a/g, "na");
+
+  // Single repeated character (e.g. "aaaa", ".....")
+  const strippedNonSpace = normalized.replace(/\s+/g, "");
+  if (strippedNonSpace.length > 2 && /^(.)\1+$/.test(strippedNonSpace)) {
+    return `Enter a valid ${fieldLabel.toLowerCase()}.`;
+  }
+
+  // Tokenize
+  const tokens = normalized
+    .split(/[\s,·\-|/.;:!?()[\]{}"'\n\r\t]+/)
+    .map(t => t.trim())
+    .filter(t => t.length > 0);
+
+  if (tokens.length === 0) {
+    return `Enter a valid ${fieldLabel.toLowerCase()}.`;
+  }
+
+  // Check if whole value or all tokens are dummy words (e.g. "none", "test", "na na")
+  const nonDummyTokens = tokens.filter(t => !DUMMY_EDUCATION_TOKENS.has(t));
+  if (nonDummyTokens.length === 0) {
+    return `Enter a genuine ${fieldLabel.toLowerCase()} rather than placeholder text.`;
+  }
+
+  return null;
+}
+
+/**
+ * Validates examination roll or registration number if provided.
+ * Rejects placeholder text like "none", "na", or repeated dummy digits like "000000".
+ */
+export function validateEducationExamNumber(
+  numberText: string | null | undefined,
+  fieldLabel: string,
+): string | null {
+  if (!numberText) return null;
+  const trimmed = numberText.trim();
+  if (trimmed.length === 0) return null;
+
+  const lower = trimmed.toLowerCase().replace(/n\/a/g, "na");
+  if (DUMMY_EDUCATION_TOKENS.has(lower)) {
+    return `Enter a valid ${fieldLabel.toLowerCase()} or leave it empty.`;
+  }
+
+  // If only 1 repeated character e.g. "00000" or "aaaaa"
+  if (trimmed.length > 3 && /^(.)\1+$/.test(trimmed)) {
+    return `Enter a valid ${fieldLabel.toLowerCase()}.`;
+  }
+
+  return null;
+}

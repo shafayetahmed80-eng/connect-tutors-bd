@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import type { SiteLimitValues } from "@shared/site-limits";
 import { calculateAgeInYears } from "@shared/tutor-personal-details";
+import { validateTeachingExperience } from "@shared/tutor-profile-tuition";
 import { assertMinimumLengthLimit, assertWithinLimit, assertWithinLengthLimit } from "./site-limit-guard";
 import { validateIntroductionQuality } from "@shared/tutor-introduction";
 
@@ -15,6 +16,7 @@ export type TutorProfileDraftLimitInput = {
   primarySubjectIds?: readonly unknown[];
   additionalSubjectIds?: readonly unknown[];
   classLevelIds?: readonly unknown[];
+  teachingExperienceYears?: number;
 };
 
 /**
@@ -100,5 +102,14 @@ export function assertTutorProfileDraftWithinLimits(limits: SiteLimitValues, inp
   }
   if (input.classLevelIds !== undefined) {
     assertWithinLimit(limits, "tutor.levels", input.classLevelIds.length, "class levels");
+  }
+  if (input.teachingExperienceYears !== undefined && input.dateOfBirth) {
+    const expErr = validateTeachingExperience(input.teachingExperienceYears, input.dateOfBirth);
+    if (expErr) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: expErr,
+      });
+    }
   }
 }
