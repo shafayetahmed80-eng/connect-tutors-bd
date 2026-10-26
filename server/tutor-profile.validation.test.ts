@@ -720,4 +720,30 @@ describe("Tutor Profile duplicate phone number validation", () => {
     const parsed = tutorProfileDraftSchema.safeParse(validAddress);
     expect(parsed.success).toBe(true);
   });
+it("rejects feeMin below 1,000 BDT to avoid per-class rate confusion", () => {
+    const lowFee = {
+      ...approvedExpandedSubmission,
+      feeMin: 500,
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(lowFee);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      const issue = parsed.error.issues.find(i => i.path.join(".") === "feeMin");
+      expect(issue?.message).toContain("Minimum monthly fee must be at least 1,000 BDT");
+    }
+  });
+
+  it("rejects feeMax below 1,000 BDT", () => {
+    const lowMax = {
+      ...approvedExpandedSubmission,
+      feeMin: 1000,
+      feeMax: 800,
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(lowMax);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      const issue = parsed.error.issues.find(i => i.path.join(".") === "feeMax");
+      expect(issue?.message).toBeDefined();
+    }
+  });
 });

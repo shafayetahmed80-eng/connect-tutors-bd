@@ -12,7 +12,7 @@ import {
   validateResultGpa } from "@shared/tutor-education";
 import { defaultTutorProfileFieldConfig, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import { tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress } from "@shared/tutor-personal-details";
-import { offersOnlineTuitionOnly } from "@shared/tutor-profile-tuition";
+import { offersOnlineTuitionOnly, validateTuitionFees } from "@shared/tutor-profile-tuition";
 import { findDuplicateTutorPhoneErrors } from "@shared/phone";
 
 const bangladeshPhoneSchema = z
@@ -257,7 +257,21 @@ function addCrossFieldIssues(
     });
   }
 
-  if (value.feeMin !== undefined && value.feeMax !== undefined && value.feeMin > value.feeMax) {
+  const feeErrors = validateTuitionFees(value.feeMin, value.feeMax);
+  if (value.feeMin !== undefined && feeErrors.feeMinError) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["feeMin"],
+      message: feeErrors.feeMinError,
+    });
+  }
+  if (value.feeMax !== undefined && feeErrors.feeMaxError) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["feeMax"],
+      message: feeErrors.feeMaxError,
+    });
+  } else if (value.feeMin !== undefined && value.feeMax !== undefined && value.feeMin > value.feeMax) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["feeMax"],
