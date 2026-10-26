@@ -2,6 +2,7 @@ import { educationSectionStatus } from "@shared/tutor-education";
 import { findTutorProfileFieldMeta, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import type { SiteLimitValues } from "@shared/site-limits";
 import { offersOnlineTuitionOnly } from "@shared/tutor-profile-tuition";
+import { calculateAgeInYears } from "@shared/tutor-personal-details";
 import type { TutorProfileFormState } from "./TutorProfileFormData";
 
 export const tutorProfileCopy = {
@@ -161,9 +162,24 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
 
   if (!form.profilePhotoUrl) errors.profilePhotoUrl = "Add a profile photo.";
   if (form.name.trim().length < 2) errors.name = "Enter your full name.";
-  if (!form.dateOfBirth) errors.dateOfBirth = "Enter your date of birth.";
-  else if (!isCalendarDate(form.dateOfBirth)) errors.dateOfBirth = "Enter a valid date of birth.";
-  else if (new Date(`${form.dateOfBirth}T00:00:00.000Z`).getTime() > Date.now()) errors.dateOfBirth = "Your date of birth cannot be in the future.";
+  if (!form.dateOfBirth) {
+    errors.dateOfBirth = "Enter your date of birth.";
+  } else if (!isCalendarDate(form.dateOfBirth)) {
+    errors.dateOfBirth = "Enter a valid date of birth.";
+  } else if (new Date(`${form.dateOfBirth}T00:00:00.000Z`).getTime() > Date.now()) {
+    errors.dateOfBirth = "Your date of birth cannot be in the future.";
+  } else {
+    const minAge = limits?.["tutor.minAgeYears"] ?? 18;
+    const maxAge = limits?.["tutor.maxAgeYears"] ?? 80;
+    const age = calculateAgeInYears(form.dateOfBirth);
+    if (age !== null) {
+      if (age < minAge) {
+        errors.dateOfBirth = `You must be at least ${minAge} years old to apply as a tutor.`;
+      } else if (age > maxAge) {
+        errors.dateOfBirth = `Tutor age must be ${maxAge} years or under.`;
+      }
+    }
+  }
   if (form.headline.trim().length < 10) errors.headline = "Enter a headline with at least 10 characters.";
   if (!/^\+8801[3-9]\d{8}$/.test(form.phone.trim())) errors.phone = "Enter a valid Bangladesh mobile number.";
   if (!/^\S+@\S+\.\S+$/.test(form.contactEmail.trim())) errors.contactEmail = "Enter a valid email address.";

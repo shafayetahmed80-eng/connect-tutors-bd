@@ -408,6 +408,31 @@ describe("Tutor Profile form hydration", () => {
     }, undefined, limits)).not.toHaveProperty("aboutMe");
   });
 
+  it("enforces dynamic minimum and maximum age requirements on dateOfBirth", () => {
+    const state = { ...hydrateTutorProfileForm(serverProfile, onboardingFallback), ...emptySelections };
+    const limits = { ...defaultSiteLimits(), "tutor.minAgeYears": 18, "tutor.maxAgeYears": 75 };
+    const now = new Date();
+    const currentYear = now.getUTCFullYear();
+
+    // Underage (15 years old)
+    const underageDate = `${currentYear - 15}-05-15`;
+    expect(getTutorProfileSubmissionErrors({ ...state, dateOfBirth: underageDate }, undefined, limits)).toHaveProperty(
+      "dateOfBirth",
+      "You must be at least 18 years old to apply as a tutor.",
+    );
+
+    // Overage (80 years old)
+    const overageDate = `${currentYear - 80}-05-15`;
+    expect(getTutorProfileSubmissionErrors({ ...state, dateOfBirth: overageDate }, undefined, limits)).toHaveProperty(
+      "dateOfBirth",
+      "Tutor age must be 75 years or under.",
+    );
+
+    // Valid age (22 years old)
+    const validDate = `${currentYear - 22}-05-15`;
+    expect(getTutorProfileSubmissionErrors({ ...state, dateOfBirth: validDate }, undefined, limits)).not.toHaveProperty("dateOfBirth");
+  });
+
 describe("what an untouched education record sends", () => {
   it("leaves a blank field out rather than sending an empty string", () => {
     // The Education tab always carries a Secondary and a Higher Secondary row.
