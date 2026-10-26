@@ -1,6 +1,6 @@
 import { educationSectionStatus, validateEducationTimelineSequence, validateResultGpa } from "@shared/tutor-education";
 import { findDuplicateTutorPhoneErrors } from "@shared/phone";
-import { validatePermanentAddress, validatePresentAddress } from "@shared/tutor-personal-details";
+import { validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation } from "@shared/tutor-personal-details";
 import { findTutorProfileFieldMeta, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import type { SiteLimitValues } from "@shared/site-limits";
 import { offersOnlineTuitionOnly, validateTuitionFees } from "@shared/tutor-profile-tuition";
@@ -64,6 +64,8 @@ export type TutorProfileSubmissionErrorKey =
   | "profilePhotoUrl"
   | "privateDetails.presentAddress"
   | "privateDetails.permanentAddress"
+  | "privateDetails.emergencyContactName"
+  | "privateDetails.emergencyContactRelation"
   | "privateDetails.fatherPhone"
   | "privateDetails.motherPhone"
   | "privateDetails.emergencyContactPhone"
@@ -90,6 +92,8 @@ const completionFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, stri
   contactEmail: tutorProfileCopy.fields.email,
   "privateDetails.presentAddress": "Present Address",
   "privateDetails.permanentAddress": "Permanent Address",
+  "privateDetails.emergencyContactName": "Emergency Contact Name",
+  "privateDetails.emergencyContactRelation": "Emergency Contact Relation",
   currentCityId: tutorProfileCopy.fields.currentCity,
   currentLocationId: tutorProfileCopy.fields.currentLocation,
   teachingAreaIds: tutorProfileCopy.fields.teachingAreas,
@@ -219,6 +223,18 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
     const addrErr = validatePermanentAddress(form.privateDetails.permanentAddress);
     if (addrErr) {
       errors["privateDetails.permanentAddress"] = addrErr;
+    }
+  }
+  if (form.privateDetails?.emergencyContactName) {
+    const err = validateEmergencyContactName(form.privateDetails.emergencyContactName, form.name);
+    if (err) {
+      errors["privateDetails.emergencyContactName"] = err;
+    }
+  }
+  if (form.privateDetails?.emergencyContactRelation) {
+    const err = validateEmergencyContactRelation(form.privateDetails.emergencyContactRelation);
+    if (err) {
+      errors["privateDetails.emergencyContactRelation"] = err;
     }
   }
   if (!form.currentCityId) errors.currentCityId = "Select your current city.";

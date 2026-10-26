@@ -11,7 +11,7 @@ import {
   validateEducationTimelineSequence,
   validateResultGpa } from "@shared/tutor-education";
 import { defaultTutorProfileFieldConfig, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
-import { tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress, validatePresentAddress } from "@shared/tutor-personal-details";
+import { tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation } from "@shared/tutor-personal-details";
 import { offersOnlineTuitionOnly, validateTuitionFees } from "@shared/tutor-profile-tuition";
 import { findDuplicateTutorPhoneErrors } from "@shared/phone";
 
@@ -113,8 +113,18 @@ const privateDetailsSchema = z.object({
   fatherPhone: optionalBangladeshPhoneSchema,
   motherName: optionalTrimmedText(160),
   motherPhone: optionalBangladeshPhoneSchema,
-  emergencyContactName: optionalTrimmedText(160),
-  emergencyContactRelation: optionalTrimmedText(80),
+  emergencyContactName: optionalTrimmedText(160).superRefine((val, ctx) => {
+    if (val) {
+      const err = validateEmergencyContactName(val);
+      if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, message: err });
+    }
+  }),
+  emergencyContactRelation: optionalTrimmedText(80).superRefine((val, ctx) => {
+    if (val) {
+      const err = validateEmergencyContactRelation(val);
+      if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, message: err });
+    }
+  }),
   emergencyContactPhone: optionalBangladeshPhoneSchema,
   emergencyContactAddress: optionalTrimmedText(500),
 }).strict();
@@ -331,6 +341,16 @@ function addCrossFieldIssues(
       path: ["privateDetails", "additionalPhone"],
       message: phoneDuplicates.additionalPhone,
     });
+  }
+  if (value.name && value.privateDetails?.emergencyContactName) {
+    const err = validateEmergencyContactName(value.privateDetails.emergencyContactName, value.name);
+    if (err) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["privateDetails", "emergencyContactName"],
+        message: err,
+      });
+    }
   }
 }
 

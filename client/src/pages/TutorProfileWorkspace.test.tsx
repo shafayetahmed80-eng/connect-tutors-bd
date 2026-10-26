@@ -1233,6 +1233,32 @@ describe("Permanent Address and the Availability choices", () => {
     expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
   });
 
+  it("blocks saving Family and emergency contact draft when emergency contact name is self-referencing", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Family and emergency contact" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(/Emergency Contact Name/), { target: { value: "Self" } });
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    expect(within(dialog).getByText(/Emergency contact cannot be yourself/)).toBeTruthy();
+    expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
+  });
+
+  it("blocks saving Family and emergency contact draft when emergency contact relation is invalid or dummy", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Family and emergency contact" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(/Emergency Contact Relation/), { target: { value: "None" } });
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    expect(within(dialog).getByText(/Enter a valid relation/)).toBeTruthy();
+    expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
+  });
+
   it("offers Tuition Type as a multi-select and Preferred Student Gender as a dropdown on a laptop", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);

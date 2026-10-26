@@ -550,6 +550,62 @@ it("flags family and emergency contact phones that duplicate the tutor's persona
     expect(validErrors).not.toHaveProperty("privateDetails.presentAddress");
   });
 
+  it("flags emergencyContactName when matching tutor name or self-reference in getTutorProfileSubmissionErrors", () => {
+    const state = hydrateTutorProfileForm(serverProfile, onboardingFallback);
+    const withSelfName = {
+      ...state,
+      name: "Shafayet Ahmed",
+      privateDetails: {
+        ...state.privateDetails,
+        emergencyContactName: "Shafayet Ahmed",
+      },
+    };
+
+    const errors = getTutorProfileSubmissionErrors(withSelfName as any);
+    expect(errors).toHaveProperty(
+      "privateDetails.emergencyContactName",
+      "Emergency contact cannot be yourself. Enter the name of a family member or trusted person.",
+    );
+
+    const withValidContact = {
+      ...state,
+      name: "Shafayet Ahmed",
+      privateDetails: {
+        ...state.privateDetails,
+        emergencyContactName: "Abdul Karim",
+      },
+    };
+    const validErrors = getTutorProfileSubmissionErrors(withValidContact as any);
+    expect(validErrors).not.toHaveProperty("privateDetails.emergencyContactName");
+  });
+
+  it("flags emergencyContactRelation when self or dummy keyword in getTutorProfileSubmissionErrors", () => {
+    const state = hydrateTutorProfileForm(serverProfile, onboardingFallback);
+    const withSelfRelation = {
+      ...state,
+      privateDetails: {
+        ...state.privateDetails,
+        emergencyContactRelation: "Self",
+      },
+    };
+
+    const errors = getTutorProfileSubmissionErrors(withSelfRelation as any);
+    expect(errors).toHaveProperty(
+      "privateDetails.emergencyContactRelation",
+      "Emergency contact relation cannot be self. Specify relationship (e.g. Father, Mother, Brother, Guardian).",
+    );
+
+    const withValidRelation = {
+      ...state,
+      privateDetails: {
+        ...state.privateDetails,
+        emergencyContactRelation: "Father",
+      },
+    };
+    const validErrors = getTutorProfileSubmissionErrors(withValidRelation as any);
+    expect(validErrors).not.toHaveProperty("privateDetails.emergencyContactRelation");
+  });
+
 
   it("flags tuition fee below 1,000 BDT in getTutorProfileSubmissionErrors", () => {
     const state = hydrateTutorProfileForm(serverProfile, onboardingFallback);
