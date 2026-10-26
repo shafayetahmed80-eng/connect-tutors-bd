@@ -7,6 +7,7 @@ import {
   tutorSupportingDocumentLabels,
   tutorSupportingDocumentTypes,
   TUTOR_DOCUMENT_REUPLOAD_REASONS,
+  TUTOR_PROFILE_CORRECTION_PRESETS,
 } from "./tutor-documents";
 
 describe("shared/tutor-documents", () => {
@@ -36,6 +37,13 @@ describe("shared/tutor-documents", () => {
   it("has quick reason chips for Bengali re-upload requests", () => {
     expect(TUTOR_DOCUMENT_REUPLOAD_REASONS.length).toBeGreaterThanOrEqual(4);
     expect(TUTOR_DOCUMENT_REUPLOAD_REASONS[0]).toContain("ঝাপসা");
+  });
+
+  it("provides Bengali preset chips for general tutor profile corrections", () => {
+    expect(TUTOR_PROFILE_CORRECTION_PRESETS.length).toBeGreaterThanOrEqual(5);
+    expect(TUTOR_PROFILE_CORRECTION_PRESETS).toContain("প্রোফাইল ছবি অস্পষ্ট / স্পষ্ট ও পেশাদার ছবি আপলোড করুন");
+    expect(TUTOR_PROFILE_CORRECTION_PRESETS).toContain("শিক্ষাগত তথ্যের বিবরণ অসম্পূর্ণ (শিক্ষা প্রতিষ্ঠান বা বিভাগ উল্লেখ করুন)");
+    expect(TUTOR_PROFILE_CORRECTION_PRESETS).toContain("আইডি কার্ড বা সার্টিফিকেটের তথ্যের সাথে প্রোফাইলের তথ্যের অমিল");
   });
 
   it("constructs personalized WhatsApp message template for document re-upload", () => {

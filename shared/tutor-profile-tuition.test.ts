@@ -6,6 +6,7 @@ import {
   validateTuitionFees,
   validateTeachingExperience,
   validateTeachingExpertiseText,
+  getTravelDistanceConsistencyWarning,
 } from "./tutor-profile-tuition";
 
 describe("offersOnlineTuitionOnly", () => {
@@ -162,5 +163,62 @@ describe("validateTeachingExpertiseText", () => {
     expect(validateTeachingExpertiseText("N/A N/A N/A N/A N/A", "Academic Achievement")).toBe(
       "Provide meaningful details about your academic achievement rather than repetitive or placeholder text.",
     );
+  });
+});
+
+describe("getTravelDistanceConsistencyWarning", () => {
+  it("returns online_only warning when tutor offers online tuition only", () => {
+    const warning = getTravelDistanceConsistencyWarning({
+      tuitionTypes: ["online"],
+      travelDistanceKm: 10,
+      teachingAreaCount: 2,
+    });
+    expect(warning?.type).toBe("online_only");
+    expect(warning?.message).toContain("Travel distance is not required");
+  });
+
+  it("returns small_radius_many_areas warning when 1-5 km radius is chosen with >3 teaching areas", () => {
+    const warning = getTravelDistanceConsistencyWarning({
+      tuitionTypes: ["home"],
+      travelDistanceKm: 4,
+      teachingAreaCount: 5,
+    });
+    expect(warning?.type).toBe("small_radius_many_areas");
+    expect(warning?.message).toContain("1-5 km travel limit (4 km)");
+    expect(warning?.message).toContain("Make sure all 5 selected teaching areas are within your commuting reach");
+  });
+
+  it("does not warn when 1-5 km radius is chosen with <=3 teaching areas", () => {
+    const warning = getTravelDistanceConsistencyWarning({
+      tuitionTypes: ["home"],
+      travelDistanceKm: 5,
+      teachingAreaCount: 2,
+    });
+    expect(warning).toBeNull();
+  });
+
+  it("returns high_radius warning when distance exceeds 30 km", () => {
+    const warning = getTravelDistanceConsistencyWarning({
+      tuitionTypes: ["home"],
+      travelDistanceKm: 35,
+      teachingAreaCount: 1,
+    });
+    expect(warning?.type).toBe("high_radius");
+    expect(warning?.message).toContain("selected a travel limit of 35 km");
+    expect(warning?.message).toContain("practical");
+  });
+
+  it("returns null for reasonable distances (e.g. 10 km) with normal area count", () => {
+    const warning = getTravelDistanceConsistencyWarning({
+      tuitionTypes: ["home"],
+      travelDistanceKm: 10,
+      teachingAreaCount: 4,
+    });
+    expect(warning).toBeNull();
+  });
+
+  it("returns null when travel distance is not entered yet", () => {
+    expect(getTravelDistanceConsistencyWarning({ tuitionTypes: ["home"], travelDistanceKm: "" })).toBeNull();
+    expect(getTravelDistanceConsistencyWarning({ tuitionTypes: ["home"], travelDistanceKm: null })).toBeNull();
   });
 });

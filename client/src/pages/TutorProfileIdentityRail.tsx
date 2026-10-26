@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { ArrowRight, Camera, Check, ChevronDown, Eye, FileText, GraduationCap, IdCard, Mail, MapPin, PencilLine, Phone, SquareLibrary, UserRound } from "lucide-react";
+import { ArrowRight, Camera, Check, ChevronDown, Clock, Eye, FileText, GraduationCap, IdCard, Mail, MapPin, PencilLine, Phone, ShieldCheck, Sparkles, SquareLibrary, UserRound } from "lucide-react";
+import type { TutorProfileReadinessBreakdown } from "./TutorProfileUx";
 import { Button } from "@/components/ui/button";
 import { PhotoUploadSuccess } from "@/components/PhotoUploadSuccess";
 import { tutorProfileTheme as tp } from "./tutorProfileTheme";
@@ -70,6 +71,8 @@ export function TutorProfileIdentityRail({
   rating,
   onOpenCvModal,
   cvViewOnly,
+  readinessBreakdown,
+  onSelectTab,
 }: {
   name: string;
   tutorNumber: number | null | undefined;
@@ -103,10 +106,13 @@ export function TutorProfileIdentityRail({
   onOpenCvModal?: () => void;
   /** A draft profile's CV can be viewed but not downloaded, so the button says View. */
   cvViewOnly?: boolean;
+  readinessBreakdown?: TutorProfileReadinessBreakdown;
+  onSelectTab?: (tabId: "a" | "c" | "d" | "f") => void;
 }) {
   const hasPhoto = Boolean(photoUrl) && !photoPreviewFailed;
   // Phones only: from `lg` up the list is always on screen and this is unused.
   const [contactOpen, setContactOpen] = useState(false);
+  const [checklistOpen, setChecklistOpen] = useState(false);
   const completionWidth = Math.max(0, Math.min(100, completionPercentage));
   // The photo is required here but is not one of the section rows, so it is counted on its own.
   const left = requiredLeft === undefined ? undefined : requiredLeft + (photoUrl ? 0 : 1);
@@ -201,6 +207,60 @@ export function TutorProfileIdentityRail({
       {left === undefined ? null : left === 0
         ? <p className="mt-2 inline-flex items-center gap-1 text-2xs font-semibold text-j-ok-ink"><Check size={12} aria-hidden={true} />Every required field is filled</p>
         : <p className="mt-2 text-2xs text-tp-label"><span className="font-semibold tabular-nums text-tp-danger-ink">{left}</span> required {left === 1 ? "field" : "fields"} left</p>}
+
+      {readinessBreakdown?.isReadyForVerification ? (
+        <div className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800 shadow-xs">
+          <ShieldCheck size={16} className="shrink-0 text-emerald-600" />
+          <span>Ready for Verification</span>
+        </div>
+      ) : null}
+
+      {readinessBreakdown ? (
+        <div className="mt-3 rounded-xl border border-tp-border bg-j-surface-sunken/50 p-2.5 text-left">
+          <button
+            type="button"
+            onClick={() => setChecklistOpen(open => !open)}
+            aria-expanded={checklistOpen}
+            className="flex w-full items-center justify-between text-xs font-bold text-tp-heading hover:text-tp-accent focus-visible:outline-none"
+          >
+            <span className="flex items-center gap-1.5">
+              <Sparkles size={13} className="shrink-0 text-amber-500" />
+              <span>Verification Checklist</span>
+            </span>
+            <ChevronDown size={14} className={`shrink-0 text-tp-label transition-transform ${checklistOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          <div className={`mt-2 space-y-1.5 ${checklistOpen ? "block" : "hidden"}`}>
+            {readinessBreakdown.categories.map(cat => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => onSelectTab?.(cat.tabId)}
+                className="flex w-full items-center justify-between rounded-lg border border-transparent bg-white p-1.5 text-left transition hover:border-tp-border hover:shadow-xs active:scale-[0.99]"
+                title={`Edit ${cat.title}`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  {cat.isComplete ? (
+                    <span className="grid size-4 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-700">
+                      <Check size={10} strokeWidth={3} />
+                    </span>
+                  ) : (
+                    <span className="grid size-4 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700">
+                      <Clock size={10} strokeWidth={2.5} />
+                    </span>
+                  )}
+                  <span className={`truncate text-xs ${cat.isComplete ? "font-medium text-tp-heading" : "font-semibold text-amber-900"}`}>
+                    {cat.title}
+                  </span>
+                </div>
+                <span className={`shrink-0 text-3xs font-bold ${cat.isComplete ? "text-emerald-700" : "text-amber-700"}`}>
+                  {cat.summary}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
 
     {onReturnToSelectedJob ? <Button

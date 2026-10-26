@@ -9,7 +9,7 @@ import { hydrateTeachingProfile } from "./TutorProfileWorkspace";
 import { getTutorProfileReadoutSections, type TutorProfileReadoutResolvers } from "./TutorProfileSectionReadout";
 import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
 import { defaultTutorProfileFieldConfig, indexResolvedFields } from "@shared/tutor-profile-field-registry";
-import { tutorSupportingDocumentLabels, type TutorSupportingDocumentType, TUTOR_DOCUMENT_REUPLOAD_REASONS, buildTutorDocumentReuploadWhatsAppMessage, type TutorDocumentVerificationStatus } from "@shared/tutor-documents";
+import { tutorSupportingDocumentLabels, type TutorSupportingDocumentType, TUTOR_DOCUMENT_REUPLOAD_REASONS, TUTOR_PROFILE_CORRECTION_PRESETS, buildTutorDocumentReuploadWhatsAppMessage, type TutorDocumentVerificationStatus } from "@shared/tutor-documents";
 import { ArrowRight, BadgeCheck, CalendarClock, CalendarPlus, ChevronDown, CircleAlert, Copy, ExternalLink, Eye, FileText, Gauge, History, IdCard, Layers, Mail, MessageCircle, Phone, ShieldAlert, UserRound, UserRoundCog } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { useMemo, useState } from "react";
@@ -651,6 +651,27 @@ export function AdminTutorProfileDetailContent({ tutorId }: { tutorId: string })
             {decisions.map(status => <option key={status} value={status}>{moderationLabel(profile.profileStatus, status)}</option>)}
           </select>
         </label>
+        {nextStatus !== "approved" ? (
+          <div>
+            <label className="block text-xs font-bold text-j-ink-strong mb-1.5">Quick Reasons (কুইক কারণসমূহ)</label>
+            <div className="flex flex-wrap gap-1.5">
+              {TUTOR_PROFILE_CORRECTION_PRESETS.map(preset => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setReason(preset)}
+                  className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition ${
+                    reason === preset
+                      ? "border-j-accent bg-j-accent-wash text-j-accent font-bold"
+                      : "border-j-border bg-white text-j-ink-soft hover:border-j-accent/50 hover:bg-sky-50"
+                  }`}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <label className="block text-sm font-bold text-j-ink-strong">Admin reason{nextStatus === "approved" ? null : " (required)"}
           <textarea value={reason} onChange={event => setReason(event.target.value)} rows={4} placeholder={nextStatus === "approved" ? (profile.profileStatus === "suspended" ? "Reinstatement note" : "Approval note") : "Explain the required correction or suspension reason"} className="mt-2 w-full rounded-xl border border-j-field-border p-3 text-sm font-normal outline-none focus:border-j-accent focus:ring-2 focus:ring-sky-100" />
         </label>

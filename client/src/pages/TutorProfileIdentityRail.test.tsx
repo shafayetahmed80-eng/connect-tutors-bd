@@ -163,4 +163,34 @@ describe("TutorProfileIdentityRail", () => {
     fireEvent.click(screen.getByRole("button", { name: /View CV/i }));
     expect(onOpenCvModal).toHaveBeenCalledOnce();
   });
+
+  it("renders the Ready for Verification badge and readiness checklist with category switching", () => {
+    const onSelectTab = vi.fn();
+    const readinessBreakdown = {
+      score: 100,
+      isReadyForVerification: true,
+      categories: [
+        { id: "personal" as const, title: "Personal Information", bengaliTitle: "ব্যক্তিগত তথ্য", tabId: "a" as const, isComplete: true, completedItems: 8, totalItems: 8, summary: "Complete" },
+        { id: "education" as const, title: "Education Details", bengaliTitle: "শিক্ষাগত যোগ্যতা", tabId: "c" as const, isComplete: true, completedItems: 1, totalItems: 1, summary: "Complete" },
+        { id: "tuition" as const, title: "Tuition Preferences", bengaliTitle: "টিউশন পছন্দ ও বিষয়", tabId: "d" as const, isComplete: true, completedItems: 11, totalItems: 11, summary: "Complete" },
+        { id: "documents" as const, title: "Verification Documents", bengaliTitle: "আইডি ও ডকুমেন্টস", tabId: "f" as const, isComplete: true, completedItems: 1, totalItems: 1, summary: "Uploaded" },
+      ],
+    };
+
+    renderRail({ readinessBreakdown, onSelectTab });
+    expect(screen.getByText("Ready for Verification")).toBeTruthy();
+
+    const toggle = screen.getByRole("button", { name: /Verification Checklist/i });
+    expect(toggle).toBeTruthy();
+    fireEvent.click(toggle);
+
+    expect(screen.getByText("Personal Information")).toBeTruthy();
+    expect(screen.getByText("Education Details")).toBeTruthy();
+    expect(screen.getByText("Tuition Preferences")).toBeTruthy();
+    expect(screen.getByText("Verification Documents")).toBeTruthy();
+
+    const eduBtn = screen.getByRole("button", { name: /Education Details/i });
+    fireEvent.click(eduBtn);
+    expect(onSelectTab).toHaveBeenCalledWith("c");
+  });
 });

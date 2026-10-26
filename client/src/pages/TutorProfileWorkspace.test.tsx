@@ -1440,3 +1440,73 @@ describe("TutorProfileWorkspace Guardian preview", () => {
     expect(within(guardian).queryByText("Not given")).toBeNull();
   });
 });
+
+describe("TutorProfileWorkspace Readiness, Moderation, Travel Consistency & Smart Subjects", () => {
+  afterEach(() => cleanup());
+
+  it("shows prominent Changes Requested red notice card when profile status is changes_requested", () => {
+    const profile = {
+      ...completeProfile,
+      profileStatus: "changes_requested" as const,
+      moderationNote: "প্রোফাইল ছবি অস্পষ্ট / স্পষ্ট ও পেশাদার ছবি আপলোড করুন",
+      moderationNoteAt: new Date("2026-10-20T10:00:00Z"),
+    };
+    render(<TutorProfileWorkspace profile={profile} onboardingFallback={null} />);
+
+    expect(screen.getByLabelText("Admin changes requested notice")).toBeTruthy();
+    expect(screen.getByText(/Changes requested/)).toBeTruthy();
+    expect(screen.getByText("প্রোফাইল ছবি অস্পষ্ট / স্পষ্ট ও পেশাদার ছবি আপলোড করুন")).toBeTruthy();
+  });
+
+  it("shows Ready for Verification badge and interactive checklist in identity rail for complete profile", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={{ ...completeProfile, universityIdDocumentStatus: "uploaded" } as never} onboardingFallback={null} />);
+
+    expect(screen.getByText("Ready for Verification")).toBeTruthy();
+    const toggle = screen.getByRole("button", { name: /Verification Checklist/i });
+    expect(toggle).toBeTruthy();
+    await user.click(toggle);
+
+    expect(screen.getByText("Personal Information")).toBeTruthy();
+    expect(screen.getByText("Education Details")).toBeTruthy();
+    expect(screen.getByText("Tuition Preferences")).toBeTruthy();
+    expect(screen.getByText("Verification Documents")).toBeTruthy();
+  });
+
+  it("disables travel distance field and displays guidance when tutor chooses online tuition only", async () => {
+    const onlineProfile = {
+      ...completeProfile,
+      tuitionTypes: ["online"],
+      travelDistanceKm: null,
+      teachingAreaIds: [],
+    };
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={onlineProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Tuition/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
+    const dialog = screen.getByRole("dialog");
+
+    const travelInput = within(dialog).getByLabelText(/Travel Distance/) as HTMLInputElement;
+    expect(travelInput.disabled).toBe(true);
+    expect(travelInput.placeholder).toContain("Not required for online tuition only");
+    expect(within(dialog).getByText(/Travel distance is not required when offering online tuition only/)).toBeTruthy();
+  });
+
+  it("displays travel distance advisory warning when 1-5 km radius is chosen with >3 teaching areas", async () => {
+    const multiAreaProfile = {
+      ...completeProfile,
+      tuitionTypes: ["home"],
+      travelDistanceKm: 4,
+      teachingAreaIds: ["dhaka-dhanmondi", "dhaka-gulshan", "dhaka-uttara", "dhaka-mirpur"],
+    };
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={multiAreaProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Tuition/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
+    const dialog = screen.getByRole("dialog");
+
+    expect(within(dialog).getAllByText(/You have chosen a 1-5 km travel limit \(4 km\)/).length).toBeGreaterThan(0);
+  });
+});

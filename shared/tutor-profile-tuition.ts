@@ -190,3 +190,51 @@ export function validateTeachingExpertiseText(
 
   return null;
 }
+
+export type TravelDistanceConsistencyWarning = {
+  type: "online_only" | "small_radius_many_areas" | "high_radius";
+  message: string;
+};
+
+/**
+ * Evaluates travel distance and teaching area consistency:
+ * 1. Online tuition only: travel distance is not required / inactive.
+ * 2. 1-5 km radius with >3 teaching areas: advises verifying daily commute reach across multiple locations.
+ * 3. >30 km radius: advises verifying practicality of long-distance daily commuting.
+ */
+export function getTravelDistanceConsistencyWarning(input: {
+  tuitionTypes?: readonly string[];
+  travelDistanceKm?: number | string | null;
+  teachingAreaCount?: number;
+}): TravelDistanceConsistencyWarning | null {
+  if (offersOnlineTuitionOnly(input)) {
+    return {
+      type: "online_only",
+      message: "Travel distance is not required when offering online tuition only.",
+    };
+  }
+
+  const rawKm = input.travelDistanceKm;
+  if (rawKm === null || rawKm === undefined || rawKm === "") {
+    return null;
+  }
+  const km = typeof rawKm === "number" ? rawKm : parseFloat(String(rawKm));
+  if (Number.isNaN(km) || km <= 0) return null;
+
+  const areaCount = input.teachingAreaCount ?? 0;
+  if (km <= 5 && areaCount > 3) {
+    return {
+      type: "small_radius_many_areas",
+      message: `You have chosen a 1-5 km travel limit (${km} km). Make sure all ${areaCount} selected teaching areas are within your commuting reach.`,
+    };
+  }
+
+  if (km > 30) {
+    return {
+      type: "high_radius",
+      message: `You selected a travel limit of ${km} km. Ensure daily commuting to these areas is practical.`,
+    };
+  }
+
+  return null;
+}

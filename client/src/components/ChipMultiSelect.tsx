@@ -2,7 +2,7 @@ import { ChevronDown, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { isReducedMotionPreferred } from "@/lib/ripple";
 
-export type ChipOption = { id: string; label: string };
+export type ChipOption = { id: string; label: string; badge?: string };
 
 /**
  * Several values in one box, found by typing.
@@ -264,8 +264,8 @@ export default function ChipMultiSelect({
               // away; without this the click would take focus and shut the list.
               onMouseDown={event => event.preventDefault()}
               onClick={() => add(option.id)}
-              className={`w-full px-3 py-2 text-left text-sm outline-none ${tone.option}`}
-            >{option.label}</button>
+              className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm outline-none ${tone.option}`}
+            >{option.label}{option.badge ? <span className="ml-2 inline-flex shrink-0 items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">{option.badge}</span> : null}</button>
           </li>)}
     </ul> : null}
   </div>;

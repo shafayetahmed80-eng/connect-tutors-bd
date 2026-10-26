@@ -8,7 +8,7 @@ import { tutorProfileResponsiveClasses } from "@/pages/TutorProfileResponsive";
 import { tutorProfileTheme } from "@/pages/tutorProfileTheme";
 import ChipMultiSelect from "@/components/ChipMultiSelect";
 
-export type SelectorOption = { id: string; label: string; disabled?: boolean };
+export type SelectorOption = { id: string; label: string; disabled?: boolean; badge?: string };
 
 type SearchableMultiSelectProps = {
   label: string;
