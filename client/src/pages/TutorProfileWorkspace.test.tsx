@@ -1223,6 +1223,43 @@ describe("Permanent Address and the Availability choices", () => {
     expect(within(dialog).getByRole("combobox", { name: /Preferred Student Gender/ })).toBeTruthy();
     expect(within(dialog).queryByRole("radiogroup", { name: /Tuition Type/ })).toBeNull();
   });
+
+  it("blocks saving Teaching Expertise draft when feeMax is lower than feeMin", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Tuition/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
+    const dialog = screen.getByRole("dialog");
+
+    const feeMinInput = within(dialog).getByLabelText(/Minimum Monthly Fee/) as HTMLInputElement;
+    const feeMaxInput = within(dialog).getByLabelText(/Maximum Monthly Fee/) as HTMLInputElement;
+
+    fireEvent.change(feeMinInput, { target: { value: "8000" } });
+    fireEvent.change(feeMaxInput, { target: { value: "5000" } });
+
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    expect(within(dialog).getByText("The maximum fee cannot be lower than the minimum fee.")).toBeTruthy();
+    expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
+  });
+
+  it("blocks saving Teaching Expertise draft when feeMin is below 1,000 BDT", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Tuition/ }));
+    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
+    const dialog = screen.getByRole("dialog");
+
+    const feeMinInput = within(dialog).getByLabelText(/Minimum Monthly Fee/) as HTMLInputElement;
+    fireEvent.change(feeMinInput, { target: { value: "500" } });
+
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    expect(within(dialog).getByText(/Minimum monthly fee must be at least 1,000 BDT/)).toBeTruthy();
+    expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
+  });
 });
 
 describe("TutorProfileWorkspace Guardian preview", () => {

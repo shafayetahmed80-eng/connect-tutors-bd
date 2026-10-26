@@ -2,7 +2,7 @@ import CharacterRemaining from "@/components/CharacterRemaining";
 import { SearchableMultiSelect, SearchableSingleSelect, type SelectorOption } from "@/components/TutorProfileSelectors";
 import { calculateAgeInYears, tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress } from "@shared/tutor-personal-details";
 import { isTutorCvDraft } from "@shared/tutor-cv-status";
-import { offersOnlineTuitionOnly } from "@shared/tutor-profile-tuition";
+import { offersOnlineTuitionOnly, validateTuitionFees } from "@shared/tutor-profile-tuition";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { clearTutorOnboardingDraft } from "@/lib/tutorOnboarding";
@@ -1111,6 +1111,17 @@ function TutorProfileWorkspaceBody({
         return false;
       }
     }
+    if (target === "d" || target === "d-teaching") {
+      const sectionErrors: TutorProfileSubmissionErrors = {};
+      const feeErrors = validateTuitionFees(form.feeMin, form.feeMax);
+      if (feeErrors.feeMinError) sectionErrors.feeMin = feeErrors.feeMinError;
+      if (feeErrors.feeMaxError) sectionErrors.feeMax = feeErrors.feeMaxError;
+      if (Object.keys(sectionErrors).length > 0) {
+        setFieldErrors(current => ({ ...current, ...sectionErrors }));
+        setFeedback({ type: "error", message: "Review the highlighted details and try again." });
+        return false;
+      }
+    }
     if (target === "e") {
       const sectionErrors: TutorProfileSubmissionErrors = {};
       const aboutMeLen = form.aboutMe?.trim().length ?? 0;
@@ -1551,8 +1562,8 @@ function TutorProfileWorkspaceBody({
       case "currentCityId": return <CatalogSearchField label={fieldLabel(fieldId, tutorProfileCopy.fields.currentCity)} query={currentCityQuery} onQueryChange={setCurrentCityQuery} options={currentCityOptions} selectedId={form.currentCityId} onSelectedIdChange={handleCurrentCityChange} required={isRequired(fieldId)} error={fieldErrors.currentCityId} />;
       case "currentLocationId": return <CatalogSearchField label={fieldLabel(fieldId, tutorProfileCopy.fields.currentLocation)} query={currentLocationQuery} onQueryChange={setCurrentLocationQuery} options={currentLocationOptions} selectedId={form.currentLocationId} onSelectedIdChange={value => update("currentLocationId", value)} disabled={!form.currentCityId} required={isRequired(fieldId)} error={fieldErrors.currentLocationId} />;
       case "teachingAreaIds": return <SearchableMultiSelect className={wideFieldClassName} label={fieldLabel(fieldId, tutorProfileCopy.fields.teachingAreas)} required={isRequired(fieldId) && !offersOnlineTuitionOnly(form)} options={teachingAreaOptions} selectedIds={form.teachingAreaIds} onChange={value => update("teachingAreaIds", value)} onSearchQueryChange={setTeachingAreaQuery} emptyMessage="No areas found." error={fieldErrors.teachingAreaIds} />;
-      case "feeMin": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.feeMin)} showRequiredMarker={isRequired(fieldId)} type="number" min="0" max="500000" inputMode="numeric" value={form.feeMin} onChange={event => update("feeMin", event.target.value)} error={fieldErrors.feeMin} />;
-      case "feeMax": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.feeMax)} showRequiredMarker={isRequired(fieldId)} type="number" min="0" max="500000" inputMode="numeric" value={form.feeMax} onChange={event => update("feeMax", event.target.value)} error={fieldErrors.feeMax} />;
+      case "feeMin": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.feeMin)} showRequiredMarker={isRequired(fieldId)} type="number" min="0" max="500000" inputMode="numeric" placeholder="Ex- 5000 (BDT/month)" hint="Monthly salary expectation in BDT (not per-class rate)" value={form.feeMin} onChange={event => update("feeMin", event.target.value)} error={fieldErrors.feeMin} />;
+      case "feeMax": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.feeMax)} showRequiredMarker={isRequired(fieldId)} type="number" min="0" max="500000" inputMode="numeric" placeholder="Ex- 8000 (BDT/month)" hint="Maximum monthly salary expectation in BDT" value={form.feeMax} onChange={event => update("feeMax", event.target.value)} error={fieldErrors.feeMax} />;
       case "travelDistanceKm": return <FormInput required={isRequired(fieldId)} label={fieldLabel(fieldId, "Travel Distance (km)")} placeholder="Ex- 5" type="number" min="1" max="100" inputMode="numeric" value={form.travelDistanceKm} onChange={event => update("travelDistanceKm", event.target.value)} />;
 
       case "aboutMe": return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "About Me")} rows={5} minLength={limits["tutor.aboutMeMinChars"]} maxLength={limits["tutor.aboutMeChars"]} value={form.aboutMe} onChange={event => update("aboutMe", event.target.value)} placeholder="Describe your strengths, experience, and the learners you teach." error={fieldErrors.aboutMe} />;

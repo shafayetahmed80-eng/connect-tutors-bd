@@ -523,6 +523,32 @@ it("flags family and emergency contact phones that duplicate the tutor's persona
     expect(validErrors).not.toHaveProperty("privateDetails.permanentAddress");
   });
 
+
+  it("flags tuition fee below 1,000 BDT in getTutorProfileSubmissionErrors", () => {
+    const state = hydrateTutorProfileForm(serverProfile, onboardingFallback);
+    const lowMin = {
+      ...state,
+      feeMin: "500",
+      feeMax: "5000",
+    };
+    const errorsMin = getTutorProfileSubmissionErrors(lowMin as any);
+    expect(errorsMin).toHaveProperty(
+      "feeMin",
+      "Minimum monthly fee must be at least 1,000 BDT (enter monthly salary, not per-class rate).",
+    );
+
+    const lowMax = {
+      ...state,
+      feeMin: "1000",
+      feeMax: "800",
+    };
+    const errorsMax = getTutorProfileSubmissionErrors(lowMax as any);
+    expect(errorsMax).toHaveProperty(
+      "feeMax",
+      "Maximum monthly fee must be at least 1,000 BDT (enter monthly salary, not per-class rate).",
+    );
+  });
+
 describe("what an untouched education record sends", () => {
   it("leaves a blank field out rather than sending an empty string", () => {
     // The Education tab always carries a Secondary and a Higher Secondary row.

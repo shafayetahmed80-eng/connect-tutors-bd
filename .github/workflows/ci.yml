@@ -28,8 +28,8 @@ jobs:
 
     services:
       mysql:
-        # Official MySQL image via mirror.gcr.io to avoid anonymous ECR data limits
-        image: mirror.gcr.io/library/mysql:8
+        # Official MySQL 8 image
+        image: mysql:8
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
           MYSQL_DATABASE: connect_tutors_db

@@ -3,7 +3,7 @@ import { findDuplicateTutorPhoneErrors } from "@shared/phone";
 import { validatePermanentAddress } from "@shared/tutor-personal-details";
 import { findTutorProfileFieldMeta, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import type { SiteLimitValues } from "@shared/site-limits";
-import { offersOnlineTuitionOnly } from "@shared/tutor-profile-tuition";
+import { offersOnlineTuitionOnly, validateTuitionFees } from "@shared/tutor-profile-tuition";
 import { calculateAgeInYears } from "@shared/tutor-personal-details";
 import type { TutorProfileFormState } from "./TutorProfileFormData";
 
@@ -250,9 +250,18 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
   if (!form.preferredStudentGender) errors.preferredStudentGender = "Select a preferred student gender.";
   requiredSelection(errors, "preferredTeachingDays", "Select at least one teaching day.", form.preferredTeachingDays);
   requiredSelection(errors, "preferredTimeSlots", "Select at least one time slot.", form.preferredTimeSlots);
-  if (!Number.isInteger(feeMin) || (feeMin ?? 0) < 0) errors.feeMin = "Enter a minimum monthly fee.";
-  if (!Number.isInteger(feeMax) || (feeMax ?? 0) < 0) errors.feeMax = "Enter a maximum monthly fee.";
-  else if (feeMin !== undefined && feeMax !== undefined && feeMin > feeMax) errors.feeMax = "The maximum fee cannot be lower than the minimum fee.";
+  const feeErrors = validateTuitionFees(form.feeMin, form.feeMax);
+  if (!Number.isInteger(feeMin) || (feeMin ?? 0) < 0) {
+    errors.feeMin = "Enter a minimum monthly fee.";
+  } else if (feeErrors.feeMinError) {
+    errors.feeMin = feeErrors.feeMinError;
+  }
+
+  if (!Number.isInteger(feeMax) || (feeMax ?? 0) < 0) {
+    errors.feeMax = "Enter a maximum monthly fee.";
+  } else if (feeErrors.feeMaxError) {
+    errors.feeMax = feeErrors.feeMaxError;
+  }
 
   if (limits) {
     const aboutMeLen = form.aboutMe?.trim().length ?? 0;
