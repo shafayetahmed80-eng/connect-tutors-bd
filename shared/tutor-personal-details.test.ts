@@ -1,10 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { calculateAgeInYears, tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress, MIN_PERMANENT_ADDRESS_LENGTH } from "./tutor-personal-details";
+import {
+  calculateAgeInYears,
+  tutorNationalityOptions,
+  tutorReligionOptions,
+  validatePermanentAddress,
+  MIN_PERMANENT_ADDRESS_LENGTH,
+  validatePresentAddress,
+  MIN_PRESENT_ADDRESS_LENGTH,
+} from "./tutor-personal-details";
 
 describe("tutor-personal-details", () => {
   it("exports nationality and religion options", () => {
     expect(tutorNationalityOptions).toContain("Bangladeshi");
     expect(tutorReligionOptions).toContain("Islam");
+    expect(MIN_PERMANENT_ADDRESS_LENGTH).toBe(10);
+    expect(MIN_PRESENT_ADDRESS_LENGTH).toBe(10);
   });
 
   describe("calculateAgeInYears", () => {
@@ -75,4 +85,28 @@ describe("tutor-personal-details", () => {
     });
   });
 
+  describe("validatePresentAddress", () => {
+    it("accepts valid detailed present addresses with at least 10 characters", () => {
+      expect(validatePresentAddress("House 12, Road 5, Mirpur, Dhaka")).toBeNull();
+      expect(validatePresentAddress("Sector 7, Uttara, Dhaka")).toBeNull();
+      expect(validatePresentAddress("1234567890")).toBeNull();
+    });
+
+    it("rejects present addresses shorter than 10 characters", () => {
+      const err = validatePresentAddress("Dhaka");
+      expect(err).toContain("Enter detailed present address");
+      expect(err).toContain("at least 10 characters");
+      expect(err).toContain("House/Road, Area");
+
+      expect(validatePresentAddress("Uttara")).toContain("at least 10 characters");
+      expect(validatePresentAddress("a")).toContain("at least 10 characters");
+    });
+
+    it("allows null or empty strings (deferred to required-check)", () => {
+      expect(validatePresentAddress(null)).toBeNull();
+      expect(validatePresentAddress(undefined)).toBeNull();
+      expect(validatePresentAddress("")).toBeNull();
+      expect(validatePresentAddress("   ")).toBeNull();
+    });
+  });
 });

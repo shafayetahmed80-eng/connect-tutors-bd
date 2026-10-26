@@ -1205,6 +1205,34 @@ describe("Permanent Address and the Availability choices", () => {
     expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
   });
 
+  it("saves Identity and contact draft with detailed Present Address", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={{ ...completeProfile, privateDetails: { presentAddress: "" } }} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    const dialog = screen.getByRole("dialog");
+    const address = within(dialog).getByLabelText(/^Present Address/) as HTMLTextAreaElement;
+    fireEvent.change(address, { target: { value: "House 12, Road 5, Mirpur, Dhaka" } });
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    await waitFor(() => expect(trpcMocks.saveDraft).toHaveBeenCalled());
+    expect(trpcMocks.saveDraft.mock.calls.at(-1)?.[0].privateDetails).toMatchObject({ presentAddress: "House 12, Road 5, Mirpur, Dhaka" });
+  });
+
+  it("blocks saving Identity and contact draft when Present Address is shorter than 10 characters", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={{ ...completeProfile, privateDetails: { presentAddress: "" } }} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    const dialog = screen.getByRole("dialog");
+    const address = within(dialog).getByLabelText(/^Present Address/) as HTMLTextAreaElement;
+    fireEvent.change(address, { target: { value: "Dhaka" } });
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    expect(within(dialog).getByText(/Enter detailed present address/)).toBeTruthy();
+    expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
+  });
+
   it("offers Tuition Type as a multi-select and Preferred Student Gender as a dropdown on a laptop", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);

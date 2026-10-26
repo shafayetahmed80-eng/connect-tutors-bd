@@ -78,6 +78,7 @@ export type PersistedTutorProfileForForm = {
 
 export type TutorProfilePrivateDetails = {
   additionalPhone?: string;
+  presentAddress?: string;
   permanentAddress?: string;
   nationality?: string;
   religion?: string;
@@ -133,7 +134,7 @@ export type PersistedTutorEducationRecord = {
 };
 
 const emptyPrivateDetails = (): TutorProfilePrivateDetails => ({
-  additionalPhone: "", permanentAddress: "", nationality: DEFAULT_TUTOR_NATIONALITY, religion: "", socialProfileLinks: "",
+  additionalPhone: "", presentAddress: "", permanentAddress: "", nationality: DEFAULT_TUTOR_NATIONALITY, religion: "", socialProfileLinks: "",
   fatherName: "", fatherPhone: "", motherName: "", motherPhone: "", emergencyContactName: "", emergencyContactRelation: "",
   emergencyContactPhone: "", emergencyContactAddress: "",
 });
@@ -392,9 +393,7 @@ export function createProfileDraftPayload(form: TutorProfileFormState) {
     additionalNotes: optionalText(form.additionalNotes),
     privateDetails: {
       additionalPhone: form.privateDetails.additionalPhone?.trim() ?? "",
-      // Present address stays uncollected (the column is kept, untouched);
-      // the permanent address is asked for again.
-      presentAddress: undefined,
+      presentAddress: form.privateDetails.presentAddress?.trim() ?? "",
       permanentAddress: form.privateDetails.permanentAddress?.trim() ?? "",
       nationality: form.privateDetails.nationality?.trim() ?? "",
       religion: form.privateDetails.religion?.trim() ?? "",

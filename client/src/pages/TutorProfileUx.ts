@@ -1,6 +1,6 @@
 import { educationSectionStatus, validateEducationTimelineSequence, validateResultGpa } from "@shared/tutor-education";
 import { findDuplicateTutorPhoneErrors } from "@shared/phone";
-import { validatePermanentAddress } from "@shared/tutor-personal-details";
+import { validatePermanentAddress, validatePresentAddress } from "@shared/tutor-personal-details";
 import { findTutorProfileFieldMeta, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import type { SiteLimitValues } from "@shared/site-limits";
 import { offersOnlineTuitionOnly, validateTuitionFees } from "@shared/tutor-profile-tuition";
@@ -62,6 +62,7 @@ export type TutorProfileSubmissionPreview = TutorProfileFormState & {
 export type TutorProfileSubmissionErrorKey =
   | keyof TutorProfileSubmissionPreview
   | "profilePhotoUrl"
+  | "privateDetails.presentAddress"
   | "privateDetails.permanentAddress"
   | "privateDetails.fatherPhone"
   | "privateDetails.motherPhone"
@@ -87,6 +88,7 @@ const completionFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, stri
   headline: tutorProfileCopy.fields.headline,
   phone: tutorProfileCopy.fields.phone,
   contactEmail: tutorProfileCopy.fields.email,
+  "privateDetails.presentAddress": "Present Address",
   "privateDetails.permanentAddress": "Permanent Address",
   currentCityId: tutorProfileCopy.fields.currentCity,
   currentLocationId: tutorProfileCopy.fields.currentLocation,
@@ -207,6 +209,12 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
     if (duplicates.additionalPhone) errors["privateDetails.additionalPhone"] = duplicates.additionalPhone;
   }
   if (!/^\S+@\S+\.\S+$/.test(form.contactEmail.trim())) errors.contactEmail = "Enter a valid email address.";
+  if (form.privateDetails?.presentAddress) {
+    const addrErr = validatePresentAddress(form.privateDetails.presentAddress);
+    if (addrErr) {
+      errors["privateDetails.presentAddress"] = addrErr;
+    }
+  }
   if (form.privateDetails?.permanentAddress) {
     const addrErr = validatePermanentAddress(form.privateDetails.permanentAddress);
     if (addrErr) {
