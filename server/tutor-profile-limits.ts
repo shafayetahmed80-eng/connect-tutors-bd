@@ -1,8 +1,11 @@
+import { TRPCError } from "@trpc/server";
 import type { SiteLimitValues } from "@shared/site-limits";
+import { calculateAgeInYears } from "@shared/tutor-personal-details";
 import { assertMinimumLengthLimit, assertWithinLimit, assertWithinLengthLimit } from "./site-limit-guard";
 
 /** The lists and lengths a profile save has to stay inside. */
 export type TutorProfileDraftLimitInput = {
+  dateOfBirth?: string;
   headline?: string;
   aboutMe?: string;
   teachingApproach?: string;
@@ -26,6 +29,30 @@ export type TutorProfileDraftLimitInput = {
  * its key is absent rather than treated as an empty list.
  */
 export function assertTutorProfileDraftWithinLimits(limits: SiteLimitValues, input: TutorProfileDraftLimitInput) {
+  if (input.dateOfBirth !== undefined && input.dateOfBirth.trim().length > 0) {
+    const parsed = new Date(`${input.dateOfBirth}T00:00:00.000Z`);
+    if (parsed.getTime() > Date.now()) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Date of birth cannot be in the future.",
+      });
+    }
+    const age = calculateAgeInYears(input.dateOfBirth);
+    if (age !== null) {
+      if (age < limits["tutor.minAgeYears"]) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `You must be at least ${limits["tutor.minAgeYears"]} years old to apply as a tutor.`,
+        });
+      }
+      if (age > limits["tutor.maxAgeYears"]) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Tutor age must be ${limits["tutor.maxAgeYears"]} years or under.`,
+        });
+      }
+    }
+  }
   if (input.headline !== undefined) {
     assertWithinLengthLimit(limits, "tutor.headlineChars", input.headline.length, "Headline");
   }

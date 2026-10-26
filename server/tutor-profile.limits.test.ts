@@ -74,4 +74,39 @@ describe("the Owner's Tutor limits reach a profile save", () => {
       expect((error as TRPCError).message).toContain("Teaching Approach must be 500 characters or fewer");
     }
   });
+
+  it("enforces dynamic minimum and maximum age limits for dateOfBirth", () => {
+    const customLimits = { ...defaultSiteLimits(), "tutor.minAgeYears": 18, "tutor.maxAgeYears": 75 };
+    const now = new Date();
+    const currentYear = now.getUTCFullYear();
+
+    // Empty date is allowed on drafts
+    expect(() => assertTutorProfileDraftWithinLimits(customLimits, { dateOfBirth: "" })).not.toThrow();
+
+    // Future date throws
+    const futureDate = `${currentYear + 2}-01-01`;
+    expect(() => assertTutorProfileDraftWithinLimits(customLimits, { dateOfBirth: futureDate })).toThrow(TRPCError);
+
+    // Under minimum age (e.g. 15 years old) throws
+    const underageDate = `${currentYear - 15}-01-01`;
+    expect(() => assertTutorProfileDraftWithinLimits(customLimits, { dateOfBirth: underageDate })).toThrow(TRPCError);
+    try {
+      assertTutorProfileDraftWithinLimits(customLimits, { dateOfBirth: underageDate });
+    } catch (error) {
+      expect((error as TRPCError).message).toContain("You must be at least 18 years old to apply as a tutor");
+    }
+
+    // Over maximum age (e.g. 85 years old) throws
+    const overageDate = `${currentYear - 85}-01-01`;
+    expect(() => assertTutorProfileDraftWithinLimits(customLimits, { dateOfBirth: overageDate })).toThrow(TRPCError);
+    try {
+      assertTutorProfileDraftWithinLimits(customLimits, { dateOfBirth: overageDate });
+    } catch (error) {
+      expect((error as TRPCError).message).toContain("Tutor age must be 75 years or under");
+    }
+
+    // Valid age (e.g. 23 years old) passes
+    const validDate = `${currentYear - 23}-05-15`;
+    expect(() => assertTutorProfileDraftWithinLimits(customLimits, { dateOfBirth: validDate })).not.toThrow();
+  });
 });

@@ -1,6 +1,6 @@
 import CharacterRemaining from "@/components/CharacterRemaining";
 import { SearchableMultiSelect, SearchableSingleSelect, type SelectorOption } from "@/components/TutorProfileSelectors";
-import { tutorNationalityOptions, tutorReligionOptions } from "@shared/tutor-personal-details";
+import { calculateAgeInYears, tutorNationalityOptions, tutorReligionOptions } from "@shared/tutor-personal-details";
 import { isTutorCvDraft } from "@shared/tutor-cv-status";
 import { offersOnlineTuitionOnly } from "@shared/tutor-profile-tuition";
 import { Button } from "@/components/ui/button";
@@ -1006,6 +1006,26 @@ function TutorProfileWorkspaceBody({
     setFeedback(null);
     const draft = createTutorProfileSectionDraftPayload(target, form, fieldConfig);
     if (!acceptPhoneNumbers(draft)) return false;
+    if (target === "a") {
+      const sectionErrors: TutorProfileSubmissionErrors = {};
+      if (form.dateOfBirth) {
+        const age = calculateAgeInYears(form.dateOfBirth);
+        const minAge = limits["tutor.minAgeYears"];
+        const maxAge = limits["tutor.maxAgeYears"];
+        if (age !== null) {
+          if (age < minAge) {
+            sectionErrors.dateOfBirth = `You must be at least ${minAge} years old to apply as a tutor.`;
+          } else if (age > maxAge) {
+            sectionErrors.dateOfBirth = `Tutor age must be ${maxAge} years or under.`;
+          }
+        }
+      }
+      if (Object.keys(sectionErrors).length > 0) {
+        setFieldErrors(current => ({ ...current, ...sectionErrors }));
+        setFeedback({ type: "error", message: "Review the highlighted details and try again." });
+        return false;
+      }
+    }
     if (target === "e") {
       const sectionErrors: TutorProfileSubmissionErrors = {};
       const aboutMeLen = form.aboutMe?.trim().length ?? 0;
@@ -1333,7 +1353,39 @@ function TutorProfileWorkspaceBody({
         ? <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.fullName)} required={isRequired(fieldId)} readOnly value={form.name} className="bg-j-surface-muted text-tp-value" />
         : <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.fullName)} required={isRequired(fieldId)} value={form.name} onChange={event => update("name", event.target.value)} error={fieldErrors.name} />;
       case "gender": return <label className={tp.fieldRow}><span className={tp.fieldLabel}>{fieldLabel(fieldId, tutorProfileCopy.fields.gender)}</span><select aria-label={fieldLabel(fieldId, tutorProfileCopy.fields.gender)} aria-invalid={Boolean(fieldErrors.gender)} value={form.gender} onChange={event => update("gender", event.target.value as TeachingProfileState["gender"])} className={`${fieldClassName} ${fieldErrors.gender ? "border-tp-danger" : ""}`}><option value="female">Female</option><option value="male">Male</option></select><InlineError message={fieldErrors.gender} /></label>;
-      case "dateOfBirth": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.dateOfBirth)} showRequiredMarker={isRequired(fieldId)} type="date" name="bday" autoComplete="bday" value={form.dateOfBirth} onChange={event => update("dateOfBirth", event.target.value)} error={fieldErrors.dateOfBirth} />;
+      case "dateOfBirth": {
+        const age = calculateAgeInYears(form.dateOfBirth);
+        const minAge = limits["tutor.minAgeYears"];
+        const maxAge = limits["tutor.maxAgeYears"];
+        let ageWarning: string | undefined;
+        if (form.dateOfBirth && age !== null) {
+          if (age < minAge) {
+            ageWarning = `You must be at least ${minAge} years old to apply as a tutor (currently ${age} ${age === 1 ? "year" : "years"}).`;
+          } else if (age > maxAge) {
+            ageWarning = `Tutor age must be ${maxAge} years or under (currently ${age} years).`;
+          }
+        }
+        return (
+          <div className="space-y-1">
+            <FormInput
+              label={fieldLabel(fieldId, tutorProfileCopy.fields.dateOfBirth)}
+              showRequiredMarker={isRequired(fieldId)}
+              type="date"
+              name="bday"
+              autoComplete="bday"
+              value={form.dateOfBirth}
+              onChange={event => update("dateOfBirth", event.target.value)}
+              error={fieldErrors.dateOfBirth ?? ageWarning}
+            />
+            {form.dateOfBirth && age !== null && !fieldErrors.dateOfBirth && !ageWarning ? (
+              <p className="text-2xs font-medium text-emerald-700 flex items-center gap-1.5 pl-1">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                Age: {age} years
+              </p>
+            ) : null}
+          </div>
+        );
+      }
       case "headline": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.headline)} showRequiredMarker={isRequired(fieldId)} value={form.headline} onChange={event => update("headline", event.target.value)} placeholder="Experienced Mathematics Tutor for SSC Students" error={fieldErrors.headline} />;
       case "phone": return phoneLocked
         ? <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.phone)} required={isRequired(fieldId)} readOnly value={form.phone} className="bg-j-surface-muted text-tp-value" />

@@ -222,6 +222,7 @@ import {
 } from "./tutor-profile.validation";
 import { pickDirectoryEducation } from "./directory-institute";
 import { educationRecordFromRow } from "./tutor-profile-education-record";
+import { assertTutorProfileDraftWithinLimits } from "./tutor-profile-limits";
 import { describeTutorModerationNotice, validateTutorModerationAction } from "./admin-monitoring";
 import {
   buildSafeTutorRequestPublicationSnapshot,

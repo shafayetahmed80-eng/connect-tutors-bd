@@ -47,6 +47,8 @@ export const siteLimitIds = [
   "tutor.approachChars",
   "tutor.whyChooseMeMinChars",
   "tutor.whyChooseMeChars",
+  "tutor.minAgeYears",
+  "tutor.maxAgeYears",
   // Pixel sizes for the one dialog shell every panel shares. Not a domain cap
   // like the rest, but the same thing mechanically: a named number an Owner
   // moves between bounds without a deploy.
@@ -132,7 +134,7 @@ export const siteLimitIds = [
 
 export type SiteLimitId = (typeof siteLimitIds)[number];
 
-export type SiteLimitGroup = "Selection" | "Uploads" | "Text length" | "Modals" | "Input Field Text" | "Button Section" | "Platform charge" | "Matching" | "Navigation" | "Job card";
+export type SiteLimitGroup = "Selection" | "Uploads" | "Text length" | "Age limits" | "Modals" | "Input Field Text" | "Button Section" | "Platform charge" | "Matching" | "Navigation" | "Job card";
 
 export type SiteLimitMeta = {
   id: SiteLimitId;

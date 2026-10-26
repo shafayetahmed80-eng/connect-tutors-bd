@@ -4,7 +4,7 @@ import { RotateCcw } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
-const allGroups: SiteLimitGroup[] = ["Selection", "Uploads", "Text length", "Modals", "Input Field Text", "Button Section", "Platform charge", "Matching", "Navigation", "Job card"];
+const allGroups: SiteLimitGroup[] = ["Selection", "Uploads", "Text length", "Age limits", "Modals", "Input Field Text", "Button Section", "Platform charge", "Matching", "Navigation", "Job card"];
 
 /**
  * Owner-facing editor for the numbers that used to be literals in the code.
