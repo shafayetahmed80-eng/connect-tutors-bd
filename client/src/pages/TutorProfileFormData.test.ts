@@ -433,6 +433,45 @@ describe("Tutor Profile form hydration", () => {
     expect(getTutorProfileSubmissionErrors({ ...state, dateOfBirth: validDate }, undefined, limits)).not.toHaveProperty("dateOfBirth");
   });
 
+  it("enforces GPA range constraints and education timeline sequence upon submission", () => {
+    const state = { ...hydrateTutorProfileForm(serverProfile, onboardingFallback), ...emptySelections };
+
+    // Invalid school GPA (> 5.00)
+    const invalidSscGpaState = {
+      ...state,
+      educationRecords: [
+        { qualificationLevel: "SSC", passingYear: 2016, instituteName: "School", degreeExamTitle: "SSC", majorGroup: "Science", curriculum: "Bangla Version", resultGpa: "5.50" },
+      ],
+    };
+    expect(getTutorProfileSubmissionErrors(invalidSscGpaState as any)).toHaveProperty(
+      "educationRecords",
+      "Result/GPA cannot exceed 5.00 for SSC/HSC (max 5.00).",
+    );
+
+    // Invalid university CGPA (> 4.00)
+    const invalidUniGpaState = {
+      ...state,
+      resultGpa: "4.50",
+    };
+    expect(getTutorProfileSubmissionErrors(invalidUniGpaState as any)).toHaveProperty(
+      "resultGpa",
+      "Result/GPA cannot exceed 4.00 for Honours/Masters (max 4.00).",
+    );
+
+    // Inverted school passing years (HSC before SSC)
+    const invertedYearsState = {
+      ...state,
+      educationRecords: [
+        { qualificationLevel: "SSC", passingYear: 2018, instituteName: "School", degreeExamTitle: "SSC", majorGroup: "Science", curriculum: "Bangla Version", resultGpa: "5.00" },
+        { qualificationLevel: "HSC", passingYear: 2016, instituteName: "College", degreeExamTitle: "HSC", majorGroup: "Science", curriculum: "Bangla Version", resultGpa: "5.00" },
+      ],
+    };
+    expect(getTutorProfileSubmissionErrors(invertedYearsState as any)).toHaveProperty(
+      "educationRecords",
+      "HSC passing year (2016) cannot be earlier than SSC passing year (2018).",
+    );
+  });
+
 describe("what an untouched education record sends", () => {
   it("leaves a blank field out rather than sending an empty string", () => {
     // The Education tab always carries a Secondary and a Higher Secondary row.

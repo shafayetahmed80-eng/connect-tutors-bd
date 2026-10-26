@@ -7,7 +7,9 @@ import {
   isSchoolQualification,
   maxStudyYear,
   qualificationCurricula,
-  qualificationEducationLevels } from "@shared/tutor-education";
+  qualificationEducationLevels,
+  validateEducationTimelineSequence,
+  validateResultGpa } from "@shared/tutor-education";
 import { defaultTutorProfileFieldConfig, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import { tutorNationalityOptions, tutorReligionOptions } from "@shared/tutor-personal-details";
 import { offersOnlineTuitionOnly } from "@shared/tutor-profile-tuition";
@@ -133,6 +135,17 @@ const educationRecordSchema = z.object({
   rollNumber: optionalTrimmedText(60),
   registrationNumber: optionalTrimmedText(60),
 }).strict().superRefine((value, ctx) => {
+  if (value.resultGpa) {
+    const gpaIssue = validateResultGpa(value.resultGpa, value.qualificationLevel);
+    if (gpaIssue) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["resultGpa"],
+        message: gpaIssue,
+      });
+    }
+  }
+
   // A board exam has no span to check and no ongoing state: SSC and HSC are
   // passed in one year, so the university rule below would be asking a school
   // record for fields it does not have.
@@ -169,7 +182,14 @@ const profileShape = {
   facultyDepartmentId: positiveIdSchema.optional(),
   degreeMajorId: positiveIdSchema.optional(),
   degreeExamTitle: optionalTrimmedText(160),
-  resultGpa: optionalTrimmedText(80),
+  resultGpa: optionalTrimmedText(80).superRefine((val, ctx) => {
+    if (val) {
+      const gpaIssue = validateResultGpa(val, "Honours");
+      if (gpaIssue) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: gpaIssue });
+      }
+    }
+  }),
   deptId: optionalTrimmedText(80),
   studyStatus: z.enum(["studying", "graduated", "professional"]).optional(),
   /** Collected while studying; `graduationYear` takes over once they finish. */
@@ -237,6 +257,19 @@ function addCrossFieldIssues(
       path: ["feeMax"],
       message: "Maximum fee must be greater than or equal to minimum fee.",
     });
+  }
+
+  if (value.educationRecords && value.educationRecords.length > 0) {
+    const seqIssue = validateEducationTimelineSequence(value.educationRecords, {
+      graduationYear: value.graduationYear,
+    });
+    if (seqIssue) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["educationRecords"],
+        message: seqIssue,
+      });
+    }
   }
 }
 

@@ -553,3 +553,61 @@ describe("Tutor Profile completion respects a disabled field", () => {
     expect(calculateTutorProfileCompletion(withoutName, nameDisabled)).toBe(100);
   });
 });
+
+describe("Tutor Profile Education Result/GPA and Passing Year validation", () => {
+  it("rejects school record GPA exceeding 5.00", () => {
+    const invalidSsc = {
+      ...approvedExpandedSubmission,
+      educationRecords: [
+        { ...approvedExpandedSubmission.educationRecords[0], resultGpa: "5.50" },
+        approvedExpandedSubmission.educationRecords[1],
+        approvedExpandedSubmission.educationRecords[2],
+      ],
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(invalidSsc);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues.some(i => i.message.includes("cannot exceed 5.00"))).toBe(true);
+    }
+  });
+
+  it("rejects university CGPA exceeding 4.00", () => {
+    const invalidUniGpa = {
+      ...approvedExpandedSubmission,
+      resultGpa: "4.50",
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(invalidUniGpa);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues.some(i => i.message.includes("cannot exceed 4.00"))).toBe(true);
+    }
+  });
+
+  it("rejects inverted school passing years (HSC before SSC)", () => {
+    const invertedSchoolYears = {
+      ...approvedExpandedSubmission,
+      educationRecords: [
+        { ...approvedExpandedSubmission.educationRecords[0], passingYear: 2018 },
+        { ...approvedExpandedSubmission.educationRecords[1], passingYear: 2016 },
+        approvedExpandedSubmission.educationRecords[2],
+      ],
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(invertedSchoolYears);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues.some(i => i.message.includes("HSC passing year (2016) cannot be earlier than SSC passing year (2018)"))).toBe(true);
+    }
+  });
+
+  it("rejects university graduation year earlier than HSC passing year", () => {
+    const invertedUniGrad = {
+      ...approvedExpandedSubmission,
+      graduationYear: 2015, // HSC was 2016
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(invertedUniGrad);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues.some(i => i.message.includes("University graduation year (2015) cannot be earlier than HSC passing year (2016)"))).toBe(true);
+    }
+  });
+});

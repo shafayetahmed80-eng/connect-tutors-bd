@@ -8,7 +8,18 @@ import { trpc } from "@/lib/trpc";
 import { clearTutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { SiteContentProvider, SiteText, useSiteContentResolver } from "@/lib/siteContent";
 import { CATALOG_SEARCH_LIMIT } from "@shared/catalog-search";
-import { academicEducationLevels, degreeTitleSuggestions, educationRecordFieldApplies, historyLevelsLeft, historyQualificationLevels, isSchoolQualification, qualificationCurricula, schoolSubjectGroups } from "@shared/tutor-education";
+import {
+  academicEducationLevels,
+  degreeTitleSuggestions,
+  educationRecordFieldApplies,
+  historyLevelsLeft,
+  historyQualificationLevels,
+  isSchoolQualification,
+  qualificationCurricula,
+  schoolSubjectGroups,
+  validateEducationTimelineSequence,
+  validateResultGpa,
+} from "@shared/tutor-education";
 import {
   MAX_TUTOR_DOCUMENT_BYTES,
   TUTOR_DOCUMENT_ACCEPT_ATTRIBUTE,
@@ -1026,6 +1037,31 @@ function TutorProfileWorkspaceBody({
         return false;
       }
     }
+    if (target === "c" || target === "c-university" || target === "c-higher-secondary" || target === "c-secondary") {
+      const sectionErrors: TutorProfileSubmissionErrors = {};
+      if (form.resultGpa) {
+        const uniGpaError = validateResultGpa(form.resultGpa, "Honours");
+        if (uniGpaError) sectionErrors.resultGpa = uniGpaError;
+      }
+      for (const record of form.educationRecords ?? []) {
+        if (record.resultGpa) {
+          const recGpaError = validateResultGpa(record.resultGpa, record.qualificationLevel);
+          if (recGpaError) {
+            sectionErrors.educationRecords = recGpaError;
+            break;
+          }
+        }
+      }
+      const timelineSeqError = validateEducationTimelineSequence(form.educationRecords, form);
+      if (timelineSeqError) {
+        sectionErrors.educationRecords = timelineSeqError;
+      }
+      if (Object.keys(sectionErrors).length > 0) {
+        setFieldErrors(current => ({ ...current, ...sectionErrors }));
+        setFeedback({ type: "error", message: "Review the highlighted details and try again." });
+        return false;
+      }
+    }
     if (target === "e") {
       const sectionErrors: TutorProfileSubmissionErrors = {};
       const aboutMeLen = form.aboutMe?.trim().length ?? 0;
@@ -1414,7 +1450,19 @@ function TutorProfileWorkspaceBody({
         <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.degreeExamTitle)} showRequiredMarker={isRequired(fieldId)} list={UNIVERSITY_DEGREE_LIST_ID} autoComplete="off" value={form.degreeExamTitle} onChange={event => update("degreeExamTitle", event.target.value)} placeholder="Ex- BSc/MSc" error={fieldErrors.degreeExamTitle} />
         <datalist id={UNIVERSITY_DEGREE_LIST_ID}>{degreeTitleSuggestions(form.highestEducation).map(title => <option key={title} value={title} />)}</datalist>
       </>;
-      case "resultGpa": return <FormInput required={isRequired(fieldId)} label={fieldLabel(fieldId, `${tutorProfileCopy.fields.resultGpa}`)} value={form.resultGpa} onChange={event => update("resultGpa", event.target.value)} placeholder="Ex-4.00" />;
+      case "resultGpa": {
+        const gpaError = form.resultGpa ? validateResultGpa(form.resultGpa, "Honours") : null;
+        return (
+          <FormInput
+            required={isRequired(fieldId)}
+            label={fieldLabel(fieldId, `${tutorProfileCopy.fields.resultGpa}`)}
+            value={form.resultGpa}
+            onChange={event => update("resultGpa", event.target.value)}
+            placeholder="Ex- 3.85 (scale: 1.00 - 4.00)"
+            error={fieldErrors.resultGpa ?? gpaError ?? undefined}
+          />
+        );
+      }
       case "deptId": return <FormInput required={isRequired(fieldId)} label={fieldLabel(fieldId, `${tutorProfileCopy.fields.deptId}`)} value={form.deptId} onChange={event => update("deptId", event.target.value)} placeholder="Ex-13104096" />;
       // Study status decides which half of the study timeline the Tutor fills in.
       case "yearSemester": return form.studyStatus === "studying"
@@ -1520,13 +1568,47 @@ function TutorProfileWorkspaceBody({
         ? <FormSelect label={fieldLabel(fieldId, "Subject / Group")} showRequiredMarker={marked(fieldId)} options={schoolSubjectGroups} placeholder="Select a group" value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} />
         : <FormInput label={fieldLabel(fieldId, "Subject / Group")} required={marked(fieldId)} list={QUALIFICATION_DEPARTMENT_LIST_ID} autoComplete="off" value={record.majorGroup} onChange={event => updateEducationRecord(index, "majorGroup", event.target.value)} placeholder="Ex- Physics" />;
       case "educationRecords.curriculum": return <FormSelect label={fieldLabel(fieldId, "Curriculum")} showRequiredMarker={marked(fieldId)} options={qualificationCurricula} placeholder="Select a curriculum" value={record.curriculum} onChange={event => updateEducationRecord(index, "curriculum", event.target.value)} />;
-      case "educationRecords.resultGpa": return <FormInput required={marked(fieldId)} label={fieldLabel(fieldId, `${tutorProfileCopy.fields.resultGpa}`)} value={record.resultGpa} onChange={event => updateEducationRecord(index, "resultGpa", event.target.value)} placeholder="Ex-5.00" />;
+      case "educationRecords.resultGpa": {
+        const isSchool = isSchoolQualification(record.qualificationLevel);
+        const placeholder = isSchool ? "Ex- 5.00 (scale: 1.00 - 5.00)" : "Ex- 3.85 (scale: 1.00 - 4.00)";
+        const gpaError = record.resultGpa ? validateResultGpa(record.resultGpa, record.qualificationLevel) : null;
+        return (
+          <FormInput
+            required={marked(fieldId)}
+            label={fieldLabel(fieldId, `${tutorProfileCopy.fields.resultGpa}`)}
+            value={record.resultGpa}
+            onChange={event => updateEducationRecord(index, "resultGpa", event.target.value)}
+            placeholder={placeholder}
+            error={gpaError ?? undefined}
+          />
+        );
+      }
       case "educationRecords.studyStartYear": return <FormInput label={fieldLabel(fieldId, "Study Start Year")} required={marked(fieldId)} inputMode="numeric" maxLength={4} value={record.studyStartYear} onChange={event => updateEducationRecord(index, "studyStartYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />;
       // An ongoing qualification has no end year to give.
       case "educationRecords.studyEndYear": return record.currentlyStudying ? null : <FormInput label={fieldLabel(fieldId, "Study End Year")} required={marked(fieldId)} inputMode="numeric" maxLength={4} value={record.studyEndYear} onChange={event => updateEducationRecord(index, "studyEndYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />;
       case "educationRecords.currentlyStudying": return <label className="flex items-center gap-2 self-end rounded-lg border border-tp-border px-3 py-2 text-sm font-medium text-tp-value"><input type="checkbox" checked={record.currentlyStudying} onChange={event => updateEducationRecord(index, "currentlyStudying", event.target.checked)} />{fieldLabel(fieldId, "Currently studying")}</label>;
       case "educationRecords.instituteIdCardNumber": return <FormInput required={marked(fieldId)} label={fieldLabel(fieldId, "Institute ID Card Number")} placeholder="Ex- 20211234" value={record.instituteIdCardNumber} onChange={event => updateEducationRecord(index, "instituteIdCardNumber", event.target.value)} />;
-      case "educationRecords.passingYear": return <FormInput label={fieldLabel(fieldId, "Passing Year")} required inputMode="numeric" maxLength={4} value={record.passingYear} onChange={event => updateEducationRecord(index, "passingYear", digitsOnly(event.target.value, 4))} placeholder="Ex- 2018" />;
+      case "educationRecords.passingYear": {
+        let yearWarning: string | undefined;
+        if (record.qualificationLevel === "HSC" && record.passingYear) {
+          const sscRec = form.educationRecords.find(r => r.qualificationLevel === "SSC");
+          if (sscRec?.passingYear && Number(record.passingYear) < Number(sscRec.passingYear)) {
+            yearWarning = `HSC passing year (${record.passingYear}) cannot be earlier than SSC passing year (${sscRec.passingYear}).`;
+          }
+        }
+        return (
+          <FormInput
+            label={fieldLabel(fieldId, "Passing Year")}
+            required
+            inputMode="numeric"
+            maxLength={4}
+            value={record.passingYear}
+            onChange={event => updateEducationRecord(index, "passingYear", digitsOnly(event.target.value, 4))}
+            placeholder="Ex- 2018"
+            error={yearWarning}
+          />
+        );
+      }
       case "educationRecords.rollNumber": return <FormInput required={marked(fieldId)} label={fieldLabel(fieldId, "Roll Number")} placeholder="Ex- 123456" value={record.rollNumber} onChange={event => updateEducationRecord(index, "rollNumber", event.target.value)} />;
       case "educationRecords.registrationNumber": return <FormInput required={marked(fieldId)} label={fieldLabel(fieldId, "Registration Number")} placeholder="Ex- 1234567890" value={record.registrationNumber} onChange={event => updateEducationRecord(index, "registrationNumber", event.target.value)} />;
       default: return null;

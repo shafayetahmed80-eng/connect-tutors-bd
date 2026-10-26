@@ -1,4 +1,4 @@
-import { educationSectionStatus } from "@shared/tutor-education";
+import { educationSectionStatus, validateEducationTimelineSequence, validateResultGpa } from "@shared/tutor-education";
 import { findTutorProfileFieldMeta, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import type { SiteLimitValues } from "@shared/site-limits";
 import { offersOnlineTuitionOnly } from "@shared/tutor-profile-tuition";
@@ -189,7 +189,29 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
   if (!offersOnlineTuitionOnly(form)) requiredSelection(errors, "teachingAreaIds", "Select at least one teaching area.", form.teachingAreaIds);
   // Education: any one section filled in completely is enough to apply - plenty of teachers are SSC-only.
   const education = educationStatus(form, config);
-  if (education.applies && !education.met) errors.educationRecords = "Complete at least one education section: Secondary, Higher Secondary or University.";
+  if (education.applies && !education.met) {
+    errors.educationRecords = "Complete at least one education section: Secondary, Higher Secondary or University.";
+  } else {
+    const timelineSeqError = validateEducationTimelineSequence(form.educationRecords, form);
+    if (timelineSeqError) {
+      errors.educationRecords = timelineSeqError;
+    }
+  }
+
+  if (form.resultGpa) {
+    const uniGpaError = validateResultGpa(form.resultGpa, "Honours");
+    if (uniGpaError) errors.resultGpa = uniGpaError;
+  }
+
+  for (const record of form.educationRecords ?? []) {
+    if (record.resultGpa) {
+      const recGpaError = validateResultGpa(record.resultGpa, record.qualificationLevel);
+      if (recGpaError) {
+        errors.educationRecords = recGpaError;
+        break;
+      }
+    }
+  }
   requiredSelection(errors, "primarySubjectIds", "Select at least one primary subject.", form.primarySubjectIds);
   requiredSelection(errors, "classLevelIds", "Select at least one class or level.", form.classLevelIds);
   requiredSelection(errors, "curriculumIds", "Select at least one curriculum.", form.curriculumIds);
@@ -232,6 +254,8 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
       if (key === "aboutMe" && (form.aboutMe?.trim().length ?? 0) > 0) continue;
       if (key === "teachingApproach" && (form.teachingApproach?.trim().length ?? 0) > 0) continue;
       if (key === "whyChooseMe" && (form.whyChooseMe?.trim().length ?? 0) > 0) continue;
+      if (key === "resultGpa" && (form.resultGpa?.trim().length ?? 0) > 0) continue;
+      if (key === "educationRecords") continue;
       delete errors[key];
     }
   }
