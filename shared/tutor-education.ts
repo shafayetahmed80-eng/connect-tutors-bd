@@ -230,3 +230,95 @@ const UNIVERSITY_ONLY_RECORD_FIELDS = new Set([
   "educationRecords.currentlyStudying",
   "educationRecords.instituteIdCardNumber",
 ]);
+
+/**
+ * Validates a Result / GPA string according to the qualification level.
+ * - For school board exams (SSC, HSC): maximum numeric GPA is 5.00 (scale: 1.00 - 5.00).
+ * - For university degrees (Honours, Masters): maximum numeric CGPA is 4.00 (scale: 1.00 - 4.00).
+ * - Non-numeric grades like "Golden A+", "A+", "First Class", "Passed" are allowed.
+ * Returns an error message string if invalid, or null if valid.
+ */
+export function validateResultGpa(resultGpa: string | null | undefined, qualificationLevel?: string | null): string | null {
+  if (resultGpa === null || resultGpa === undefined) return null;
+  const trimmed = String(resultGpa).trim();
+  if (!trimmed) return null;
+
+  // Extract leading or isolated number e.g. "5.00", "4.5", "3.85 / 4.00"
+  const match = trimmed.match(/^(\d+(?:\.\d+)?)/);
+  if (match) {
+    const num = parseFloat(match[1]);
+    const isSchool = isSchoolQualification(qualificationLevel);
+    const maxScale = isSchool ? 5.00 : 4.00;
+    const scaleLabel = isSchool ? "SSC/HSC (max 5.00)" : "Honours/Masters (max 4.00)";
+
+    if (num > maxScale) {
+      return `Result/GPA cannot exceed ${maxScale.toFixed(2)} for ${scaleLabel}.`;
+    }
+    if (num < 1.00 && num > 0) {
+      return `Result/GPA must be at least 1.00.`;
+    }
+    if (num === 0) {
+      return `Enter a valid Result/GPA.`;
+    }
+  }
+  return null;
+}
+
+export type TimelineRecordItem = {
+  qualificationLevel?: string | null;
+  passingYear?: number | string | null;
+  studyStartYear?: number | string | null;
+  studyEndYear?: number | string | null;
+};
+
+export type TimelineUniversityItem = {
+  graduationYear?: number | string | null;
+  studyStartYear?: number | string | null;
+};
+
+/**
+ * Validates the chronological sequence across education qualifications.
+ * - HSC passing year cannot be earlier than or the same as SSC passing year.
+ * - University graduation or study year cannot be earlier than HSC passing year.
+ * - Masters study start year cannot be earlier than Honours completion year.
+ * Returns an error message string if sequence is impossible, or null if valid.
+ */
+export function validateEducationTimelineSequence(
+  records?: ReadonlyArray<TimelineRecordItem> | null,
+  university?: TimelineUniversityItem | null,
+): string | null {
+  if (!records || records.length === 0) return null;
+
+  const toYear = (val: unknown): number | null => {
+    if (val === undefined || val === null || val === "") return null;
+    const n = Number(val);
+    return isStudyYear(n) ? n : null;
+  };
+
+  const sscRecord = records.find(r => r.qualificationLevel === "SSC");
+  const hscRecord = records.find(r => r.qualificationLevel === "HSC");
+
+  const sscYear = toYear(sscRecord?.passingYear);
+  const hscYear = toYear(hscRecord?.passingYear);
+
+  if (sscYear !== null && hscYear !== null && hscYear < sscYear) {
+    return `HSC passing year (${hscYear}) cannot be earlier than SSC passing year (${sscYear}).`;
+  }
+
+  // Check University vs HSC
+  const uniGradYear = toYear(university?.graduationYear);
+  if (hscYear !== null && uniGradYear !== null && uniGradYear < hscYear) {
+    return `University graduation year (${uniGradYear}) cannot be earlier than HSC passing year (${hscYear}).`;
+  }
+
+  // Check Honours vs Masters in records
+  const honoursRecord = records.find(r => r.qualificationLevel === "Honours");
+  const mastersRecord = records.find(r => r.qualificationLevel === "Masters");
+  const honoursEnd = toYear(honoursRecord?.studyEndYear ?? honoursRecord?.studyStartYear);
+  const mastersStart = toYear(mastersRecord?.studyStartYear);
+  if (honoursEnd !== null && mastersStart !== null && mastersStart < honoursEnd) {
+    return `Masters study start year (${mastersStart}) cannot be earlier than Honours completion year (${honoursEnd}).`;
+  }
+
+  return null;
+}
