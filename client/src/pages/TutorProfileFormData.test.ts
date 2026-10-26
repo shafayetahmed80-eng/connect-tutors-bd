@@ -495,6 +495,34 @@ it("flags family and emergency contact phones that duplicate the tutor's persona
     );
   });
 
+
+  it("flags short or incomplete permanent address in getTutorProfileSubmissionErrors", () => {
+    const state = hydrateTutorProfileForm(serverProfile, onboardingFallback);
+    const withShortAddress = {
+      ...state,
+      privateDetails: {
+        ...state.privateDetails,
+        permanentAddress: "Dhaka",
+      },
+    };
+
+    const errors = getTutorProfileSubmissionErrors(withShortAddress as any);
+    expect(errors).toHaveProperty(
+      "privateDetails.permanentAddress",
+      "Enter detailed permanent address (at least 10 characters including Village/Area, Thana, District).",
+    );
+
+    const withValidAddress = {
+      ...state,
+      privateDetails: {
+        ...state.privateDetails,
+        permanentAddress: "Village Example, Thana Sadar, Rangpur",
+      },
+    };
+    const validErrors = getTutorProfileSubmissionErrors(withValidAddress as any);
+    expect(validErrors).not.toHaveProperty("privateDetails.permanentAddress");
+  });
+
 describe("what an untouched education record sends", () => {
   it("leaves a blank field out rather than sending an empty string", () => {
     // The Education tab always carries a Secondary and a Higher Secondary row.

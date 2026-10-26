@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateAgeInYears, tutorNationalityOptions, tutorReligionOptions } from "./tutor-personal-details";
+import { calculateAgeInYears, tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress, MIN_PERMANENT_ADDRESS_LENGTH } from "./tutor-personal-details";
 
 describe("tutor-personal-details", () => {
   it("exports nationality and religion options", () => {
@@ -50,4 +50,29 @@ describe("tutor-personal-details", () => {
       expect(calculateAgeInYears("2030-01-01", fixedNow)).toBeNull();
     });
   });
+
+  describe("validatePermanentAddress", () => {
+    it("accepts valid detailed addresses with at least 10 characters", () => {
+      expect(validatePermanentAddress("Village Example, Rangpur")).toBeNull();
+      expect(validatePermanentAddress("House 12, Road 5, Mirpur, Dhaka")).toBeNull();
+      expect(validatePermanentAddress("1234567890")).toBeNull();
+    });
+
+    it("rejects addresses shorter than 10 characters", () => {
+      const err = validatePermanentAddress("Dhaka");
+      expect(err).toContain("Enter detailed permanent address");
+      expect(err).toContain("at least 10 characters");
+
+      expect(validatePermanentAddress("Mirpur")).toContain("at least 10 characters");
+      expect(validatePermanentAddress("a")).toContain("at least 10 characters");
+    });
+
+    it("allows null or empty strings (deferred to required-check)", () => {
+      expect(validatePermanentAddress(null)).toBeNull();
+      expect(validatePermanentAddress(undefined)).toBeNull();
+      expect(validatePermanentAddress("")).toBeNull();
+      expect(validatePermanentAddress("   ")).toBeNull();
+    });
+  });
+
 });

@@ -11,7 +11,7 @@ import {
   validateEducationTimelineSequence,
   validateResultGpa } from "@shared/tutor-education";
 import { defaultTutorProfileFieldConfig, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
-import { tutorNationalityOptions, tutorReligionOptions } from "@shared/tutor-personal-details";
+import { tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress } from "@shared/tutor-personal-details";
 import { offersOnlineTuitionOnly } from "@shared/tutor-profile-tuition";
 import { findDuplicateTutorPhoneErrors } from "@shared/phone";
 
@@ -95,7 +95,12 @@ const optionalBangladeshPhoneSchema = z.preprocess(value => {
 const privateDetailsSchema = z.object({
   additionalPhone: optionalBangladeshPhoneSchema,
   presentAddress: optionalTrimmedText(500),
-  permanentAddress: optionalTrimmedText(500),
+  permanentAddress: optionalTrimmedText(500).superRefine((val, ctx) => {
+    if (val) {
+      const err = validatePermanentAddress(val);
+      if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, message: err });
+    }
+  }),
   nationality: optionalEnum(tutorNationalityOptions),
   religion: optionalEnum(tutorReligionOptions),
   socialProfileLinks: optionalTrimmedText(1000),
@@ -345,10 +350,16 @@ function isSubmissionFieldPresent(value: TutorProfileDraftInput, fieldId: string
   if (fieldId === "universityIdDocumentStatus") return value.universityIdDocumentStatus === "uploaded";
   if (fieldId.startsWith("privateDetails.")) {
     const key = fieldId.slice("privateDetails.".length) as keyof NonNullable<TutorProfileDraftInput["privateDetails"]>;
-    return value.privateDetails?.[key] !== undefined;
+    const val = value.privateDetails?.[key];
+    if (val === undefined || val === null) return false;
+    if (typeof val === "string" && val.trim() === "") return false;
+    return true;
   }
   const schemaKey = registryIdToSchemaKey[fieldId] ?? fieldId;
-  return (value as Record<string, unknown>)[schemaKey] !== undefined;
+  const val = (value as Record<string, unknown>)[schemaKey];
+  if (val === undefined || val === null) return false;
+  if (typeof val === "string" && val.trim() === "") return false;
+  return true;
 }
 
 /**

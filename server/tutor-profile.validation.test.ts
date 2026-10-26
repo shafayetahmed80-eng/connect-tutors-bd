@@ -691,4 +691,33 @@ describe("Tutor Profile duplicate phone number validation", () => {
     const parsed = tutorProfileDraftSchema.safeParse(validPhones);
     expect(parsed.success).toBe(true);
   });
+
+
+  it("rejects permanentAddress when shorter than 10 characters", () => {
+    const shortAddress = {
+      ...approvedExpandedSubmission,
+      privateDetails: {
+        ...approvedExpandedSubmission.privateDetails,
+        permanentAddress: "Dhaka",
+      },
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(shortAddress);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      const issue = parsed.error.issues.find(i => i.path.join(".") === "privateDetails.permanentAddress");
+      expect(issue?.message).toContain("Enter detailed permanent address (at least 10 characters including Village/Area, Thana, District)");
+    }
+  });
+
+  it("accepts valid permanentAddress with sufficient detail", () => {
+    const validAddress = {
+      ...approvedExpandedSubmission,
+      privateDetails: {
+        ...approvedExpandedSubmission.privateDetails,
+        permanentAddress: "Village Example, Thana Sadar, Rangpur",
+      },
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(validAddress);
+    expect(parsed.success).toBe(true);
+  });
 });
