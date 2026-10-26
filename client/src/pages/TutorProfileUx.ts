@@ -1,6 +1,7 @@
 import { educationSectionStatus, validateEducationTimelineSequence, validateResultGpa } from "@shared/tutor-education";
 import { findDuplicateTutorPhoneErrors } from "@shared/phone";
 import { validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation, validateHeadline } from "@shared/tutor-personal-details";
+import { validateIntroductionField } from "@shared/tutor-introduction";
 import { findTutorProfileFieldMeta, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import type { SiteLimitValues } from "@shared/site-limits";
 import { offersOnlineTuitionOnly, validateTuitionFees } from "@shared/tutor-profile-tuition";
@@ -292,25 +293,21 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
     errors.feeMax = feeErrors.feeMaxError;
   }
 
-  if (limits) {
-    const aboutMeLen = form.aboutMe?.trim().length ?? 0;
-    if (aboutMeLen > 0 && limits["tutor.aboutMeMinChars"] > 0 && aboutMeLen < limits["tutor.aboutMeMinChars"]) {
-      errors.aboutMe = `Write at least ${limits["tutor.aboutMeMinChars"]} characters in About Me.`;
-    } else if (aboutMeLen > limits["tutor.aboutMeChars"]) {
-      errors.aboutMe = `About Me must be ${limits["tutor.aboutMeChars"]} characters or fewer.`;
-    }
-    const approachLen = form.teachingApproach?.trim().length ?? 0;
-    if (approachLen > 0 && limits["tutor.approachMinChars"] > 0 && approachLen < limits["tutor.approachMinChars"]) {
-      errors.teachingApproach = `Write at least ${limits["tutor.approachMinChars"]} characters in Teaching Approach.`;
-    } else if (approachLen > limits["tutor.approachChars"]) {
-      errors.teachingApproach = `Teaching Approach must be ${limits["tutor.approachChars"]} characters or fewer.`;
-    }
-    const whyChooseMeLen = form.whyChooseMe?.trim().length ?? 0;
-    if (whyChooseMeLen > 0 && limits["tutor.whyChooseMeMinChars"] > 0 && whyChooseMeLen < limits["tutor.whyChooseMeMinChars"]) {
-      errors.whyChooseMe = `Write at least ${limits["tutor.whyChooseMeMinChars"]} characters in Why Choose Me.`;
-    } else if (whyChooseMeLen > limits["tutor.whyChooseMeChars"]) {
-      errors.whyChooseMe = `Why Choose Me must be ${limits["tutor.whyChooseMeChars"]} characters or fewer.`;
-    }
+  const aboutMeLimits = limits ? { minChars: limits["tutor.aboutMeMinChars"], maxChars: limits["tutor.aboutMeChars"] } : undefined;
+  const approachLimits = limits ? { minChars: limits["tutor.approachMinChars"], maxChars: limits["tutor.approachChars"] } : undefined;
+  const whyChooseMeLimits = limits ? { minChars: limits["tutor.whyChooseMeMinChars"], maxChars: limits["tutor.whyChooseMeChars"] } : undefined;
+
+  if (form.aboutMe?.trim()) {
+    const err = validateIntroductionField(form.aboutMe, "aboutMe", aboutMeLimits);
+    if (err) errors.aboutMe = err;
+  }
+  if (form.teachingApproach?.trim()) {
+    const err = validateIntroductionField(form.teachingApproach, "teachingApproach", approachLimits);
+    if (err) errors.teachingApproach = err;
+  }
+  if (form.whyChooseMe?.trim()) {
+    const err = validateIntroductionField(form.whyChooseMe, "whyChooseMe", whyChooseMeLimits);
+    if (err) errors.whyChooseMe = err;
   }
 
   if (isDetailRequired(config, "aboutMe") && !form.aboutMe?.trim()) errors.aboutMe = "Write About Me before submitting.";

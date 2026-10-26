@@ -408,6 +408,32 @@ describe("Tutor Profile form hydration", () => {
     }, undefined, limits)).not.toHaveProperty("aboutMe");
   });
 
+  it("flags repetitive or dummy text in introduction fields", () => {
+    const state = { ...hydrateTutorProfileForm(serverProfile, onboardingFallback), ...emptySelections };
+    const limits = defaultSiteLimits();
+
+    // Repetitive words in aboutMe
+    const repetitiveAboutMe = getTutorProfileSubmissionErrors({
+      ...state,
+      aboutMe: "tutor tutor tutor tutor tutor tutor tutor tutor tutor tutor",
+    }, undefined, limits);
+    expect(repetitiveAboutMe).toHaveProperty("aboutMe", "Write a meaningful introduction about your educational background and teaching passion.");
+
+    // Repetitive words in teachingApproach
+    const repetitiveApproach = getTutorProfileSubmissionErrors({
+      ...state,
+      teachingApproach: "good tutor good tutor good tutor good tutor good tutor",
+    }, undefined, limits);
+    expect(repetitiveApproach).toHaveProperty("teachingApproach", "Explain your teaching methodology, how you plan lessons and help students understand concepts.");
+
+    // Dummy keywords in whyChooseMe
+    const dummyWhy = getTutorProfileSubmissionErrors({
+      ...state,
+      whyChooseMe: "test test test test test test test test test test",
+    }, undefined, limits);
+    expect(dummyWhy).toHaveProperty("whyChooseMe", "Highlight your key strengths, dedication, and why guardians/students should choose you.");
+  });
+
   it("enforces dynamic minimum and maximum age requirements on dateOfBirth", () => {
     const state = { ...hydrateTutorProfileForm(serverProfile, onboardingFallback), ...emptySelections };
     const limits = { ...defaultSiteLimits(), "tutor.minAgeYears": 18, "tutor.maxAgeYears": 75 };

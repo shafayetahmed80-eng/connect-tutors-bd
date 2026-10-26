@@ -1,6 +1,7 @@
 import CharacterRemaining from "@/components/CharacterRemaining";
 import { SearchableMultiSelect, SearchableSingleSelect, type SelectorOption } from "@/components/TutorProfileSelectors";
 import { calculateAgeInYears, tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation, validateHeadline } from "@shared/tutor-personal-details";
+import { validateIntroductionField } from "@shared/tutor-introduction";
 import { isTutorCvDraft } from "@shared/tutor-cv-status";
 import { offersOnlineTuitionOnly, validateTuitionFees } from "@shared/tutor-profile-tuition";
 import { Button } from "@/components/ui/button";
@@ -1148,17 +1149,26 @@ function TutorProfileWorkspaceBody({
     }
     if (target === "e") {
       const sectionErrors: TutorProfileSubmissionErrors = {};
-      const aboutMeLen = form.aboutMe?.trim().length ?? 0;
-      if (aboutMeLen > 0 && limits["tutor.aboutMeMinChars"] > 0 && aboutMeLen < limits["tutor.aboutMeMinChars"]) {
-        sectionErrors.aboutMe = `Write at least ${limits["tutor.aboutMeMinChars"]} characters in About Me.`;
+      if (form.aboutMe?.trim()) {
+        const err = validateIntroductionField(form.aboutMe, "aboutMe", {
+          minChars: limits["tutor.aboutMeMinChars"],
+          maxChars: limits["tutor.aboutMeChars"],
+        });
+        if (err) sectionErrors.aboutMe = err;
       }
-      const approachLen = form.teachingApproach?.trim().length ?? 0;
-      if (approachLen > 0 && limits["tutor.approachMinChars"] > 0 && approachLen < limits["tutor.approachMinChars"]) {
-        sectionErrors.teachingApproach = `Write at least ${limits["tutor.approachMinChars"]} characters in Teaching Approach.`;
+      if (form.teachingApproach?.trim()) {
+        const err = validateIntroductionField(form.teachingApproach, "teachingApproach", {
+          minChars: limits["tutor.approachMinChars"],
+          maxChars: limits["tutor.approachChars"],
+        });
+        if (err) sectionErrors.teachingApproach = err;
       }
-      const whyChooseMeLen = form.whyChooseMe?.trim().length ?? 0;
-      if (whyChooseMeLen > 0 && limits["tutor.whyChooseMeMinChars"] > 0 && whyChooseMeLen < limits["tutor.whyChooseMeMinChars"]) {
-        sectionErrors.whyChooseMe = `Write at least ${limits["tutor.whyChooseMeMinChars"]} characters in Why Choose Me.`;
+      if (form.whyChooseMe?.trim()) {
+        const err = validateIntroductionField(form.whyChooseMe, "whyChooseMe", {
+          minChars: limits["tutor.whyChooseMeMinChars"],
+          maxChars: limits["tutor.whyChooseMeChars"],
+        });
+        if (err) sectionErrors.whyChooseMe = err;
       }
       if (Object.keys(sectionErrors).length > 0) {
         setFieldErrors(current => ({ ...current, ...sectionErrors }));
