@@ -815,6 +815,26 @@ describe("Tutor Profile duplicate phone number validation", () => {
     const parsed = tutorProfileDraftSchema.safeParse(validContact);
     expect(parsed.success).toBe(true);
   });
+
+  it("rejects headline with repetitive single-word or dummy content", () => {
+    const repetitiveHeadline = {
+      ...approvedExpandedSubmission,
+      headline: "tutor tutor tutor",
+    };
+    const parsedRep = tutorProfileDraftSchema.safeParse(repetitiveHeadline);
+    expect(parsedRep.success).toBe(false);
+    if (!parsedRep.success) {
+      const issue = parsedRep.error.issues.find(i => i.path.join(".") === "headline");
+      expect(issue?.message).toContain("meaningful professional headline");
+    }
+
+    const dummyHeadline = {
+      ...approvedExpandedSubmission,
+      headline: "test test test",
+    };
+    const parsedDummy = tutorProfileDraftSchema.safeParse(dummyHeadline);
+    expect(parsedDummy.success).toBe(false);
+  });
 it("rejects feeMin below 1,000 BDT to avoid per-class rate confusion", () => {
     const lowFee = {
       ...approvedExpandedSubmission,

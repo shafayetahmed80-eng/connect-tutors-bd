@@ -606,6 +606,27 @@ it("flags family and emergency contact phones that duplicate the tutor's persona
     expect(validErrors).not.toHaveProperty("privateDetails.emergencyContactRelation");
   });
 
+  it("flags headline with repetitive or dummy words in getTutorProfileSubmissionErrors", () => {
+    const state = hydrateTutorProfileForm(serverProfile, onboardingFallback);
+    const withRepHeadline = {
+      ...state,
+      headline: "tutor tutor tutor",
+    };
+
+    const errors = getTutorProfileSubmissionErrors(withRepHeadline as any);
+    expect(errors).toHaveProperty(
+      "headline",
+      "Provide a meaningful professional headline (mention your subject, target classes, or background, e.g. 'Experienced Mathematics Tutor for SSC & HSC').",
+    );
+
+    const withValidHeadline = {
+      ...state,
+      headline: "Experienced Mathematics Tutor for SSC Students",
+    };
+    const validErrors = getTutorProfileSubmissionErrors(withValidHeadline as any);
+    expect(validErrors).not.toHaveProperty("headline");
+  });
+
 
   it("flags tuition fee below 1,000 BDT in getTutorProfileSubmissionErrors", () => {
     const state = hydrateTutorProfileForm(serverProfile, onboardingFallback);

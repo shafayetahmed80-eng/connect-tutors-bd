@@ -11,6 +11,8 @@ import {
   MIN_EMERGENCY_CONTACT_NAME_LENGTH,
   validateEmergencyContactRelation,
   MIN_EMERGENCY_CONTACT_RELATION_LENGTH,
+  validateHeadline,
+  MIN_HEADLINE_LENGTH,
 } from "./tutor-personal-details";
 
 describe("tutor-personal-details", () => {
@@ -197,6 +199,48 @@ describe("tutor-personal-details", () => {
       expect(validateEmergencyContactRelation(undefined)).toBeNull();
       expect(validateEmergencyContactRelation("")).toBeNull();
       expect(validateEmergencyContactRelation("   ")).toBeNull();
+    });
+  });
+  describe("validateHeadline", () => {
+    it("accepts valid, descriptive professional headlines", () => {
+      expect(validateHeadline("Experienced Mathematics Tutor for SSC & HSC Students")).toBeNull();
+      expect(validateHeadline("English Medium Tutor (Cambridge O/A Level)")).toBeNull();
+      expect(validateHeadline("BUET EEE Student | Passionate Physics & Math Teacher")).toBeNull();
+      expect(validateHeadline("গণিত ও পদার্থবিজ্ঞান স্পেশাল টিউটর")).toBeNull();
+    });
+
+    it("rejects headlines shorter than 10 characters", () => {
+      const err = validateHeadline("Tutor");
+      expect(err).toContain("Enter a headline with at least 10 characters");
+
+      expect(validateHeadline("Math 123")).toContain("at least 10 characters");
+    });
+
+    it("rejects repetitive single-word headlines", () => {
+      expect(validateHeadline("tutor tutor")).toContain("meaningful professional headline");
+      expect(validateHeadline("tutor tutor tutor")).toContain("meaningful professional headline");
+      expect(validateHeadline("Teacher teacher")).toContain("meaningful professional headline");
+      expect(validateHeadline("tuition tuition")).toContain("meaningful professional headline");
+    });
+
+    it("rejects repeated character sequences", () => {
+      expect(validateHeadline("aaaaaaaaaa")).toContain("meaningful professional headline");
+      expect(validateHeadline("..........")).toContain("meaningful professional headline");
+      expect(validateHeadline("----------")).toContain("meaningful professional headline");
+    });
+
+    it("rejects dummy placeholder headlines", () => {
+      expect(validateHeadline("test test test")).toContain("meaningful professional headline");
+      expect(validateHeadline("asdf asdf asdf")).toContain("meaningful professional headline");
+      expect(validateHeadline("demo demo demo")).toContain("meaningful professional headline");
+      expect(validateHeadline("N/A N/A N/A N/A")).toContain("meaningful professional headline");
+    });
+
+    it("allows null or empty strings (deferred to required-check)", () => {
+      expect(validateHeadline(null)).toBeNull();
+      expect(validateHeadline(undefined)).toBeNull();
+      expect(validateHeadline("")).toBeNull();
+      expect(validateHeadline("   ")).toBeNull();
     });
   });
 });
