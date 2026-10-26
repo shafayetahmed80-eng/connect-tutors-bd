@@ -1,6 +1,6 @@
 import CharacterRemaining from "@/components/CharacterRemaining";
 import { SearchableMultiSelect, SearchableSingleSelect, type SelectorOption } from "@/components/TutorProfileSelectors";
-import { calculateAgeInYears, tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress } from "@shared/tutor-personal-details";
+import { calculateAgeInYears, tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress, validatePresentAddress } from "@shared/tutor-personal-details";
 import { isTutorCvDraft } from "@shared/tutor-cv-status";
 import { offersOnlineTuitionOnly, validateTuitionFees } from "@shared/tutor-profile-tuition";
 import { Button } from "@/components/ui/button";
@@ -1059,6 +1059,12 @@ function TutorProfileWorkspaceBody({
           }
         }
       }
+      if (form.privateDetails.presentAddress) {
+        const addrErr = validatePresentAddress(form.privateDetails.presentAddress);
+        if (addrErr) {
+          sectionErrors["privateDetails.presentAddress" as TutorProfileSubmissionErrorKey] = addrErr;
+        }
+      }
       if (form.privateDetails.permanentAddress) {
         const addrErr = validatePermanentAddress(form.privateDetails.permanentAddress);
         if (addrErr) {
@@ -1489,6 +1495,7 @@ function TutorProfileWorkspaceBody({
       case "contactEmail": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.email)} required={isRequired(fieldId)} type="email" name="email" autoComplete="email" value={form.contactEmail} onChange={event => update("contactEmail", event.target.value)} error={fieldErrors.contactEmail} />;
       case "privateDetails.nationality": return <label className={tp.fieldRow}><span className={tp.fieldLabel}>{fieldLabel(fieldId, "Nationality")}{isRequired(fieldId) ? <span aria-hidden="true" className="text-tp-danger"> *</span> : null}</span><select aria-label={fieldLabel(fieldId, "Nationality")} value={form.privateDetails.nationality || "Bangladeshi"} onChange={event => updatePrivateDetail("nationality", event.target.value)} className={fieldClassName}>{tutorNationalityOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></label>;
       case "privateDetails.religion": return <SearchableSingleSelect label={fieldLabel(fieldId, "Religion")} required={isRequired(fieldId)} options={tutorReligionOptions.map(option => ({ id: option, label: option }))} value={form.privateDetails.religion ?? ""} onChange={value => updatePrivateDetail("religion", value)} emptyMessage="No religion found." />;
+      case "privateDetails.presentAddress": return <FormTextArea label={fieldLabel(fieldId, "Present Address")} rows={2} required={isRequired(fieldId)} name="street-address" autoComplete="street-address" value={form.privateDetails.presentAddress} onChange={event => updatePrivateDetail("presentAddress", event.target.value)} placeholder="House/Road, Sector/Block, Area" error={fieldErrors["privateDetails.presentAddress" as TutorProfileSubmissionErrorKey]} />;
       case "privateDetails.permanentAddress": return <FormTextArea label={fieldLabel(fieldId, "Permanent Address")} rows={2} required={isRequired(fieldId)} name="street-address" autoComplete="street-address" value={form.privateDetails.permanentAddress} onChange={event => updatePrivateDetail("permanentAddress", event.target.value)} placeholder="Village/Road, Thana/Upazila, District" error={fieldErrors["privateDetails.permanentAddress" as TutorProfileSubmissionErrorKey]} />;
       case "privateDetails.additionalPhone": return <FormPhoneInput required={isRequired(fieldId)} label={fieldLabel(fieldId, "Additional Phone")} value={form.privateDetails.additionalPhone} onChange={value => updatePrivateDetail("additionalPhone", value)} error={fieldErrors["privateDetails.additionalPhone" as TutorProfileSubmissionErrorKey] ?? phoneErrors.additionalPhone} />;
       case "privateDetails.socialProfileLinks": return <FormInput required={isRequired(fieldId)} label={fieldLabel(fieldId, "Social Profile Links")} placeholder="Ex- https://facebook.com/username" name="url" autoComplete="url" value={form.privateDetails.socialProfileLinks} onChange={event => updatePrivateDetail("socialProfileLinks", event.target.value)} />;

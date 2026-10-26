@@ -523,6 +523,33 @@ it("flags family and emergency contact phones that duplicate the tutor's persona
     expect(validErrors).not.toHaveProperty("privateDetails.permanentAddress");
   });
 
+  it("flags presentAddress when shorter than 10 characters in getTutorProfileSubmissionErrors", () => {
+    const state = hydrateTutorProfileForm(serverProfile, onboardingFallback);
+    const withShortAddress = {
+      ...state,
+      privateDetails: {
+        ...state.privateDetails,
+        presentAddress: "Dhaka",
+      },
+    };
+
+    const errors = getTutorProfileSubmissionErrors(withShortAddress as any);
+    expect(errors).toHaveProperty(
+      "privateDetails.presentAddress",
+      "Enter detailed present address (at least 10 characters including House/Road, Area).",
+    );
+
+    const withValidAddress = {
+      ...state,
+      privateDetails: {
+        ...state.privateDetails,
+        presentAddress: "House 12, Road 5, Mirpur, Dhaka",
+      },
+    };
+    const validErrors = getTutorProfileSubmissionErrors(withValidAddress as any);
+    expect(validErrors).not.toHaveProperty("privateDetails.presentAddress");
+  });
+
 
   it("flags tuition fee below 1,000 BDT in getTutorProfileSubmissionErrors", () => {
     const state = hydrateTutorProfileForm(serverProfile, onboardingFallback);

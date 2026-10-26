@@ -11,7 +11,7 @@ import {
   validateEducationTimelineSequence,
   validateResultGpa } from "@shared/tutor-education";
 import { defaultTutorProfileFieldConfig, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
-import { tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress } from "@shared/tutor-personal-details";
+import { tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress, validatePresentAddress } from "@shared/tutor-personal-details";
 import { offersOnlineTuitionOnly, validateTuitionFees } from "@shared/tutor-profile-tuition";
 import { findDuplicateTutorPhoneErrors } from "@shared/phone";
 
@@ -94,7 +94,12 @@ const optionalBangladeshPhoneSchema = z.preprocess(value => {
 
 const privateDetailsSchema = z.object({
   additionalPhone: optionalBangladeshPhoneSchema,
-  presentAddress: optionalTrimmedText(500),
+  presentAddress: optionalTrimmedText(500).superRefine((val, ctx) => {
+    if (val) {
+      const err = validatePresentAddress(val);
+      if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, message: err });
+    }
+  }),
   permanentAddress: optionalTrimmedText(500).superRefine((val, ctx) => {
     if (val) {
       const err = validatePermanentAddress(val);

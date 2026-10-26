@@ -720,6 +720,34 @@ describe("Tutor Profile duplicate phone number validation", () => {
     const parsed = tutorProfileDraftSchema.safeParse(validAddress);
     expect(parsed.success).toBe(true);
   });
+
+  it("rejects presentAddress when shorter than 10 characters", () => {
+    const shortAddress = {
+      ...approvedExpandedSubmission,
+      privateDetails: {
+        ...approvedExpandedSubmission.privateDetails,
+        presentAddress: "Dhaka",
+      },
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(shortAddress);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      const issue = parsed.error.issues.find(i => i.path.join(".") === "privateDetails.presentAddress");
+      expect(issue?.message).toContain("Enter detailed present address (at least 10 characters including House/Road, Area)");
+    }
+  });
+
+  it("accepts valid presentAddress with sufficient detail", () => {
+    const validAddress = {
+      ...approvedExpandedSubmission,
+      privateDetails: {
+        ...approvedExpandedSubmission.privateDetails,
+        presentAddress: "House 12, Road 5, Mirpur, Dhaka",
+      },
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(validAddress);
+    expect(parsed.success).toBe(true);
+  });
 it("rejects feeMin below 1,000 BDT to avoid per-class rate confusion", () => {
     const lowFee = {
       ...approvedExpandedSubmission,

@@ -39,6 +39,7 @@ export function calculateAgeInYears(dateOfBirth: string, now: Date = new Date())
 }
 
 export const MIN_PERMANENT_ADDRESS_LENGTH = 10;
+export const MIN_PRESENT_ADDRESS_LENGTH = 10;
 
 /**
  * Validates permanent address quality and minimum detail length.
@@ -51,6 +52,21 @@ export function validatePermanentAddress(address: string | null | undefined): st
   if (trimmed.length === 0) return null;
   if (trimmed.length < MIN_PERMANENT_ADDRESS_LENGTH) {
     return `Enter detailed permanent address (at least ${MIN_PERMANENT_ADDRESS_LENGTH} characters including Village/Area, Thana, District).`;
+  }
+  return null;
+}
+
+/**
+ * Validates present address quality and minimum detail length.
+ * Present address must contain sufficient geographic details (e.g. House/Road, Sector/Block, Area).
+ * Returns an error message string if invalid, or null if valid.
+ */
+export function validatePresentAddress(address: string | null | undefined): string | null {
+  if (address === null || address === undefined) return null;
+  const trimmed = address.trim();
+  if (trimmed.length === 0) return null;
+  if (trimmed.length < MIN_PRESENT_ADDRESS_LENGTH) {
+    return `Enter detailed present address (at least ${MIN_PRESENT_ADDRESS_LENGTH} characters including House/Road, Area).`;
   }
   return null;
 }
