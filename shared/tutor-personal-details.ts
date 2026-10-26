@@ -40,6 +40,8 @@ export function calculateAgeInYears(dateOfBirth: string, now: Date = new Date())
 
 export const MIN_PERMANENT_ADDRESS_LENGTH = 10;
 export const MIN_PRESENT_ADDRESS_LENGTH = 10;
+export const MIN_EMERGENCY_CONTACT_NAME_LENGTH = 3;
+export const MIN_EMERGENCY_CONTACT_RELATION_LENGTH = 3;
 
 /**
  * Validates permanent address quality and minimum detail length.
@@ -67,6 +69,83 @@ export function validatePresentAddress(address: string | null | undefined): stri
   if (trimmed.length === 0) return null;
   if (trimmed.length < MIN_PRESENT_ADDRESS_LENGTH) {
     return `Enter detailed present address (at least ${MIN_PRESENT_ADDRESS_LENGTH} characters including House/Road, Area).`;
+  }
+  return null;
+}
+
+const INVALID_EMERGENCY_SELF_WORDS: ReadonlySet<string> = new Set([
+  "self",
+  "myself",
+  "me",
+  "own",
+  "ownself",
+  "নিজের",
+  "নিজে",
+  "আমি",
+]);
+
+const INVALID_EMERGENCY_DUMMY_WORDS: ReadonlySet<string> = new Set([
+  "none",
+  "n/a",
+  "na",
+  "nil",
+  "nothing",
+  "no",
+  "নাই",
+  "নেই",
+  "না",
+  "null",
+  "undefined",
+  "test",
+  "demo",
+  "asdf",
+]);
+
+/**
+ * Validates emergency contact person's name quality and authenticity.
+ * Prevents self-reference (tutor's own name or "Self"), placeholders ("None", "N/A"), or abbreviations < 3 chars.
+ * Returns an error message string if invalid, or null if valid.
+ */
+export function validateEmergencyContactName(name: string | null | undefined, tutorName?: string | null): string | null {
+  if (name === null || name === undefined) return null;
+  const trimmed = name.trim();
+  if (trimmed.length === 0) return null;
+
+  const lower = trimmed.toLowerCase();
+  if (INVALID_EMERGENCY_SELF_WORDS.has(lower)) {
+    return "Emergency contact cannot be yourself. Enter the name of a family member or trusted person.";
+  }
+  if (INVALID_EMERGENCY_DUMMY_WORDS.has(lower)) {
+    return "Enter a valid emergency contact person's name.";
+  }
+  if (tutorName && tutorName.trim().length > 0 && lower === tutorName.trim().toLowerCase()) {
+    return "Emergency contact cannot be yourself. Enter the name of a family member or trusted person.";
+  }
+  if (trimmed.length < MIN_EMERGENCY_CONTACT_NAME_LENGTH) {
+    return `Emergency contact name must be at least ${MIN_EMERGENCY_CONTACT_NAME_LENGTH} characters.`;
+  }
+  return null;
+}
+
+/**
+ * Validates emergency contact relation quality and specificity.
+ * Prevents self-reference ("Self"), placeholders ("None", "N/A"), or abbreviations < 3 chars.
+ * Returns an error message string if invalid, or null if valid.
+ */
+export function validateEmergencyContactRelation(relation: string | null | undefined): string | null {
+  if (relation === null || relation === undefined) return null;
+  const trimmed = relation.trim();
+  if (trimmed.length === 0) return null;
+
+  const lower = trimmed.toLowerCase();
+  if (INVALID_EMERGENCY_SELF_WORDS.has(lower)) {
+    return "Emergency contact relation cannot be self. Specify relationship (e.g. Father, Mother, Brother, Guardian).";
+  }
+  if (INVALID_EMERGENCY_DUMMY_WORDS.has(lower)) {
+    return "Enter a valid relation (at least 3 characters, e.g. Father, Mother, Brother, Guardian).";
+  }
+  if (trimmed.length < MIN_EMERGENCY_CONTACT_RELATION_LENGTH) {
+    return `Enter a valid relation (at least ${MIN_EMERGENCY_CONTACT_RELATION_LENGTH} characters, e.g. Father, Mother, Brother, Guardian).`;
   }
   return null;
 }

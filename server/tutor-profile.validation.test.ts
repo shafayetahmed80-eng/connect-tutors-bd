@@ -748,6 +748,73 @@ describe("Tutor Profile duplicate phone number validation", () => {
     const parsed = tutorProfileDraftSchema.safeParse(validAddress);
     expect(parsed.success).toBe(true);
   });
+
+  it("rejects emergencyContactName when it matches tutor name or self-reference", () => {
+    const selfName = {
+      ...approvedExpandedSubmission,
+      name: "Shafayet Ahmed",
+      privateDetails: {
+        ...approvedExpandedSubmission.privateDetails,
+        emergencyContactName: "Shafayet Ahmed",
+      },
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(selfName);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      const issue = parsed.error.issues.find(i => i.path.join(".") === "privateDetails.emergencyContactName");
+      expect(issue?.message).toContain("Emergency contact cannot be yourself");
+    }
+
+    const selfWord = {
+      ...approvedExpandedSubmission,
+      privateDetails: {
+        ...approvedExpandedSubmission.privateDetails,
+        emergencyContactName: "Self",
+      },
+    };
+    const parsedSelf = tutorProfileDraftSchema.safeParse(selfWord);
+    expect(parsedSelf.success).toBe(false);
+  });
+
+  it("rejects emergencyContactRelation when self or dummy keyword", () => {
+    const selfRelation = {
+      ...approvedExpandedSubmission,
+      privateDetails: {
+        ...approvedExpandedSubmission.privateDetails,
+        emergencyContactRelation: "Self",
+      },
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(selfRelation);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      const issue = parsed.error.issues.find(i => i.path.join(".") === "privateDetails.emergencyContactRelation");
+      expect(issue?.message).toContain("Emergency contact relation cannot be self");
+    }
+
+    const dummyRelation = {
+      ...approvedExpandedSubmission,
+      privateDetails: {
+        ...approvedExpandedSubmission.privateDetails,
+        emergencyContactRelation: "None",
+      },
+    };
+    const parsedDummy = tutorProfileDraftSchema.safeParse(dummyRelation);
+    expect(parsedDummy.success).toBe(false);
+  });
+
+  it("accepts valid emergency contact name and relation", () => {
+    const validContact = {
+      ...approvedExpandedSubmission,
+      name: "Shafayet Ahmed",
+      privateDetails: {
+        ...approvedExpandedSubmission.privateDetails,
+        emergencyContactName: "Abdul Karim",
+        emergencyContactRelation: "Father",
+      },
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(validContact);
+    expect(parsed.success).toBe(true);
+  });
 it("rejects feeMin below 1,000 BDT to avoid per-class rate confusion", () => {
     const lowFee = {
       ...approvedExpandedSubmission,
