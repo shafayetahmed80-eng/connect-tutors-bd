@@ -459,6 +459,33 @@ describe("Tutor Profile form hydration", () => {
       priorTeachingExperience: "test test test demo demo demo",
     } as any, undefined, limits);
     expect(dummyExpErrors).toHaveProperty("priorTeachingExperience", "Provide meaningful details about your prior teaching experience rather than repetitive or placeholder text.");
+
+    // Dummy father and mother names
+    const dummyFatherErrors = getTutorProfileSubmissionErrors({
+      ...state,
+      privateDetails: { ...state.privateDetails, fatherName: "Father" },
+    }, undefined, limits);
+    expect(dummyFatherErrors).toHaveProperty("privateDetails.fatherName", "Enter a genuine father's name rather than placeholder text.");
+
+    const dummyMotherErrors = getTutorProfileSubmissionErrors({
+      ...state,
+      privateDetails: { ...state.privateDetails, motherName: "none" },
+    }, undefined, limits);
+    expect(dummyMotherErrors).toHaveProperty("privateDetails.motherName", "Enter a genuine mother's name rather than placeholder text.");
+
+    // Dummy social profile links
+    const dummySocialErrors = getTutorProfileSubmissionErrors({
+      ...state,
+      privateDetails: { ...state.privateDetails, socialProfileLinks: "test" },
+    }, undefined, limits);
+    expect(dummySocialErrors).toHaveProperty("privateDetails.socialProfileLinks", "Enter a valid social profile link (e.g. https://facebook.com/username or https://linkedin.com/in/username).");
+
+    // Dummy emergency contact address
+    const dummyAddressErrors = getTutorProfileSubmissionErrors({
+      ...state,
+      privateDetails: { ...state.privateDetails, emergencyContactAddress: "same as above" },
+    }, undefined, limits);
+    expect(dummyAddressErrors).toHaveProperty("privateDetails.emergencyContactAddress", "Enter a detailed emergency contact address rather than placeholder text.");
   });
 
   it("enforces dynamic minimum and maximum age requirements on dateOfBirth", () => {

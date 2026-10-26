@@ -13,7 +13,7 @@ import {
   validateEducationTextField,
   validateEducationExamNumber } from "@shared/tutor-education";
 import { defaultTutorProfileFieldConfig, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
-import { tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation, validateHeadline } from "@shared/tutor-personal-details";
+import { tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation, validateHeadline, validateParentName, validateSocialProfileLinks, validateEmergencyContactAddress } from "@shared/tutor-personal-details";
 import { validateIntroductionQuality } from "@shared/tutor-introduction";
 import { offersOnlineTuitionOnly, validateTuitionFees, validateTeachingExperience, validateTeachingExpertiseText } from "@shared/tutor-profile-tuition";
 import { findDuplicateTutorPhoneErrors } from "@shared/phone";
@@ -111,10 +111,25 @@ const privateDetailsSchema = z.object({
   }),
   nationality: optionalEnum(tutorNationalityOptions),
   religion: optionalEnum(tutorReligionOptions),
-  socialProfileLinks: optionalTrimmedText(1000),
-  fatherName: optionalTrimmedText(160),
+  socialProfileLinks: optionalTrimmedText(1000).superRefine((val, ctx) => {
+    if (val) {
+      const err = validateSocialProfileLinks(val);
+      if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, message: err });
+    }
+  }),
+  fatherName: optionalTrimmedText(160).superRefine((val, ctx) => {
+    if (val) {
+      const err = validateParentName(val, "father");
+      if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, message: err });
+    }
+  }),
   fatherPhone: optionalBangladeshPhoneSchema,
-  motherName: optionalTrimmedText(160),
+  motherName: optionalTrimmedText(160).superRefine((val, ctx) => {
+    if (val) {
+      const err = validateParentName(val, "mother");
+      if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, message: err });
+    }
+  }),
   motherPhone: optionalBangladeshPhoneSchema,
   emergencyContactName: optionalTrimmedText(160).superRefine((val, ctx) => {
     if (val) {
@@ -129,7 +144,12 @@ const privateDetailsSchema = z.object({
     }
   }),
   emergencyContactPhone: optionalBangladeshPhoneSchema,
-  emergencyContactAddress: optionalTrimmedText(500),
+  emergencyContactAddress: optionalTrimmedText(500).superRefine((val, ctx) => {
+    if (val) {
+      const err = validateEmergencyContactAddress(val);
+      if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, message: err });
+    }
+  }),
 }).strict();
 
 /**

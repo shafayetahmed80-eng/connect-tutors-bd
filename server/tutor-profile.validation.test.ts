@@ -940,4 +940,82 @@ it("rejects feeMin below 1,000 BDT to avoid per-class rate confusion", () => {
       expect(parsed.error.issues.some(i => i.path.includes("specialExpertise"))).toBe(true);
     }
   });
+
+  it("rejects dummy or low-quality father and mother names", () => {
+    const dummyFather = {
+      ...approvedExpandedSubmission,
+      privateDetails: {
+        ...approvedExpandedSubmission.privateDetails,
+        fatherName: "Father",
+      },
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(dummyFather);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      const issue = parsed.error.issues.find(i => i.path.join(".") === "privateDetails.fatherName");
+      expect(issue?.message).toContain("genuine father's name rather than placeholder text");
+    }
+
+    const dummyMother = {
+      ...approvedExpandedSubmission,
+      privateDetails: {
+        ...approvedExpandedSubmission.privateDetails,
+        motherName: "none",
+      },
+    };
+    const parsedMother = tutorProfileDraftSchema.safeParse(dummyMother);
+    expect(parsedMother.success).toBe(false);
+    if (!parsedMother.success) {
+      const issue = parsedMother.error.issues.find(i => i.path.join(".") === "privateDetails.motherName");
+      expect(issue?.message).toContain("genuine mother's name rather than placeholder text");
+    }
+  });
+
+  it("rejects non-URL placeholder text in socialProfileLinks", () => {
+    const dummySocial = {
+      ...approvedExpandedSubmission,
+      privateDetails: {
+        ...approvedExpandedSubmission.privateDetails,
+        socialProfileLinks: "none",
+      },
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(dummySocial);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      const issue = parsed.error.issues.find(i => i.path.join(".") === "privateDetails.socialProfileLinks");
+      expect(issue?.message).toContain("valid social profile link");
+    }
+  });
+
+  it("rejects placeholder or shortcut emergency contact addresses", () => {
+    const dummyAddress = {
+      ...approvedExpandedSubmission,
+      privateDetails: {
+        ...approvedExpandedSubmission.privateDetails,
+        emergencyContactAddress: "same as above",
+      },
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(dummyAddress);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      const issue = parsed.error.issues.find(i => i.path.join(".") === "privateDetails.emergencyContactAddress");
+      expect(issue?.message).toContain("detailed emergency contact address rather than placeholder text");
+    }
+  });
+
+  it("accepts valid fatherName, motherName, socialProfileLinks, and emergencyContactAddress", () => {
+    const validProfile = {
+      ...approvedExpandedSubmission,
+      privateDetails: {
+        ...approvedExpandedSubmission.privateDetails,
+        fatherName: "Md. Rafiqul Islam",
+        motherName: "Rahima Begum",
+        socialProfileLinks: "https://facebook.com/tutor.profile",
+        emergencyContactAddress: "House 12, Road 5, Mirpur 10, Dhaka",
+      },
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(validProfile);
+    expect(parsed.success).toBe(true);
+  });
+
 });

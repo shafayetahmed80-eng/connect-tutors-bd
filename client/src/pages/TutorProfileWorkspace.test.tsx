@@ -1321,6 +1321,45 @@ describe("Permanent Address and the Availability choices", () => {
     expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
   });
 
+  it("blocks saving Family and emergency contact draft when father name is dummy text", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Family and emergency contact" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(/Father.+Name/), { target: { value: "Father" } });
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    expect(within(dialog).getByText(/Enter a genuine father's name rather than placeholder text/)).toBeTruthy();
+    expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
+  });
+
+  it("blocks saving Family and emergency contact draft when emergency contact address is dummy shortcut", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Family and emergency contact" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(/Emergency Contact Address/), { target: { value: "same as above" } });
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    expect(within(dialog).getByText(/Enter a detailed emergency contact address rather than placeholder text/)).toBeTruthy();
+    expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
+  });
+
+  it("blocks saving Identity and contact draft when social profile link is not a URL", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText(/Social Profile Links/), { target: { value: "none" } });
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    expect(within(dialog).getByText(/Enter a valid social profile link/)).toBeTruthy();
+    expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
+  });
+
   it("offers Tuition Type as a multi-select and Preferred Student Gender as a dropdown on a laptop", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);

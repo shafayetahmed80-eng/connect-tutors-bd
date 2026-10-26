@@ -1,6 +1,6 @@
 import { educationSectionStatus, validateEducationTimelineSequence, validateResultGpa, validateEducationTextField, validateEducationExamNumber } from "@shared/tutor-education";
 import { findDuplicateTutorPhoneErrors } from "@shared/phone";
-import { validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation, validateHeadline } from "@shared/tutor-personal-details";
+import { validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation, validateHeadline, validateParentName, validateSocialProfileLinks, validateEmergencyContactAddress } from "@shared/tutor-personal-details";
 import { validateIntroductionField } from "@shared/tutor-introduction";
 import { findTutorProfileFieldMeta, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import type { SiteLimitValues } from "@shared/site-limits";
@@ -74,6 +74,10 @@ export type TutorProfileSubmissionErrorKey =
   | "privateDetails.motherPhone"
   | "privateDetails.emergencyContactPhone"
   | "privateDetails.additionalPhone"
+  | "privateDetails.fatherName"
+  | "privateDetails.motherName"
+  | "privateDetails.socialProfileLinks"
+  | "privateDetails.emergencyContactAddress"
   | "priorTeachingExperience"
   | "specialExpertise"
   | "academicAchievement";
@@ -101,6 +105,10 @@ const completionFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, stri
   "privateDetails.permanentAddress": "Permanent Address",
   "privateDetails.emergencyContactName": "Emergency Contact Name",
   "privateDetails.emergencyContactRelation": "Emergency Contact Relation",
+  "privateDetails.fatherName": "Father’s Name",
+  "privateDetails.motherName": "Mother’s Name",
+  "privateDetails.socialProfileLinks": "Social Profile Links",
+  "privateDetails.emergencyContactAddress": "Emergency Contact Address",
   currentCityId: tutorProfileCopy.fields.currentCity,
   currentLocationId: tutorProfileCopy.fields.currentLocation,
   teachingAreaIds: tutorProfileCopy.fields.teachingAreas,
@@ -251,6 +259,22 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
     if (err) {
       errors["privateDetails.emergencyContactRelation"] = err;
     }
+  }
+  if (form.privateDetails?.fatherName) {
+    const err = validateParentName(form.privateDetails.fatherName, "father");
+    if (err) errors["privateDetails.fatherName"] = err;
+  }
+  if (form.privateDetails?.motherName) {
+    const err = validateParentName(form.privateDetails.motherName, "mother");
+    if (err) errors["privateDetails.motherName"] = err;
+  }
+  if (form.privateDetails?.socialProfileLinks) {
+    const err = validateSocialProfileLinks(form.privateDetails.socialProfileLinks);
+    if (err) errors["privateDetails.socialProfileLinks"] = err;
+  }
+  if (form.privateDetails?.emergencyContactAddress) {
+    const err = validateEmergencyContactAddress(form.privateDetails.emergencyContactAddress);
+    if (err) errors["privateDetails.emergencyContactAddress"] = err;
   }
   if (!form.currentCityId) errors.currentCityId = "Select your current city.";
   if (!form.currentLocationId) errors.currentLocationId = "Select your current location.";

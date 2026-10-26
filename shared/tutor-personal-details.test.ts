@@ -13,6 +13,11 @@ import {
   MIN_EMERGENCY_CONTACT_RELATION_LENGTH,
   validateHeadline,
   MIN_HEADLINE_LENGTH,
+  validateParentName,
+  MIN_PARENT_NAME_LENGTH,
+  validateSocialProfileLinks,
+  validateEmergencyContactAddress,
+  MIN_EMERGENCY_CONTACT_ADDRESS_LENGTH,
 } from "./tutor-personal-details";
 
 describe("tutor-personal-details", () => {
@@ -243,4 +248,97 @@ describe("tutor-personal-details", () => {
       expect(validateHeadline("   ")).toBeNull();
     });
   });
+
+  describe("validateParentName", () => {
+    it("accepts valid, genuine father and mother names", () => {
+      expect(validateParentName("Abdul Karim", "father")).toBeNull();
+      expect(validateParentName("Md. Rafiqul Islam", "father")).toBeNull();
+      expect(validateParentName("Rahima Begum", "mother")).toBeNull();
+      expect(validateParentName("মোছাঃ ফাতেমা বেগম", "mother")).toBeNull();
+    });
+
+    it("rejects names shorter than 3 characters", () => {
+      expect(validateParentName("Md", "father")).toContain("at least 3 characters");
+      expect(validateParentName("Al", "mother")).toContain("at least 3 characters");
+    });
+
+    it("rejects dummy placeholder names", () => {
+      expect(validateParentName("none", "father")).toContain("genuine father's name rather than placeholder text");
+      expect(validateParentName("N/A", "father")).toContain("genuine father's name rather than placeholder text");
+      expect(validateParentName("Father", "father")).toContain("genuine father's name rather than placeholder text");
+      expect(validateParentName("Mother", "mother")).toContain("genuine mother's name rather than placeholder text");
+      expect(validateParentName("test", "father")).toContain("genuine father's name rather than placeholder text");
+      expect(validateParentName("demo", "mother")).toContain("genuine mother's name rather than placeholder text");
+      expect(validateParentName("asdf", "father")).toContain("genuine father's name rather than placeholder text");
+    });
+
+    it("rejects repeated single characters or repetitive words", () => {
+      expect(validateParentName("aaaaaa", "father")).toContain("genuine father's name rather than placeholder text");
+      expect(validateParentName("------", "mother")).toContain("genuine mother's name rather than placeholder text");
+      expect(validateParentName("Karim Karim", "father")).toContain("genuine father's name rather than repetitive words");
+      expect(validateParentName("a b c", "father")).toContain("genuine father's name");
+    });
+
+    it("allows null or empty strings (deferred to required-check)", () => {
+      expect(validateParentName(null, "father")).toBeNull();
+      expect(validateParentName(undefined, "mother")).toBeNull();
+      expect(validateParentName("", "father")).toBeNull();
+      expect(validateParentName("   ", "mother")).toBeNull();
+    });
+  });
+
+  describe("validateSocialProfileLinks", () => {
+    it("accepts valid profile URLs and domain links", () => {
+      expect(validateSocialProfileLinks("https://facebook.com/username")).toBeNull();
+      expect(validateSocialProfileLinks("http://facebook.com/username")).toBeNull();
+      expect(validateSocialProfileLinks("https://www.linkedin.com/in/username")).toBeNull();
+      expect(validateSocialProfileLinks("facebook.com/username")).toBeNull();
+      expect(validateSocialProfileLinks("https://github.com/developer")).toBeNull();
+      expect(validateSocialProfileLinks("https://facebook.com/user, https://linkedin.com/in/user")).toBeNull();
+    });
+
+    it("rejects dummy non-URL text", () => {
+      expect(validateSocialProfileLinks("none")).toContain("valid social profile link");
+      expect(validateSocialProfileLinks("n/a")).toContain("valid social profile link");
+      expect(validateSocialProfileLinks("test")).toContain("valid social profile link");
+      expect(validateSocialProfileLinks("asdf")).toContain("valid social profile link");
+      expect(validateSocialProfileLinks("12345")).toContain("valid social profile link");
+      expect(validateSocialProfileLinks("just my name")).toContain("valid social profile link");
+    });
+
+    it("allows null or empty strings (deferred to required-check)", () => {
+      expect(validateSocialProfileLinks(null)).toBeNull();
+      expect(validateSocialProfileLinks(undefined)).toBeNull();
+      expect(validateSocialProfileLinks("")).toBeNull();
+      expect(validateSocialProfileLinks("   ")).toBeNull();
+    });
+  });
+
+  describe("validateEmergencyContactAddress", () => {
+    it("accepts valid detailed addresses with at least 10 characters", () => {
+      expect(validateEmergencyContactAddress("House 12, Road 5, Mirpur, Dhaka")).toBeNull();
+      expect(validateEmergencyContactAddress("Village Rampur, Thana Sadar, Bogura")).toBeNull();
+      expect(validateEmergencyContactAddress("Sector 10, Uttara, Dhaka")).toBeNull();
+    });
+
+    it("rejects addresses shorter than 10 characters", () => {
+      expect(validateEmergencyContactAddress("Dhaka")).toContain("at least 10 characters");
+      expect(validateEmergencyContactAddress("Mirpur")).toContain("at least 10 characters");
+    });
+
+    it("rejects shortcuts and dummy placeholder addresses", () => {
+      expect(validateEmergencyContactAddress("same as above")).toContain("detailed emergency contact address rather than placeholder text");
+      expect(validateEmergencyContactAddress("none na nil")).toContain("detailed emergency contact address rather than placeholder text");
+      expect(validateEmergencyContactAddress("aaaaaaaaaa")).toContain("detailed emergency contact address rather than placeholder text");
+      expect(validateEmergencyContactAddress("----------")).toContain("detailed emergency contact address rather than placeholder text");
+    });
+
+    it("allows null or empty strings (deferred to required-check)", () => {
+      expect(validateEmergencyContactAddress(null)).toBeNull();
+      expect(validateEmergencyContactAddress(undefined)).toBeNull();
+      expect(validateEmergencyContactAddress("")).toBeNull();
+      expect(validateEmergencyContactAddress("   ")).toBeNull();
+    });
+  });
+
 });

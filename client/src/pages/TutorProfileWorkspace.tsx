@@ -1,6 +1,6 @@
 import CharacterRemaining from "@/components/CharacterRemaining";
 import { SearchableMultiSelect, SearchableSingleSelect, type SelectorOption } from "@/components/TutorProfileSelectors";
-import { calculateAgeInYears, tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation, validateHeadline } from "@shared/tutor-personal-details";
+import { calculateAgeInYears, tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation, validateHeadline, validateParentName, validateSocialProfileLinks, validateEmergencyContactAddress } from "@shared/tutor-personal-details";
 import { validateIntroductionField } from "@shared/tutor-introduction";
 import { isTutorCvDraft } from "@shared/tutor-cv-status";
 import { offersOnlineTuitionOnly, validateTuitionFees, validateTeachingExperience, validateTeachingExpertiseText } from "@shared/tutor-profile-tuition";
@@ -1092,6 +1092,30 @@ function TutorProfileWorkspaceBody({
           sectionErrors["privateDetails.emergencyContactRelation" as TutorProfileSubmissionErrorKey] = err;
         }
       }
+      if (form.privateDetails.fatherName) {
+        const err = validateParentName(form.privateDetails.fatherName, "father");
+        if (err) {
+          sectionErrors["privateDetails.fatherName" as TutorProfileSubmissionErrorKey] = err;
+        }
+      }
+      if (form.privateDetails.motherName) {
+        const err = validateParentName(form.privateDetails.motherName, "mother");
+        if (err) {
+          sectionErrors["privateDetails.motherName" as TutorProfileSubmissionErrorKey] = err;
+        }
+      }
+      if (form.privateDetails.socialProfileLinks) {
+        const err = validateSocialProfileLinks(form.privateDetails.socialProfileLinks);
+        if (err) {
+          sectionErrors["privateDetails.socialProfileLinks" as TutorProfileSubmissionErrorKey] = err;
+        }
+      }
+      if (form.privateDetails.emergencyContactAddress) {
+        const err = validateEmergencyContactAddress(form.privateDetails.emergencyContactAddress);
+        if (err) {
+          sectionErrors["privateDetails.emergencyContactAddress" as TutorProfileSubmissionErrorKey] = err;
+        }
+      }
       const duplicateErrors = findDuplicateTutorPhoneErrors({
         primaryPhone: form.phone,
         additionalPhone: form.privateDetails.additionalPhone,
@@ -1583,16 +1607,28 @@ function TutorProfileWorkspaceBody({
       case "privateDetails.presentAddress": return <FormTextArea label={fieldLabel(fieldId, "Present Address")} rows={2} required={isRequired(fieldId)} name="street-address" autoComplete="street-address" value={form.privateDetails.presentAddress} onChange={event => updatePrivateDetail("presentAddress", event.target.value)} placeholder="House/Road, Sector/Block, Area" error={fieldErrors["privateDetails.presentAddress" as TutorProfileSubmissionErrorKey]} />;
       case "privateDetails.permanentAddress": return <FormTextArea label={fieldLabel(fieldId, "Permanent Address")} rows={2} required={isRequired(fieldId)} name="street-address" autoComplete="street-address" value={form.privateDetails.permanentAddress} onChange={event => updatePrivateDetail("permanentAddress", event.target.value)} placeholder="Village/Road, Thana/Upazila, District" error={fieldErrors["privateDetails.permanentAddress" as TutorProfileSubmissionErrorKey]} />;
       case "privateDetails.additionalPhone": return <FormPhoneInput required={isRequired(fieldId)} label={fieldLabel(fieldId, "Additional Phone")} value={form.privateDetails.additionalPhone} onChange={value => updatePrivateDetail("additionalPhone", value)} error={fieldErrors["privateDetails.additionalPhone" as TutorProfileSubmissionErrorKey] ?? phoneErrors.additionalPhone} />;
-      case "privateDetails.socialProfileLinks": return <FormInput required={isRequired(fieldId)} label={fieldLabel(fieldId, "Social Profile Links")} placeholder="Ex- https://facebook.com/username" name="url" autoComplete="url" value={form.privateDetails.socialProfileLinks} onChange={event => updatePrivateDetail("socialProfileLinks", event.target.value)} />;
+      case "privateDetails.socialProfileLinks": {
+        const socialError = form.privateDetails.socialProfileLinks ? validateSocialProfileLinks(form.privateDetails.socialProfileLinks) : null;
+        return <FormInput required={isRequired(fieldId)} label={fieldLabel(fieldId, "Social Profile Links")} placeholder="Ex- https://facebook.com/username" name="url" autoComplete="url" value={form.privateDetails.socialProfileLinks} onChange={event => updatePrivateDetail("socialProfileLinks", event.target.value)} error={fieldErrors["privateDetails.socialProfileLinks" as TutorProfileSubmissionErrorKey] ?? socialError ?? undefined} />;
+      }
 
-      case "privateDetails.fatherName": return <FormInput label={fieldLabel(fieldId, "Father’s Name")} placeholder="Ex- Abdul Karim" required={isRequired(fieldId)} autoComplete="off" value={form.privateDetails.fatherName} onChange={event => updatePrivateDetail("fatherName", event.target.value)} />;
+      case "privateDetails.fatherName": {
+        const fatherError = form.privateDetails.fatherName ? validateParentName(form.privateDetails.fatherName, "father") : null;
+        return <FormInput label={fieldLabel(fieldId, "Father’s Name")} placeholder="Ex- Abdul Karim" required={isRequired(fieldId)} autoComplete="off" value={form.privateDetails.fatherName} onChange={event => updatePrivateDetail("fatherName", event.target.value)} error={fieldErrors["privateDetails.fatherName" as TutorProfileSubmissionErrorKey] ?? fatherError ?? undefined} />;
+      }
       case "privateDetails.fatherPhone": return <FormPhoneInput label={fieldLabel(fieldId, "Father’s Phone Number")} required={isRequired(fieldId)} autoComplete="off" value={form.privateDetails.fatherPhone} onChange={value => updatePrivateDetail("fatherPhone", value)} error={fieldErrors["privateDetails.fatherPhone" as TutorProfileSubmissionErrorKey] ?? phoneErrors.fatherPhone} />;
-      case "privateDetails.motherName": return <FormInput required={isRequired(fieldId)} label={fieldLabel(fieldId, "Mother’s Name")} placeholder="Ex- Abdul Karim" autoComplete="off" value={form.privateDetails.motherName} onChange={event => updatePrivateDetail("motherName", event.target.value)} />;
+      case "privateDetails.motherName": {
+        const motherError = form.privateDetails.motherName ? validateParentName(form.privateDetails.motherName, "mother") : null;
+        return <FormInput required={isRequired(fieldId)} label={fieldLabel(fieldId, "Mother’s Name")} placeholder="Ex- Rahima Begum" autoComplete="off" value={form.privateDetails.motherName} onChange={event => updatePrivateDetail("motherName", event.target.value)} error={fieldErrors["privateDetails.motherName" as TutorProfileSubmissionErrorKey] ?? motherError ?? undefined} />;
+      }
       case "privateDetails.motherPhone": return <FormPhoneInput required={isRequired(fieldId)} label={fieldLabel(fieldId, "Mother’s Phone Number")} autoComplete="off" value={form.privateDetails.motherPhone} onChange={value => updatePrivateDetail("motherPhone", value)} error={fieldErrors["privateDetails.motherPhone" as TutorProfileSubmissionErrorKey] ?? phoneErrors.motherPhone} />;
       case "privateDetails.emergencyContactName": return <FormInput required={isRequired(fieldId)} label={fieldLabel(fieldId, "Emergency Contact Name")} placeholder="Ex- Rahima Begum" autoComplete="off" value={form.privateDetails.emergencyContactName} onChange={event => updatePrivateDetail("emergencyContactName", event.target.value)} error={fieldErrors["privateDetails.emergencyContactName" as TutorProfileSubmissionErrorKey]} />;
       case "privateDetails.emergencyContactRelation": return <FormInput required={isRequired(fieldId)} label={fieldLabel(fieldId, "Emergency Contact Relation")} placeholder="Ex- Uncle" autoComplete="off" value={form.privateDetails.emergencyContactRelation} onChange={event => updatePrivateDetail("emergencyContactRelation", event.target.value)} error={fieldErrors["privateDetails.emergencyContactRelation" as TutorProfileSubmissionErrorKey]} />;
       case "privateDetails.emergencyContactPhone": return <FormPhoneInput required={isRequired(fieldId)} label={fieldLabel(fieldId, "Emergency Contact Phone")} autoComplete="off" value={form.privateDetails.emergencyContactPhone} onChange={value => updatePrivateDetail("emergencyContactPhone", value)} error={fieldErrors["privateDetails.emergencyContactPhone" as TutorProfileSubmissionErrorKey] ?? phoneErrors.emergencyContactPhone} />;
-      case "privateDetails.emergencyContactAddress": return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "Emergency Contact Address")} rows={2} autoComplete="off" value={form.privateDetails.emergencyContactAddress} onChange={event => updatePrivateDetail("emergencyContactAddress", event.target.value)} />;
+      case "privateDetails.emergencyContactAddress": {
+        const addrError = form.privateDetails.emergencyContactAddress ? validateEmergencyContactAddress(form.privateDetails.emergencyContactAddress) : null;
+        return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "Emergency Contact Address")} rows={2} autoComplete="off" value={form.privateDetails.emergencyContactAddress} onChange={event => updatePrivateDetail("emergencyContactAddress", event.target.value)} placeholder="House/Village, Road/Thana, Area" error={fieldErrors["privateDetails.emergencyContactAddress" as TutorProfileSubmissionErrorKey] ?? addrError ?? undefined} />;
+      }
 
       case "highestEducation": return <FormSelect showRequiredMarker={isRequired(fieldId)} label={fieldLabel(fieldId, tutorProfileCopy.fields.educationLevel)} options={academicEducationLevels} placeholder="Select a level" value={form.highestEducation} onChange={event => update("highestEducation", event.target.value as TeachingProfileState["highestEducation"])} />;
       case "studyStatus": return <label className={tp.fieldRow}><span className={tp.fieldLabel}>{fieldLabel(fieldId, tutorProfileCopy.fields.studyStatus)}{isRequired(fieldId) ? <span aria-hidden="true" className={tp.requiredMark}> *</span> : null}</span><select aria-label={fieldLabel(fieldId, tutorProfileCopy.fields.studyStatus)} value={form.studyStatus} onChange={event => update("studyStatus", event.target.value as TeachingProfileState["studyStatus"])} aria-invalid={Boolean(fieldErrors.studyStatus)} aria-required="true" className={`${fieldClassName} ${fieldErrors.studyStatus ? "border-tp-danger" : ""}`}><option value="">Select a status</option><option value="studying">Studying</option><option value="graduated">Graduated</option><option value="professional">Professional</option></select><InlineError message={fieldErrors.studyStatus} /></label>;
