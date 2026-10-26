@@ -1247,6 +1247,21 @@ describe("Permanent Address and the Availability choices", () => {
     expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
   });
 
+  it("blocks saving Introduction draft when aboutMe has repetitive words", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("tab", { name: /Introduction/ }));
+    await user.click(screen.getByRole("button", { name: /Edit.*introduction/i }));
+    const dialog = screen.getByRole("dialog");
+    const aboutMe = within(dialog).getByLabelText(/^About Me/) as HTMLTextAreaElement;
+    fireEvent.change(aboutMe, { target: { value: "tutor tutor tutor tutor tutor tutor tutor tutor tutor" } });
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    expect(within(dialog).getByText(/Write a meaningful introduction about your educational background/)).toBeTruthy();
+    expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
+  });
+
   it("blocks saving Family and emergency contact draft when emergency contact name is self-referencing", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);

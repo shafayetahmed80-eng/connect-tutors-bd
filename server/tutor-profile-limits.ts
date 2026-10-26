@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import type { SiteLimitValues } from "@shared/site-limits";
 import { calculateAgeInYears } from "@shared/tutor-personal-details";
 import { assertMinimumLengthLimit, assertWithinLimit, assertWithinLengthLimit } from "./site-limit-guard";
+import { validateIntroductionQuality } from "@shared/tutor-introduction";
 
 /** The lists and lengths a profile save has to stay inside. */
 export type TutorProfileDraftLimitInput = {
@@ -59,14 +60,35 @@ export function assertTutorProfileDraftWithinLimits(limits: SiteLimitValues, inp
   if (input.aboutMe !== undefined && input.aboutMe.trim().length > 0) {
     assertMinimumLengthLimit(limits, "tutor.aboutMeMinChars", input.aboutMe.trim().length, "About Me");
     assertWithinLengthLimit(limits, "tutor.aboutMeChars", input.aboutMe.trim().length, "About Me");
+    const err = validateIntroductionQuality(input.aboutMe, "aboutMe");
+    if (err) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: err,
+      });
+    }
   }
   if (input.teachingApproach !== undefined && input.teachingApproach.trim().length > 0) {
     assertMinimumLengthLimit(limits, "tutor.approachMinChars", input.teachingApproach.trim().length, "Teaching Approach");
     assertWithinLengthLimit(limits, "tutor.approachChars", input.teachingApproach.trim().length, "Teaching Approach");
+    const err = validateIntroductionQuality(input.teachingApproach, "teachingApproach");
+    if (err) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: err,
+      });
+    }
   }
   if (input.whyChooseMe !== undefined && input.whyChooseMe.trim().length > 0) {
     assertMinimumLengthLimit(limits, "tutor.whyChooseMeMinChars", input.whyChooseMe.trim().length, "Why Choose Me");
     assertWithinLengthLimit(limits, "tutor.whyChooseMeChars", input.whyChooseMe.trim().length, "Why Choose Me");
+    const err = validateIntroductionQuality(input.whyChooseMe, "whyChooseMe");
+    if (err) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: err,
+      });
+    }
   }
   if (input.educationRecords !== undefined) {
     assertWithinLimit(limits, "tutor.educationRecords", input.educationRecords.length, "records");

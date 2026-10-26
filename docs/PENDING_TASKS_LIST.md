@@ -943,3 +943,15 @@
 - **স্ট্যাটাস:** ✅ সম্পন্ন (PR #540) — ৩১টি পার্সোনাল ডিটেইলস টেস্ট, ৫৫টি সার্ভার ভ্যালিডেশন টেস্ট, ৩৩টি ফর্ম ডাটা টেস্ট ও ৬০টি ওয়ার্কস্পেস টেস্ট সহ সমগ্র ৩,৫৬০+ টেস্ট সুট সম্পূর্ণ গ্রিন।
 - **প্রম্পট:**
 > (Recommended) প্রফেশনাল হেডলাইন (Professional Headline) কোয়ালিটি ও তথ্যের পূর্ণাঙ্গতা সতর্কতা — শুধু ১০টি ক্যারেক্টার পূরণ করতে অর্থহীন শব্দ (যেমন: "tutor tutor") লেখা রোধে বিষয়/লেভেল বা অভিজ্ঞতার গঠনমূলক নির্দেশনামূলক চেক
+### ১১৯. টিউটর পরিচিতিমূলক বিবরণী (About Me, Teaching Approach, Why Choose Me) কোয়ালিটি ও তথ্যের পূর্ণাঙ্গতা সতর্কতা [✅ সম্পন্ন - PR #541]
+- **বিবরণ:** টিউটর প্রোফাইলের ইন্ট্রোডাকশন সেকশনে (Section E) এডমিনের ডায়নামিক ক্যারেক্টার লিমিট (Min/Max Chars) মেনে অর্থহীন বা পুনরাবৃত্তিমূলক শব্দ (যেমন: "tutor tutor tutor...", "good tutor good tutor...", "aaaaaaaaaa...", "test test test...") লেখা রোধে স্মার্ট ভ্যালিডেশন ও গঠনমূলক কোয়ালিটি সতর্কবার্তা:
+  ১. **সেন্ট্রালাইজড ইন্ট্রোডাকশন ভ্যালিডেটর (`validateIntroductionQuality`, `validateIntroductionField`):** `shared/tutor-introduction.ts`-এ পুনরাবৃত্তিমূলক অক্ষর, শব্দ লুপ ও ডামি কি-ওয়ার্ড ডিটেকশন সহ সেন্ট্রালাইজড ভ্যালিডেটর বাস্তবায়ন।
+  ২. **ফিল্ড-নির্দিষ্ট গঠনমূলক দিকনির্দেশনা ও কোয়ালিটি সতর্কবার্তা:** পুনরাবৃত্তিমূলক বা ডামি টেক্সট লিখলে প্রতিটি ফিল্ড অনুযায়ী সুনির্দিষ্ট দিকনির্দেশনা প্রদান:
+     - About Me: `Write a meaningful introduction about your educational background and teaching passion.`
+     - Teaching Approach: `Explain your teaching methodology, how you plan lessons and help students understand concepts.`
+     - Why Choose Me: `Highlight your key strengths, dedication, and why guardians/students should choose you.`
+  ৩. **এডমিনের ডায়নামিক লিমিট সমন্বয় ও ড্রাফট প্রি-সেভ গার্ড:** `TutorProfileWorkspace.tsx`-এ `saveSectionDraft` (target "e") এবং `client/src/pages/TutorProfileUx.ts`-এর `getTutorProfileSubmissionErrors`-এ এডমিনের `tutor.aboutMeMinChars`, `tutor.approachMinChars`, `tutor.whyChooseMeMinChars` এবং Max Chars ডায়নামিক্যালি প্রযোজ্য রেখে কোয়ালিটি ফিল্টার প্রয়োগ।
+  ৪. **সার্ভার লেভেল স্কিমা ও ড্রাফট গার্ড:** `server/tutor-profile-limits.ts`-এ `assertTutorProfileDraftWithinLimits` এবং `server/tutor-profile.validation.ts`-এর `profileShape`-এ `.superRefine` এর মাধ্যমে ব্যাকএন্ড ডাটা ইন্টিগ্রিটি কঠোরভাবে নিশ্চিত করা হয়েছে।
+- **স্ট্যাটাস:** ✅ সম্পন্ন (PR #541) — ১৩টি ইন্ট্রোডাকশন টেস্ট, ৮টি লিমিটস টেস্ট, ৫৬টি সার্ভার ভ্যালিডেশন টেস্ট, ৩৪টি ফর্ম ডাটা টেস্ট ও ৬১টি ওয়ার্কস্পেস টেস্ট সহ সমগ্র ৩,৫৬০+ টেস্ট সুট সম্পূর্ণ গ্রিন।
+- **প্রম্পট:**
+> (Recommended) সেকশন ই (Introduction: About Me, Teaching Approach, Why Choose Me) — এডমিনের ডায়নামিক ক্যারেক্টার লিমিটের (Min/Max Chars) সাথে সংগতি রেখে পুনরাবৃত্তিমূলক/অর্থহীন টেক্সট ফিল্টারিং ও কোয়ালিটি সতর্কতা

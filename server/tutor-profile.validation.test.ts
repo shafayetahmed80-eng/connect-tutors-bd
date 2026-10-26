@@ -861,4 +861,36 @@ it("rejects feeMin below 1,000 BDT to avoid per-class rate confusion", () => {
       expect(issue?.message).toBeDefined();
     }
   });
+
+  it("rejects repetitive or placeholder introductory essays (aboutMe, teachingApproach, whyChooseMe)", () => {
+    const invalidAboutMe = {
+      ...approvedExpandedSubmission,
+      aboutMe: "tutor tutor tutor tutor tutor tutor tutor tutor tutor tutor",
+    };
+    const parsedAbout = tutorProfileDraftSchema.safeParse(invalidAboutMe);
+    expect(parsedAbout.success).toBe(false);
+    if (!parsedAbout.success) {
+      expect(parsedAbout.error.issues.some(i => i.path.includes("aboutMe"))).toBe(true);
+    }
+
+    const invalidApproach = {
+      ...approvedExpandedSubmission,
+      teachingApproach: "good tutor good tutor good tutor good tutor good tutor",
+    };
+    const parsedApproach = tutorProfileDraftSchema.safeParse(invalidApproach);
+    expect(parsedApproach.success).toBe(false);
+    if (!parsedApproach.success) {
+      expect(parsedApproach.error.issues.some(i => i.path.includes("teachingApproach"))).toBe(true);
+    }
+
+    const invalidWhy = {
+      ...approvedExpandedSubmission,
+      whyChooseMe: "test test test test test test test test test",
+    };
+    const parsedWhy = tutorProfileDraftSchema.safeParse(invalidWhy);
+    expect(parsedWhy.success).toBe(false);
+    if (!parsedWhy.success) {
+      expect(parsedWhy.error.issues.some(i => i.path.includes("whyChooseMe"))).toBe(true);
+    }
+  });
 });

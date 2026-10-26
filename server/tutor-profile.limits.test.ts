@@ -109,4 +109,19 @@ describe("the Owner's Tutor limits reach a profile save", () => {
     const validDate = `${currentYear - 23}-05-15`;
     expect(() => assertTutorProfileDraftWithinLimits(customLimits, { dateOfBirth: validDate })).not.toThrow();
   });
+
+  it("rejects repetitive or placeholder text in descriptive fields", () => {
+    const limits = defaultSiteLimits();
+    expect(() => assertTutorProfileDraftWithinLimits(limits, {
+      aboutMe: "tutor tutor tutor tutor tutor tutor tutor tutor tutor tutor",
+    })).toThrow(TRPCError);
+
+    expect(() => assertTutorProfileDraftWithinLimits(limits, {
+      teachingApproach: "good teacher good teacher good teacher good teacher good teacher",
+    })).toThrow(TRPCError);
+
+    expect(() => assertTutorProfileDraftWithinLimits(limits, {
+      whyChooseMe: "test test test test test test test test test test",
+    })).toThrow(TRPCError);
+  });
 });

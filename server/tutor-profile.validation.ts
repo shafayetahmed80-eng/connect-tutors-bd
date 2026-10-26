@@ -12,6 +12,7 @@ import {
   validateResultGpa } from "@shared/tutor-education";
 import { defaultTutorProfileFieldConfig, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import { tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation, validateHeadline } from "@shared/tutor-personal-details";
+import { validateIntroductionQuality } from "@shared/tutor-introduction";
 import { offersOnlineTuitionOnly, validateTuitionFees } from "@shared/tutor-profile-tuition";
 import { findDuplicateTutorPhoneErrors } from "@shared/phone";
 
@@ -243,9 +244,24 @@ const profileShape = {
   feeMax: z.number().int().min(0).max(500000).optional(),
   travelDistanceKm: z.number().int().min(1).max(100).optional(),
 
-  aboutMe: optionalTrimmedText(siteLimitCeiling("tutor.aboutMeChars")),
-  teachingApproach: optionalTrimmedText(siteLimitCeiling("tutor.approachChars")),
-  whyChooseMe: optionalTrimmedText(siteLimitCeiling("tutor.whyChooseMeChars")),
+  aboutMe: optionalTrimmedText(siteLimitCeiling("tutor.aboutMeChars")).superRefine((val, ctx) => {
+    if (val) {
+      const err = validateIntroductionQuality(val, "aboutMe");
+      if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, message: err });
+    }
+  }),
+  teachingApproach: optionalTrimmedText(siteLimitCeiling("tutor.approachChars")).superRefine((val, ctx) => {
+    if (val) {
+      const err = validateIntroductionQuality(val, "teachingApproach");
+      if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, message: err });
+    }
+  }),
+  whyChooseMe: optionalTrimmedText(siteLimitCeiling("tutor.whyChooseMeChars")).superRefine((val, ctx) => {
+    if (val) {
+      const err = validateIntroductionQuality(val, "whyChooseMe");
+      if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, message: err });
+    }
+  }),
   additionalNotes: optionalTrimmedText(2000),
 
   /** Private to Tutor and authorised Admin reviewers; NID remains excluded until encrypted storage is delivered. */
