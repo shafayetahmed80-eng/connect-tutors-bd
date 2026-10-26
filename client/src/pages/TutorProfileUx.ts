@@ -1,5 +1,6 @@
 import { educationSectionStatus, validateEducationTimelineSequence, validateResultGpa } from "@shared/tutor-education";
 import { findDuplicateTutorPhoneErrors } from "@shared/phone";
+import { validatePermanentAddress } from "@shared/tutor-personal-details";
 import { findTutorProfileFieldMeta, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import type { SiteLimitValues } from "@shared/site-limits";
 import { offersOnlineTuitionOnly } from "@shared/tutor-profile-tuition";
@@ -58,7 +59,14 @@ export type TutorProfileSubmissionPreview = TutorProfileFormState & {
   studentTypeIds: string[];
 };
 
-export type TutorProfileSubmissionErrorKey = keyof TutorProfileSubmissionPreview | "profilePhotoUrl";
+export type TutorProfileSubmissionErrorKey =
+  | keyof TutorProfileSubmissionPreview
+  | "profilePhotoUrl"
+  | "privateDetails.permanentAddress"
+  | "privateDetails.fatherPhone"
+  | "privateDetails.motherPhone"
+  | "privateDetails.emergencyContactPhone"
+  | "privateDetails.additionalPhone";
 export type TutorProfileSubmissionErrors = Partial<Record<TutorProfileSubmissionErrorKey, string>>;
 
 export type TutorProfileCompletionSummary = {
@@ -79,6 +87,7 @@ const completionFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, stri
   headline: tutorProfileCopy.fields.headline,
   phone: tutorProfileCopy.fields.phone,
   contactEmail: tutorProfileCopy.fields.email,
+  "privateDetails.permanentAddress": "Permanent Address",
   currentCityId: tutorProfileCopy.fields.currentCity,
   currentLocationId: tutorProfileCopy.fields.currentLocation,
   teachingAreaIds: tutorProfileCopy.fields.teachingAreas,
@@ -192,12 +201,18 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
       motherPhone: form.privateDetails?.motherPhone,
       emergencyContactPhone: form.privateDetails?.emergencyContactPhone,
     });
-    if (duplicates.fatherPhone) errors["privateDetails.fatherPhone" as TutorProfileSubmissionErrorKey] = duplicates.fatherPhone;
-    if (duplicates.motherPhone) errors["privateDetails.motherPhone" as TutorProfileSubmissionErrorKey] = duplicates.motherPhone;
-    if (duplicates.emergencyContactPhone) errors["privateDetails.emergencyContactPhone" as TutorProfileSubmissionErrorKey] = duplicates.emergencyContactPhone;
-    if (duplicates.additionalPhone) errors["privateDetails.additionalPhone" as TutorProfileSubmissionErrorKey] = duplicates.additionalPhone;
+    if (duplicates.fatherPhone) errors["privateDetails.fatherPhone"] = duplicates.fatherPhone;
+    if (duplicates.motherPhone) errors["privateDetails.motherPhone"] = duplicates.motherPhone;
+    if (duplicates.emergencyContactPhone) errors["privateDetails.emergencyContactPhone"] = duplicates.emergencyContactPhone;
+    if (duplicates.additionalPhone) errors["privateDetails.additionalPhone"] = duplicates.additionalPhone;
   }
   if (!/^\S+@\S+\.\S+$/.test(form.contactEmail.trim())) errors.contactEmail = "Enter a valid email address.";
+  if (form.privateDetails?.permanentAddress) {
+    const addrErr = validatePermanentAddress(form.privateDetails.permanentAddress);
+    if (addrErr) {
+      errors["privateDetails.permanentAddress"] = addrErr;
+    }
+  }
   if (!form.currentCityId) errors.currentCityId = "Select your current city.";
   if (!form.currentLocationId) errors.currentLocationId = "Select your current location.";
   // An online-only Tutor has no place to teach in, so Teaching Areas is theirs to leave empty.

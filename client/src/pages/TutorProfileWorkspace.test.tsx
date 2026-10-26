@@ -1171,7 +1171,10 @@ describe("what an Admin asked the Tutor to change", () => {
 });
 
 describe("Permanent Address and the Availability choices", () => {
-  afterEach(() => { cleanup(); });
+  afterEach(() => {
+    cleanup();
+    trpcMocks.saveDraft.mockClear();
+  });
 
   it("asks for the Permanent Address in Personal Information, required, and saves it", async () => {
     const user = userEvent.setup({ document: window.document });
@@ -1186,6 +1189,20 @@ describe("Permanent Address and the Availability choices", () => {
 
     await waitFor(() => expect(trpcMocks.saveDraft).toHaveBeenCalled());
     expect(trpcMocks.saveDraft.mock.calls.at(-1)?.[0].privateDetails).toMatchObject({ permanentAddress: "Village Example, Rangpur" });
+  });
+
+  it("blocks saving Identity and contact draft when Permanent Address is shorter than 10 characters", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={{ ...completeProfile, privateDetails: { permanentAddress: "" } }} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    const dialog = screen.getByRole("dialog");
+    const address = within(dialog).getByLabelText(/^Permanent Address/) as HTMLTextAreaElement;
+    fireEvent.change(address, { target: { value: "Dhaka" } });
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    expect(within(dialog).getByText(/Enter detailed permanent address/)).toBeTruthy();
+    expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
   });
 
   it("offers Tuition Type as a multi-select and Preferred Student Gender as a dropdown on a laptop", async () => {
