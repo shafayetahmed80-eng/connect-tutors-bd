@@ -59,6 +59,16 @@ export const TUTOR_DOCUMENT_REUPLOAD_REASONS = [
   "মেয়াদোত্তীর্ণ আইডি / তথ্যে অসামঞ্জস্য রয়েছে",
 ] as const;
 
+/** Quick reason presets for requesting profile corrections during Admin Review & Moderate */
+export const TUTOR_PROFILE_CORRECTION_PRESETS = [
+  "প্রোফাইল ছবি অস্পষ্ট / স্পষ্ট ও পেশাদার ছবি আপলোড করুন",
+  "শিক্ষাগত তথ্যের বিবরণ অসম্পূর্ণ (শিক্ষা প্রতিষ্ঠান বা বিভাগ উল্লেখ করুন)",
+  "আইডি কার্ড বা সার্টিফিকেটের তথ্যের সাথে প্রোফাইলের তথ্যের অমিল",
+  "বর্তমান বা স্থায়ী ঠিকানা আরও বিস্তারিত লিখুন (বাসা/রোড/এলাকা)",
+  "পরিচিতি বিবরণী (About Me / Teaching Approach) আরও অর্থবহ ও বিস্তারিত করুন",
+  "মাসিক টিউশন ফি বা অভিজ্ঞতার তথ্যে অসামঞ্জস্য রয়েছে",
+] as const;
+
 export function buildTutorDocumentReuploadWhatsAppMessage(input: {
   tutorName: string;
   documentLabel: string;

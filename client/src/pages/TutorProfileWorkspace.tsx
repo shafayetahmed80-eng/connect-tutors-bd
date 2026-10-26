@@ -3,7 +3,8 @@ import { SearchableMultiSelect, SearchableSingleSelect, type SelectorOption } fr
 import { calculateAgeInYears, tutorNationalityOptions, tutorReligionOptions, validatePermanentAddress, validatePresentAddress, validateEmergencyContactName, validateEmergencyContactRelation, validateHeadline, validateParentName, validateSocialProfileLinks, validateEmergencyContactAddress } from "@shared/tutor-personal-details";
 import { validateIntroductionField } from "@shared/tutor-introduction";
 import { isTutorCvDraft } from "@shared/tutor-cv-status";
-import { offersOnlineTuitionOnly, validateTuitionFees, validateTeachingExperience, validateTeachingExpertiseText } from "@shared/tutor-profile-tuition";
+import { offersOnlineTuitionOnly, validateTuitionFees, validateTeachingExperience, validateTeachingExpertiseText, getTravelDistanceConsistencyWarning } from "@shared/tutor-profile-tuition";
+import { sortAndBadgeSubjectsForDepartment } from "@shared/department-subject-mapping";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { clearTutorOnboardingDraft } from "@/lib/tutorOnboarding";
@@ -31,7 +32,7 @@ import {
   type TutorSupportingDocumentType,
   type TutorDocumentVerificationStatus,
 } from "@shared/tutor-documents";
-import { AlertCircle, Check, ChevronDown, Eye, ImagePlus, LockKeyhole, PencilLine, Plus, Trash2, X } from "lucide-react";
+import { AlertCircle, Check, ChevronDown, Eye, ImagePlus, LockKeyhole, PencilLine, Plus, ShieldAlert, Trash2, X } from "lucide-react";
 import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { TutorOnboardingDraft } from "@/lib/tutorOnboarding";
 import { TutorProfileIdentityRail } from "./TutorProfileIdentityRail";
@@ -40,7 +41,7 @@ import { TutorSubmissionSuccessModal } from "@/components/TutorSubmissionSuccess
 import { useLocation } from "wouter";
 import { TutorProfileSummaryView } from "./TutorProfileSummaryView";
 import { createProfileDraftPayload, emptyEducationRecord, getProfileDraftFeedback, hydrateTutorProfileForm, type PersistedTutorProfileForForm, type TutorProfileFormState } from "./TutorProfileFormData";
-import { describeMissingDetails, educationStatus, getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy, type TutorProfileSubmissionErrorKey, type TutorProfileSubmissionErrors } from "./TutorProfileUx";
+import { describeMissingDetails, educationStatus, getTutorProfileCompletionSummary, getTutorProfileReadinessBreakdown, getTutorProfileSubmissionErrors, tutorProfileCopy, type TutorProfileSubmissionErrorKey, type TutorProfileSubmissionErrors } from "./TutorProfileUx";
 import { getTutorProfileServerIssueDetails, getTutorProfileServerValidationErrors, hasTutorProfileFieldIssues } from "./TutorProfileServerValidation";
 import { getTutorProfileMutationFailureFeedback } from "./TutorProfileMutationFeedback";
 import { getTutorProfileWizardStepForErrors, tutorProfileWizardSteps } from "./TutorProfileWizard";
@@ -895,6 +896,44 @@ function TutorProfileWorkspaceBody({
     };
   }, [subjects.data, classLevels.data, curricula.data, universities.data, facultyDepartments.data, resolvedLocationLabels, teachingAreaLocations.data]);
   const readoutSections = useMemo(() => getTutorProfileReadoutSections(form, readoutResolvers, fieldConfig), [form, readoutResolvers, fieldConfig]);
+
+  const resolvedDepartmentName = useMemo(() => {
+    if (form.facultyDepartmentId) return readoutResolvers.department(form.facultyDepartmentId);
+    if (profile?.facultyDepartmentId) return readoutResolvers.department(String(profile.facultyDepartmentId));
+    return "";
+  }, [form.facultyDepartmentId, profile?.facultyDepartmentId, readoutResolvers]);
+
+  const subjectOptions = useMemo(
+    () => sortAndBadgeSubjectsForDepartment(toSelectorOptions(subjects.data), resolvedDepartmentName),
+    [subjects.data, resolvedDepartmentName],
+  );
+
+  const travelDistanceWarning = useMemo(
+    () => getTravelDistanceConsistencyWarning({
+      tuitionTypes: form.tuitionTypes,
+      travelDistanceKm: form.travelDistanceKm,
+      teachingAreaCount: form.teachingAreaIds.length,
+    }),
+    [form.tuitionTypes, form.travelDistanceKm, form.teachingAreaIds.length],
+  );
+
+  const readinessBreakdown = useMemo(
+    () => getTutorProfileReadinessBreakdown(
+      {
+        ...form,
+        primarySubjectIds: form.primarySubjectIds,
+        additionalSubjectIds: form.additionalSubjectIds,
+        classLevelIds: form.classLevelIds,
+        curriculumIds: form.curriculumIds,
+        teachingExperienceYears: form.teachingExperienceYears,
+        studentTypeIds: form.studentTypeIds,
+      },
+      fieldConfig,
+      limits,
+      profile,
+    ),
+    [form, fieldConfig, limits, profile],
+  );
   // What a Guardian is shown, built by the same projection the server runs
   // before it sends this profile to one, from the profile as last saved.
   // The Guardians' star rating, beside the Tutor ID and in the Guardian-view preview.
@@ -1677,8 +1716,8 @@ function TutorProfileWorkspaceBody({
         onSelectFile={file => void uploadUniversityIdDocument(file)}
       />;
 
-      case "primarySubjectIds": return <SearchableMultiSelect className={wideFieldClassName} label={fieldLabel(fieldId, tutorProfileCopy.fields.primarySubjects)} required={isRequired(fieldId)} options={toSelectorOptions(subjects.data)} selectedIds={form.primarySubjectIds} onChange={value => update("primarySubjectIds", value)} emptyMessage="No subjects found." error={fieldErrors.primarySubjectIds} maxSelections={Math.max(1, limits["tutor.subjects"] - form.additionalSubjectIds.length)} />;
-      case "additionalSubjectIds": return <SearchableMultiSelect required={isRequired(fieldId)} className={wideFieldClassName} label={fieldLabel(fieldId, tutorProfileCopy.fields.additionalSubjects)} options={toSelectorOptions(subjects.data)} selectedIds={form.additionalSubjectIds} onChange={value => update("additionalSubjectIds", value)} emptyMessage="No subjects found." maxSelections={Math.max(0, limits["tutor.subjects"] - form.primarySubjectIds.length)} />;
+      case "primarySubjectIds": return <SearchableMultiSelect className={wideFieldClassName} label={fieldLabel(fieldId, tutorProfileCopy.fields.primarySubjects)} required={isRequired(fieldId)} options={subjectOptions} selectedIds={form.primarySubjectIds} onChange={value => update("primarySubjectIds", value)} emptyMessage="No subjects found." error={fieldErrors.primarySubjectIds} maxSelections={Math.max(1, limits["tutor.subjects"] - form.additionalSubjectIds.length)} />;
+      case "additionalSubjectIds": return <SearchableMultiSelect required={isRequired(fieldId)} className={wideFieldClassName} label={fieldLabel(fieldId, tutorProfileCopy.fields.additionalSubjects)} options={subjectOptions} selectedIds={form.additionalSubjectIds} onChange={value => update("additionalSubjectIds", value)} emptyMessage="No subjects found." maxSelections={Math.max(0, limits["tutor.subjects"] - form.primarySubjectIds.length)} />;
       case "classLevelIds": return <SearchableMultiSelect className={wideFieldClassName} label={fieldLabel(fieldId, tutorProfileCopy.fields.classLevels)} required={isRequired(fieldId)} options={groupedClassLevels.options} selectedIds={groupedClassLevels.selectedIds} onChange={value => update("classLevelIds", expandGroupedClassLevelIds(value, groupedClassLevels.groupedIds))} emptyMessage="No classes or levels found." error={fieldErrors.classLevelIds} maxSelections={limits["tutor.levels"]} />;
       case "curriculumIds": return <SearchableMultiSelect className={wideFieldClassName} label={fieldLabel(fieldId, tutorProfileCopy.fields.curricula)} required={isRequired(fieldId)} options={toSelectorOptions(curricula.data)} selectedIds={form.curriculumIds} onChange={value => update("curriculumIds", value)} emptyMessage="No curricula found." error={fieldErrors.curriculumIds} />;
       case "teachingExperienceYears": {
@@ -1704,10 +1743,40 @@ function TutorProfileWorkspaceBody({
       case "preferredTimeSlots": return <SearchableMultiSelect className={wideFieldClassName} label={fieldLabel(fieldId, tutorProfileCopy.fields.timeSlots)} required={isRequired(fieldId)} options={[{ id: "morning", label: "Morning" }, { id: "afternoon", label: "Afternoon" }, { id: "evening", label: "Evening" }, { id: "flexible", label: "Flexible" }]} selectedIds={form.preferredTimeSlots} onChange={value => update("preferredTimeSlots", value)} emptyMessage="No time slots found." error={fieldErrors.preferredTimeSlots} />;
       case "currentCityId": return <CatalogSearchField label={fieldLabel(fieldId, tutorProfileCopy.fields.currentCity)} query={currentCityQuery} onQueryChange={setCurrentCityQuery} options={currentCityOptions} selectedId={form.currentCityId} onSelectedIdChange={handleCurrentCityChange} required={isRequired(fieldId)} error={fieldErrors.currentCityId} />;
       case "currentLocationId": return <CatalogSearchField label={fieldLabel(fieldId, tutorProfileCopy.fields.currentLocation)} query={currentLocationQuery} onQueryChange={setCurrentLocationQuery} options={currentLocationOptions} selectedId={form.currentLocationId} onSelectedIdChange={value => update("currentLocationId", value)} disabled={!form.currentCityId} required={isRequired(fieldId)} error={fieldErrors.currentLocationId} />;
-      case "teachingAreaIds": return <SearchableMultiSelect className={wideFieldClassName} label={fieldLabel(fieldId, tutorProfileCopy.fields.teachingAreas)} required={isRequired(fieldId) && !offersOnlineTuitionOnly(form)} options={teachingAreaOptions} selectedIds={form.teachingAreaIds} onChange={value => update("teachingAreaIds", value)} onSearchQueryChange={setTeachingAreaQuery} emptyMessage="No areas found." error={fieldErrors.teachingAreaIds} />;
+      case "teachingAreaIds": return <div>
+        <SearchableMultiSelect className={wideFieldClassName} label={fieldLabel(fieldId, tutorProfileCopy.fields.teachingAreas)} required={isRequired(fieldId) && !offersOnlineTuitionOnly(form)} options={teachingAreaOptions} selectedIds={form.teachingAreaIds} onChange={value => update("teachingAreaIds", value)} onSearchQueryChange={setTeachingAreaQuery} emptyMessage="No areas found." error={fieldErrors.teachingAreaIds} />
+        {travelDistanceWarning?.type === "small_radius_many_areas" ? (
+          <p className="mt-1 flex items-start gap-1 text-2xs font-medium text-amber-700">
+            <AlertCircle size={13} className="shrink-0 mt-0.5" />
+            <span>{travelDistanceWarning.message}</span>
+          </p>
+        ) : null}
+      </div>;
       case "feeMin": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.feeMin)} showRequiredMarker={isRequired(fieldId)} type="number" min="0" max="500000" inputMode="numeric" placeholder="Ex- 5000 (BDT/month)" hint="Monthly salary expectation in BDT (not per-class rate)" value={form.feeMin} onChange={event => update("feeMin", event.target.value)} error={fieldErrors.feeMin} />;
       case "feeMax": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.feeMax)} showRequiredMarker={isRequired(fieldId)} type="number" min="0" max="500000" inputMode="numeric" placeholder="Ex- 8000 (BDT/month)" hint="Maximum monthly salary expectation in BDT" value={form.feeMax} onChange={event => update("feeMax", event.target.value)} error={fieldErrors.feeMax} />;
-      case "travelDistanceKm": return <FormInput required={isRequired(fieldId)} label={fieldLabel(fieldId, "Travel Distance (km)")} placeholder="Ex- 5" type="number" min="1" max="100" inputMode="numeric" value={form.travelDistanceKm} onChange={event => update("travelDistanceKm", event.target.value)} />;
+      case "travelDistanceKm": {
+        const isOnlineOnly = offersOnlineTuitionOnly(form);
+        return <div>
+          <FormInput
+            required={isRequired(fieldId) && !isOnlineOnly}
+            disabled={isOnlineOnly}
+            label={fieldLabel(fieldId, "Travel Distance (km)")}
+            placeholder={isOnlineOnly ? "Not required for online tuition only" : "Ex- 5"}
+            type="number"
+            min="1"
+            max="100"
+            inputMode="numeric"
+            value={isOnlineOnly ? "" : form.travelDistanceKm}
+            onChange={event => update("travelDistanceKm", event.target.value)}
+          />
+          {travelDistanceWarning ? (
+            <p className={`mt-1.5 flex items-start gap-1 text-2xs ${travelDistanceWarning.type === "online_only" ? "text-tp-label" : "font-medium text-amber-700"}`}>
+              {travelDistanceWarning.type !== "online_only" ? <AlertCircle size={13} className="shrink-0 mt-0.5" /> : null}
+              <span>{travelDistanceWarning.message}</span>
+            </p>
+          ) : null}
+        </div>;
+      }
 
       case "aboutMe": return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "About Me")} rows={5} minLength={limits["tutor.aboutMeMinChars"]} maxLength={limits["tutor.aboutMeChars"]} value={form.aboutMe} onChange={event => update("aboutMe", event.target.value)} placeholder="Describe your strengths, experience, and the learners you teach." error={fieldErrors.aboutMe} />;
       case "teachingApproach": return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "Teaching Approach")} rows={5} minLength={limits["tutor.approachMinChars"]} maxLength={limits["tutor.approachChars"]} value={form.teachingApproach} onChange={event => update("teachingApproach", event.target.value)} placeholder="Explain how you plan lessons and support learning." error={fieldErrors.teachingApproach} />;
@@ -2002,6 +2071,8 @@ function TutorProfileWorkspaceBody({
         onTogglePreview={() => setPreviewMode(current => !current)}
         onOpenCvModal={() => setIsCvModalOpen(true)}
         cvViewOnly={isTutorCvDraft(profile?.profileStatus, Boolean(profile?.verified))}
+        readinessBreakdown={readinessBreakdown}
+        onSelectTab={setActiveTab}
       />
 
       <div className={`min-w-0 ${tp.stack}`}>
@@ -2009,11 +2080,11 @@ function TutorProfileWorkspaceBody({
         {/* What an Admin asked for, to the Tutor being asked. It sits above the
             tabs rather than inside one, because the changes it names can be in
             any section. */}
-        {profile?.moderationNote ? <section role="status" className="rounded-xl border border-j-warn-border bg-j-warn-wash px-4 py-3">
-          <p className="flex items-center gap-1.5 text-2xs font-bold uppercase tracking-[0.14em] text-j-warn-ink">
-            <RecordIcon name="notes" size={13} />Changes requested{profile.moderationNoteAt ? <span className="font-medium normal-case tracking-normal text-j-warn-ink/75"> · {new Date(profile.moderationNoteAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span> : null}
+        {profile?.profileStatus === "changes_requested" || profile?.moderationNote ? <section role="status" aria-label="Admin changes requested notice" className="rounded-xl border border-rose-300 bg-rose-50/95 p-4 shadow-xs">
+          <div className="flex items-start gap-2.5"><ShieldAlert size={18} className="mt-0.5 shrink-0 text-rose-600" aria-hidden="true" /><div className="min-w-0 flex-1"><p className="flex items-center gap-1.5 text-2xs font-bold uppercase tracking-[0.14em] text-rose-800">
+            <RecordIcon name="notes" size={13} />Changes requested{profile?.moderationNoteAt ? <span className="font-medium normal-case tracking-normal text-rose-700/80"> · {new Date(profile.moderationNoteAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span> : null}
           </p>
-          <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-j-warn-ink">{profile.moderationNote}</p>
+          <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 font-medium text-rose-950">{profile?.moderationNote || "Admin has requested updates to your profile. Please review the details and submit your profile once updated."}</p></div></div>
         </section> : null}
 
         {profile?.profileStatus === "approved" ? (

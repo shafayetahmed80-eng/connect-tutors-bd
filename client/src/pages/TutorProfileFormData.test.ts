@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createProfileDraftPayload, emptyEducationRecord, getProfileDraftFeedback, hydrateTutorProfileForm } from "./TutorProfileFormData";
-import { describeMissingDetails, getTutorProfileCompletionSummary, getTutorProfileSubmissionErrors, tutorProfileCopy } from "./TutorProfileUx";
+import { describeMissingDetails, getTutorProfileCompletionSummary, getTutorProfileReadinessBreakdown, getTutorProfileSubmissionErrors, tutorProfileCopy } from "./TutorProfileUx";
 import { defaultSiteLimits } from "@shared/site-limits";
 import { resolveTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import { tutorProfileDraftSchema } from "../../../server/tutor-profile.validation";
@@ -755,5 +755,59 @@ describe("what an untouched education record sends", () => {
     });
 
     expect(parsed.success, parsed.success ? "" : JSON.stringify(parsed.error.issues)).toBe(true);
+  });
+
+  describe("getTutorProfileReadinessBreakdown", () => {
+    it("breaks down readiness across the 4 key categories (Personal, Education, Tuition, Documents)", () => {
+      const state = {
+        ...hydrateTutorProfileForm(serverProfile, onboardingFallback),
+        ...emptySelections,
+      };
+      const breakdown = getTutorProfileReadinessBreakdown(state);
+      expect(breakdown.categories).toHaveLength(4);
+      expect(breakdown.categories.map(c => c.id)).toEqual(["personal", "education", "tuition", "documents"]);
+      expect(breakdown.isReadyForVerification).toBe(false);
+      expect(breakdown.score).toBeLessThan(100);
+    });
+
+    it("calculates 100% score and ready for verification when all categories and documents are satisfied", () => {
+      const fullForm = {
+        ...hydrateTutorProfileForm(serverProfile, onboardingFallback),
+        ...emptySelections,
+        profilePhotoUrl: "https://example.com/photo.jpg",
+        name: "Tanzim Ahmed",
+        dateOfBirth: "2000-01-01",
+        headline: "Passionate Math & Physics Tutor with 3 years experience",
+        phone: "+8801712345678",
+        contactEmail: "tanzim@example.com",
+        currentCityId: "dhaka",
+        currentLocationId: "dhaka-dhanmondi",
+        teachingAreaIds: ["dhaka-dhanmondi"],
+        primarySubjectIds: ["1", "2"],
+        classLevelIds: ["5"],
+        curriculumIds: ["1"],
+        teachingExperienceYears: "3",
+        tuitionTypes: ["home"],
+        preferredStudentGender: "any",
+        preferredTeachingDays: ["sun", "mon"],
+        preferredTimeSlots: ["evening"],
+        feeMin: "5000",
+        feeMax: "8000",
+        aboutMe: "I am a dedicated teacher focused on deep conceptual clarity.",
+        teachingApproach: "I emphasize practice problems and interactive questions.",
+        whyChooseMe: "Strong academic background and patient mentoring.",
+        universityId: "1",
+        facultyDepartmentId: "11",
+        degreeExamTitle: "BSc",
+        studyStatus: "graduated" as const,
+        graduationYear: "2023",
+        universityIdDocumentStatus: "uploaded" as const,
+      };
+
+      const breakdown = getTutorProfileReadinessBreakdown(fullForm, undefined, undefined, { universityIdDocumentStatus: "uploaded" });
+      expect(breakdown.isReadyForVerification).toBe(true);
+      expect(breakdown.score).toBe(100);
+      expect(breakdown.categories.every(c => c.isComplete)).toBe(true);
+    });
   });
 });

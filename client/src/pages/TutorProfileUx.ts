@@ -469,3 +469,144 @@ export function getTutorProfileCompletionSummary(form: TutorProfileSubmissionPre
     firstMissingLabel: firstMissingKey ? completionFieldLabels[firstMissingKey] ?? "Required detail" : undefined,
   };
 }
+
+export type TutorProfileReadinessCategory = {
+  id: "personal" | "education" | "tuition" | "documents";
+  title: string;
+  bengaliTitle: string;
+  tabId: "a" | "c" | "d" | "f";
+  isComplete: boolean;
+  completedItems: number;
+  totalItems: number;
+  summary: string;
+};
+
+export type TutorProfileReadinessBreakdown = {
+  score: number;
+  isReadyForVerification: boolean;
+  categories: TutorProfileReadinessCategory[];
+};
+
+export function getTutorProfileReadinessBreakdown(
+  form: TutorProfileSubmissionPreview,
+  config?: ResolvedTutorProfileFieldConfig,
+  limits?: SiteLimitValues,
+  profile?: { universityIdDocumentStatus?: string; uploadedSupportingDocuments?: readonly string[] } | null,
+): TutorProfileReadinessBreakdown {
+  const errors = getTutorProfileSubmissionErrors(form, config, limits);
+  const errorKeys = new Set(Object.keys(errors) as TutorProfileSubmissionErrorKey[]);
+
+  // 1. Personal Information (Tab A)
+  const personalChecks: TutorProfileSubmissionErrorKey[] = [
+    "profilePhotoUrl",
+    "name",
+    "dateOfBirth",
+    "headline",
+    "phone",
+    "contactEmail",
+    "currentCityId",
+    "currentLocationId",
+  ];
+  const requiredPersonal = personalChecks.filter(k => isDetailRequired(config, k));
+  const personalErrors = requiredPersonal.filter(k => errorKeys.has(k));
+  const hasPrivateErrors = Array.from(errorKeys).some(k => k.startsWith("privateDetails."));
+  const personalTotal = Math.max(1, requiredPersonal.length);
+  const personalCompleted = Math.max(0, personalTotal - personalErrors.length - (hasPrivateErrors ? 1 : 0));
+  const personalComplete = personalErrors.length === 0 && !hasPrivateErrors;
+
+  // 2. Education Details (Tab C)
+  const eduStat = educationStatus(form, config);
+  const eduErrorKeys = ["educationRecords", "resultGpa", "degreeExamTitle"] as const;
+  const hasEduErrors = eduErrorKeys.some(k => errorKeys.has(k as TutorProfileSubmissionErrorKey));
+  const educationComplete = eduStat.met && !hasEduErrors;
+  const educationTotal = eduStat.applies ? 1 : 0;
+  const educationCompleted = educationComplete ? educationTotal : 0;
+
+  // 3. Tuition Preferences (Tab D)
+  const tuitionChecks: TutorProfileSubmissionErrorKey[] = [
+    "primarySubjectIds",
+    "classLevelIds",
+    "curriculumIds",
+    "teachingExperienceYears",
+    "tuitionTypes",
+    "preferredStudentGender",
+    "preferredTeachingDays",
+    "preferredTimeSlots",
+    "feeMin",
+    "feeMax",
+  ];
+  if (!offersOnlineTuitionOnly(form)) {
+    tuitionChecks.push("teachingAreaIds");
+  }
+  const requiredTuition = tuitionChecks.filter(k => isDetailRequired(config, k));
+  const tuitionErrors = requiredTuition.filter(k => errorKeys.has(k));
+  const hasExpertiseErrors = ["priorTeachingExperience", "specialExpertise", "academicAchievement", "aboutMe", "teachingApproach", "whyChooseMe"].some(k => errorKeys.has(k as TutorProfileSubmissionErrorKey));
+  const tuitionTotal = Math.max(1, requiredTuition.length);
+  const tuitionCompleted = Math.max(0, tuitionTotal - tuitionErrors.length - (hasExpertiseErrors ? 1 : 0));
+  const tuitionComplete = tuitionErrors.length === 0 && !hasExpertiseErrors;
+
+  // 4. Verification Documents (Tab F)
+  const hasUploadedDoc =
+    form.universityIdDocumentStatus === "uploaded" ||
+    (form.uploadedSupportingDocuments && form.uploadedSupportingDocuments.length > 0) ||
+    profile?.universityIdDocumentStatus === "uploaded" ||
+    profile?.universityIdDocumentStatus === "approved" ||
+    Boolean(profile?.uploadedSupportingDocuments && profile.uploadedSupportingDocuments.length > 0);
+  const documentsTotal = 1;
+  const documentsCompleted = hasUploadedDoc ? 1 : 0;
+  const documentsComplete = Boolean(hasUploadedDoc);
+
+  const categories: TutorProfileReadinessCategory[] = [
+    {
+      id: "personal",
+      title: "Personal Information",
+      bengaliTitle: "ব্যক্তিগত তথ্য",
+      tabId: "a",
+      isComplete: personalComplete,
+      completedItems: personalCompleted,
+      totalItems: personalTotal,
+      summary: personalComplete ? "Complete" : `${personalTotal - personalCompleted} missing`,
+    },
+    {
+      id: "education",
+      title: "Education Details",
+      bengaliTitle: "শিক্ষাগত যোগ্যতা",
+      tabId: "c",
+      isComplete: educationComplete,
+      completedItems: educationCompleted,
+      totalItems: educationTotal || 1,
+      summary: educationComplete ? "Complete" : "Incomplete",
+    },
+    {
+      id: "tuition",
+      title: "Tuition Preferences",
+      bengaliTitle: "টিউশন পছন্দ ও বিষয়",
+      tabId: "d",
+      isComplete: tuitionComplete,
+      completedItems: tuitionCompleted,
+      totalItems: tuitionTotal,
+      summary: tuitionComplete ? "Complete" : `${tuitionTotal - tuitionCompleted} missing`,
+    },
+    {
+      id: "documents",
+      title: "Verification Documents",
+      bengaliTitle: "আইডি ও ডকুমেন্টস",
+      tabId: "f",
+      isComplete: documentsComplete,
+      completedItems: documentsCompleted,
+      totalItems: documentsTotal,
+      summary: documentsComplete ? "Uploaded" : "Pending upload",
+    },
+  ];
+
+  const grandTotal = personalTotal + (educationTotal || 1) + tuitionTotal + documentsTotal;
+  const grandCompleted = personalCompleted + educationCompleted + tuitionCompleted + documentsCompleted;
+  const score = Math.round((grandCompleted / grandTotal) * 100);
+  const isReadyForVerification = personalComplete && educationComplete && tuitionComplete && documentsComplete;
+
+  return {
+    score: isReadyForVerification ? 100 : Math.min(score, 99),
+    isReadyForVerification,
+    categories,
+  };
+}

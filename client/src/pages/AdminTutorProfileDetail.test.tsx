@@ -260,6 +260,22 @@ describe("Admin Tutor profile detail", () => {
     expect(mocks.moderate).toHaveBeenCalledWith({ tutorId: "tutor-175", nextStatus: "changes_requested", reason: "Your University ID has expired" });
   });
 
+  it("allows admin to select a quick Bengali preset chip to populate the moderation reason", () => {
+    render(<AdminTutorProfileDetailContent tutorId="tutor-175" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Review & moderate/i }));
+    expect((screen.getByLabelText(/Next status/i) as HTMLSelectElement).value).toBe("changes_requested");
+
+    const chip = screen.getByRole("button", { name: "প্রোফাইল ছবি অস্পষ্ট / স্পষ্ট ও পেশাদার ছবি আপলোড করুন" });
+    fireEvent.click(chip);
+
+    const textarea = screen.getByLabelText(/Admin reason/i) as HTMLTextAreaElement;
+    expect(textarea.value).toBe("প্রোফাইল ছবি অস্পষ্ট / স্পষ্ট ও পেশাদার ছবি আপলোড করুন");
+
+    const save = screen.getByRole("button", { name: /Save moderation/i }) as HTMLButtonElement;
+    expect(save.disabled).toBe(false);
+  });
+
   it("lists every moderation decision, newest first, with who took it and why", () => {
     mocks.history = [
       { id: 2, adminUserId: 1, adminName: "Shafayet Ahmed", previousStatus: "pending", nextStatus: "approved", reason: null, createdAt: new Date("2026-09-10T06:30:00.000Z") },
