@@ -77,6 +77,7 @@ import { assertLearningNeedsWithinLimits, learningNeedsForWrite, learningNeedsIn
 import { assertTutorProfileDraftWithinLimits } from "./tutor-profile-limits";
 import { getSafeTutorProfileFieldIssues } from "./tutor-profile-error-contract";
 import { tutorProfileEditableDraftSchema, withoutRetiredTutorProfileFields } from "./tutor-profile.validation";
+import { findDuplicateTutorPhoneErrors } from "@shared/phone";
 import {
   createAdminTotp,
   encryptAdminSecret,
@@ -1451,6 +1452,23 @@ export const appRouter = router({
         // Check status before save so we know whether to notify admins of re-review.
         const profileBefore = await db.getTutorProfileByUserId(ctx.user.id);
         const wasSubmitted = profileBefore?.profileStatus === "pending" || profileBefore?.profileStatus === "approved";
+        const effectivePhone = input.phone ?? profileBefore?.phone;
+        if (effectivePhone && input.privateDetails) {
+          const duplicateErrors = findDuplicateTutorPhoneErrors({
+            primaryPhone: effectivePhone,
+            additionalPhone: input.privateDetails.additionalPhone,
+            fatherPhone: input.privateDetails.fatherPhone,
+            motherPhone: input.privateDetails.motherPhone,
+            emergencyContactPhone: input.privateDetails.emergencyContactPhone,
+          });
+          const issues = Object.entries(duplicateErrors).map(([field, msg]) => ({
+            path: ["privateDetails", field],
+            message: msg!,
+          }));
+          if (issues.length > 0) {
+            throw new db.TutorProfileValidationError(issues);
+          }
+        }
         const result = await db.saveTutorProfileDraft(ctx.user.id, input);
         if (wasSubmitted) {
           // Profile was re-queued for review inside saveTutorProfileDraft; notify admins.

@@ -1,4 +1,5 @@
 import { educationSectionStatus, validateEducationTimelineSequence, validateResultGpa } from "@shared/tutor-education";
+import { findDuplicateTutorPhoneErrors } from "@shared/phone";
 import { findTutorProfileFieldMeta, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import type { SiteLimitValues } from "@shared/site-limits";
 import { offersOnlineTuitionOnly } from "@shared/tutor-profile-tuition";
@@ -150,8 +151,8 @@ function isCalendarDate(value: string) {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
-function requiredSelection(errors: TutorProfileSubmissionErrors, key: TutorProfileSubmissionErrorKey, message: string, values: string[]) {
-  if (values.length === 0) errors[key] = message;
+function requiredSelection(errors: TutorProfileSubmissionErrors, key: TutorProfileSubmissionErrorKey, message: string, values?: string[]) {
+  if (!values || values.length === 0) errors[key] = message;
 }
 
 /** Shows immediate client-side guidance for predictable submission requirements. */
@@ -181,7 +182,21 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
     }
   }
   if (form.headline.trim().length < 10) errors.headline = "Enter a headline with at least 10 characters.";
-  if (!/^\+8801[3-9]\d{8}$/.test(form.phone.trim())) errors.phone = "Enter a valid Bangladesh mobile number.";
+  if (!/^\+8801[3-9]\d{8}$/.test(form.phone.trim())) {
+    errors.phone = "Enter a valid Bangladesh mobile number.";
+  } else {
+    const duplicates = findDuplicateTutorPhoneErrors({
+      primaryPhone: form.phone,
+      additionalPhone: form.privateDetails?.additionalPhone,
+      fatherPhone: form.privateDetails?.fatherPhone,
+      motherPhone: form.privateDetails?.motherPhone,
+      emergencyContactPhone: form.privateDetails?.emergencyContactPhone,
+    });
+    if (duplicates.fatherPhone) errors["privateDetails.fatherPhone" as TutorProfileSubmissionErrorKey] = duplicates.fatherPhone;
+    if (duplicates.motherPhone) errors["privateDetails.motherPhone" as TutorProfileSubmissionErrorKey] = duplicates.motherPhone;
+    if (duplicates.emergencyContactPhone) errors["privateDetails.emergencyContactPhone" as TutorProfileSubmissionErrorKey] = duplicates.emergencyContactPhone;
+    if (duplicates.additionalPhone) errors["privateDetails.additionalPhone" as TutorProfileSubmissionErrorKey] = duplicates.additionalPhone;
+  }
   if (!/^\S+@\S+\.\S+$/.test(form.contactEmail.trim())) errors.contactEmail = "Enter a valid email address.";
   if (!form.currentCityId) errors.currentCityId = "Select your current city.";
   if (!form.currentLocationId) errors.currentLocationId = "Select your current location.";
@@ -256,6 +271,7 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
       if (key === "whyChooseMe" && (form.whyChooseMe?.trim().length ?? 0) > 0) continue;
       if (key === "resultGpa" && (form.resultGpa?.trim().length ?? 0) > 0) continue;
       if (key === "educationRecords") continue;
+      if ((key as string).startsWith("privateDetails.")) continue;
       delete errors[key];
     }
   }

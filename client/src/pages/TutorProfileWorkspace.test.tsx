@@ -1030,15 +1030,28 @@ describe("the Tutor Profile phone boxes", () => {
     await user.click(screen.getByRole("button", { name: "Edit Family and emergency contact" }));
     const dialog = screen.getByRole("dialog");
     fireEvent.change(within(dialog).getByLabelText(/Father’s Name/), { target: { value: "Abdul Karim" } });
-    fireEvent.change(within(dialog).getByLabelText("Father’s Phone Number"), { target: { value: "01712345678" } });
+    fireEvent.change(within(dialog).getByLabelText("Father’s Phone Number"), { target: { value: "01812345678" } });
     await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
 
     await waitFor(() => expect(trpcMocks.saveDraft).toHaveBeenCalled());
     expect(trpcMocks.saveDraft.mock.calls[0][0].privateDetails).toMatchObject({
       fatherName: "Abdul Karim",
-      fatherPhone: "+8801712345678",
+      fatherPhone: "+8801812345678",
     });
   });
+  it("warns and blocks save when Father's phone duplicates personal mobile number", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Family and emergency contact" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Father’s Phone Number"), { target: { value: "01712345678" } });
+    await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
+
+    expect(within(dialog).getByText("Personal mobile number cannot be reused for family or emergency contact.")).toBeTruthy();
+    expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
+  });
+
 
   it("keeps +880 out of the box, so it cannot be typed away", async () => {
     const user = userEvent.setup({ document: window.document });

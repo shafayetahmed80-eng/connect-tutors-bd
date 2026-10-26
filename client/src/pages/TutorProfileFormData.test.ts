@@ -69,7 +69,7 @@ describe("Tutor Profile form hydration", () => {
   });
 
   it("builds a TP-05 draft payload without system fields, Tutor ownership fields, or raw photo storage keys", () => {
-    const state = hydrateTutorProfileForm(serverProfile, onboardingFallback);
+    const state = { ...hydrateTutorProfileForm(serverProfile, onboardingFallback), ...emptySelections };
     const payload = createProfileDraftPayload({
       ...state,
       dateOfBirth: "1999-04-12",
@@ -469,6 +469,29 @@ describe("Tutor Profile form hydration", () => {
     expect(getTutorProfileSubmissionErrors(invertedYearsState as any)).toHaveProperty(
       "educationRecords",
       "HSC passing year (2016) cannot be earlier than SSC passing year (2018).",
+    );
+  });
+
+it("flags family and emergency contact phones that duplicate the tutor's personal mobile number", () => {
+    const state = hydrateTutorProfileForm(serverProfile, onboardingFallback);
+    const withDuplicateFather = {
+      ...state,
+      phone: "+8801712345678",
+      privateDetails: {
+        ...state.privateDetails,
+        fatherPhone: "01712-345678", // duplicate
+        emergencyContactPhone: "+8801712345678", // duplicate
+      },
+    };
+
+    const errors = getTutorProfileSubmissionErrors(withDuplicateFather as any);
+    expect(errors).toHaveProperty(
+      "privateDetails.fatherPhone",
+      "Father's phone number cannot be the same as your personal mobile number.",
+    );
+    expect(errors).toHaveProperty(
+      "privateDetails.emergencyContactPhone",
+      "Emergency contact phone cannot be the same as your personal mobile number.",
     );
   });
 

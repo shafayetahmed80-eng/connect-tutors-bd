@@ -56,3 +56,78 @@ export function toInternationalBangladeshPhone(value: string | null | undefined)
   const digits = cleanBangladeshLocalPhoneDigits(value);
   return digits ? `${BANGLADESH_COUNTRY_CODE}${digits}` : "";
 }
+
+export type TutorProfilePhonePair = {
+  primaryPhone?: string | null;
+  additionalPhone?: string | null;
+  fatherPhone?: string | null;
+  motherPhone?: string | null;
+  emergencyContactPhone?: string | null;
+};
+
+export type TutorProfilePhoneDuplicateErrors = {
+  additionalPhone?: string;
+  fatherPhone?: string;
+  motherPhone?: string;
+  emergencyContactPhone?: string;
+};
+
+/**
+ * Checks whether any family, emergency, or additional contact phone number
+ * duplicates the tutor's personal mobile number (primary or additional).
+ * Returns an error mapping if duplicates exist.
+ */
+export function findDuplicateTutorPhoneErrors(
+  phones: TutorProfilePhonePair,
+): TutorProfilePhoneDuplicateErrors {
+  const errors: TutorProfilePhoneDuplicateErrors = {};
+  const primary = cleanBangladeshLocalPhoneDigits(phones.primaryPhone);
+  const additional = cleanBangladeshLocalPhoneDigits(phones.additionalPhone);
+
+  if (primary) {
+    if (additional && additional === primary) {
+      errors.additionalPhone = "Additional phone number cannot be the same as your primary mobile number.";
+    }
+    if (phones.fatherPhone) {
+      const father = cleanBangladeshLocalPhoneDigits(phones.fatherPhone);
+      if (father && father === primary) {
+        errors.fatherPhone = "Father's phone number cannot be the same as your personal mobile number.";
+      }
+    }
+    if (phones.motherPhone) {
+      const mother = cleanBangladeshLocalPhoneDigits(phones.motherPhone);
+      if (mother && mother === primary) {
+        errors.motherPhone = "Mother's phone number cannot be the same as your personal mobile number.";
+      }
+    }
+    if (phones.emergencyContactPhone) {
+      const emergency = cleanBangladeshLocalPhoneDigits(phones.emergencyContactPhone);
+      if (emergency && emergency === primary) {
+        errors.emergencyContactPhone = "Emergency contact phone cannot be the same as your personal mobile number.";
+      }
+    }
+  }
+
+  if (additional && additional !== primary) {
+    if (phones.fatherPhone && !errors.fatherPhone) {
+      const father = cleanBangladeshLocalPhoneDigits(phones.fatherPhone);
+      if (father && father === additional) {
+        errors.fatherPhone = "Father's phone number cannot be the same as your additional mobile number.";
+      }
+    }
+    if (phones.motherPhone && !errors.motherPhone) {
+      const mother = cleanBangladeshLocalPhoneDigits(phones.motherPhone);
+      if (mother && mother === additional) {
+        errors.motherPhone = "Mother's phone number cannot be the same as your additional mobile number.";
+      }
+    }
+    if (phones.emergencyContactPhone && !errors.emergencyContactPhone) {
+      const emergency = cleanBangladeshLocalPhoneDigits(phones.emergencyContactPhone);
+      if (emergency && emergency === additional) {
+        errors.emergencyContactPhone = "Emergency contact phone cannot be the same as your additional mobile number.";
+      }
+    }
+  }
+
+  return errors;
+}
