@@ -611,3 +611,84 @@ describe("Tutor Profile Education Result/GPA and Passing Year validation", () =>
     }
   });
 });
+describe("Tutor Profile duplicate phone number validation", () => {
+  it("rejects fatherPhone when it duplicates the tutor's personal mobile number", () => {
+    const duplicateFather = {
+      ...approvedExpandedSubmission,
+      privateDetails: {
+        ...approvedExpandedSubmission.privateDetails,
+        fatherPhone: approvedExpandedSubmission.phone, // same number
+      },
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(duplicateFather);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      const issue = parsed.error.issues.find(i => i.path.join(".") === "privateDetails.fatherPhone");
+      expect(issue?.message).toContain("Father's phone number cannot be the same as your personal mobile number");
+    }
+  });
+
+  it("rejects motherPhone when it duplicates the tutor's personal mobile number", () => {
+    const duplicateMother = {
+      ...approvedExpandedSubmission,
+      privateDetails: {
+        ...approvedExpandedSubmission.privateDetails,
+        motherPhone: approvedExpandedSubmission.phone,
+      },
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(duplicateMother);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      const issue = parsed.error.issues.find(i => i.path.join(".") === "privateDetails.motherPhone");
+      expect(issue?.message).toContain("Mother's phone number cannot be the same as your personal mobile number");
+    }
+  });
+
+  it("rejects emergencyContactPhone when it duplicates the tutor's personal mobile number", () => {
+    const duplicateEmergency = {
+      ...approvedExpandedSubmission,
+      privateDetails: {
+        ...approvedExpandedSubmission.privateDetails,
+        emergencyContactPhone: approvedExpandedSubmission.phone,
+      },
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(duplicateEmergency);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      const issue = parsed.error.issues.find(i => i.path.join(".") === "privateDetails.emergencyContactPhone");
+      expect(issue?.message).toContain("Emergency contact phone cannot be the same as your personal mobile number");
+    }
+  });
+
+  it("rejects additionalPhone when it duplicates the primary mobile number", () => {
+    const duplicateAdditional = {
+      ...approvedExpandedSubmission,
+      privateDetails: {
+        ...approvedExpandedSubmission.privateDetails,
+        additionalPhone: approvedExpandedSubmission.phone,
+      },
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(duplicateAdditional);
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      const issue = parsed.error.issues.find(i => i.path.join(".") === "privateDetails.additionalPhone");
+      expect(issue?.message).toContain("Additional phone number cannot be the same as your primary mobile number");
+    }
+  });
+
+  it("accepts valid distinct phone numbers for tutor and family contacts", () => {
+    const validPhones = {
+      ...approvedExpandedSubmission,
+      phone: "+8801712345678",
+      privateDetails: {
+        ...approvedExpandedSubmission.privateDetails,
+        additionalPhone: "+8801812345678",
+        fatherPhone: "+8801912345678",
+        motherPhone: "+8801512345678",
+        emergencyContactPhone: "+8801612345678",
+      },
+    };
+    const parsed = tutorProfileDraftSchema.safeParse(validPhones);
+    expect(parsed.success).toBe(true);
+  });
+});

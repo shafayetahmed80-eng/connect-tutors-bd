@@ -5,6 +5,7 @@ import {
   formatBangladeshLocalPhoneDisplay,
   isValidBangladeshLocalPhone,
   toInternationalBangladeshPhone,
+  findDuplicateTutorPhoneErrors,
 } from "./phone";
 
 describe("phone utilities", () => {
@@ -96,4 +97,59 @@ describe("phone utilities", () => {
       expect(toInternationalBangladeshPhone("")).toBe("");
     });
   });
+
+  describe("findDuplicateTutorPhoneErrors", () => {
+    it("returns empty errors when no numbers duplicate", () => {
+      const result = findDuplicateTutorPhoneErrors({
+        primaryPhone: "+8801712345678",
+        additionalPhone: "+8801812345678",
+        fatherPhone: "+8801912345678",
+        motherPhone: "+8801512345678",
+        emergencyContactPhone: "+8801612345678",
+      });
+      expect(result).toEqual({});
+    });
+
+    it("flags fatherPhone when it matches primaryPhone", () => {
+      const result = findDuplicateTutorPhoneErrors({
+        primaryPhone: "+8801712345678",
+        fatherPhone: "01712-345678",
+      });
+      expect(result.fatherPhone).toContain("Father's phone number cannot be the same as your personal mobile number");
+    });
+
+    it("flags motherPhone when it matches primaryPhone", () => {
+      const result = findDuplicateTutorPhoneErrors({
+        primaryPhone: "+8801712345678",
+        motherPhone: "01712345678",
+      });
+      expect(result.motherPhone).toContain("Mother's phone number cannot be the same as your personal mobile number");
+    });
+
+    it("flags emergencyContactPhone when it matches primaryPhone", () => {
+      const result = findDuplicateTutorPhoneErrors({
+        primaryPhone: "+8801712345678",
+        emergencyContactPhone: "০১৭১২৩৪৫৬৭৮",
+      });
+      expect(result.emergencyContactPhone).toContain("Emergency contact phone cannot be the same as your personal mobile number");
+    });
+
+    it("flags additionalPhone when it matches primaryPhone", () => {
+      const result = findDuplicateTutorPhoneErrors({
+        primaryPhone: "+8801712345678",
+        additionalPhone: "+8801712345678",
+      });
+      expect(result.additionalPhone).toContain("Additional phone number cannot be the same as your primary mobile number");
+    });
+
+    it("flags contact numbers when they match additionalPhone", () => {
+      const result = findDuplicateTutorPhoneErrors({
+        primaryPhone: "+8801712345678",
+        additionalPhone: "+8801812345678",
+        emergencyContactPhone: "01812345678",
+      });
+      expect(result.emergencyContactPhone).toContain("Emergency contact phone cannot be the same as your additional mobile number");
+    });
+  });
+
 });

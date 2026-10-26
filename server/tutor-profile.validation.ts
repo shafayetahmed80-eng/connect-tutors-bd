@@ -13,6 +13,7 @@ import {
 import { defaultTutorProfileFieldConfig, type ResolvedTutorProfileFieldConfig } from "@shared/tutor-profile-field-registry";
 import { tutorNationalityOptions, tutorReligionOptions } from "@shared/tutor-personal-details";
 import { offersOnlineTuitionOnly } from "@shared/tutor-profile-tuition";
+import { findDuplicateTutorPhoneErrors } from "@shared/phone";
 
 const bangladeshPhoneSchema = z
   .string()
@@ -270,6 +271,42 @@ function addCrossFieldIssues(
         message: seqIssue,
       });
     }
+  }
+
+  const phoneDuplicates = findDuplicateTutorPhoneErrors({
+    primaryPhone: value.phone,
+    additionalPhone: value.privateDetails?.additionalPhone,
+    fatherPhone: value.privateDetails?.fatherPhone,
+    motherPhone: value.privateDetails?.motherPhone,
+    emergencyContactPhone: value.privateDetails?.emergencyContactPhone,
+  });
+  if (phoneDuplicates.fatherPhone) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["privateDetails", "fatherPhone"],
+      message: phoneDuplicates.fatherPhone,
+    });
+  }
+  if (phoneDuplicates.motherPhone) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["privateDetails", "motherPhone"],
+      message: phoneDuplicates.motherPhone,
+    });
+  }
+  if (phoneDuplicates.emergencyContactPhone) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["privateDetails", "emergencyContactPhone"],
+      message: phoneDuplicates.emergencyContactPhone,
+    });
+  }
+  if (phoneDuplicates.additionalPhone) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["privateDetails", "additionalPhone"],
+      message: phoneDuplicates.additionalPhone,
+    });
   }
 }
 
