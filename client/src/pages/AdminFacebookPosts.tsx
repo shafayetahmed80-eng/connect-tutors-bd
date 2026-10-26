@@ -183,6 +183,69 @@ export function getTutorPrefBadgeClass(gender: string | null | undefined): strin
   return "bg-slate-50 text-slate-700 border-slate-200/80";
 }
 
+/**
+ * Daily Posting Progress Ring widget visualizing team coverage of posted vs unposted live tuitions.
+ */
+export function PostingProgressRing({
+  posted,
+  total,
+}: {
+  posted: number;
+  total: number;
+}) {
+  const pct = total > 0 ? Math.min(100, Math.round((posted / total) * 100)) : 0;
+  const size = 32;
+  const strokeWidth = 3;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (pct / 100) * circumference;
+  const strokeColor =
+    pct >= 80 ? "stroke-emerald-600" : pct >= 40 ? "stroke-sky-600" : "stroke-amber-600";
+  const badgeColor =
+    pct >= 80
+      ? "bg-emerald-50/90 text-emerald-950 border-emerald-200/80"
+      : pct >= 40
+        ? "bg-sky-50/90 text-sky-950 border-sky-200/80"
+        : "bg-amber-50/90 text-amber-950 border-amber-200/80";
+
+  return (
+    <div
+      data-testid="posting-progress-ring"
+      title={`Daily Posting Coverage: ${posted} of ${total} live tuitions posted to Facebook (${pct}%)`}
+      className={`inline-flex items-center gap-2 rounded-lg border px-2.5 py-1 shadow-2xs backdrop-blur-xs transition ${badgeColor}`}
+    >
+      <div className="relative inline-grid size-7 place-items-center">
+        <svg className="size-7 -rotate-90" viewBox={`0 0 ${size} ${size}`}>
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            className="stroke-slate-200 fill-none"
+            strokeWidth={strokeWidth}
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            className={`fill-none transition-all duration-500 ease-out ${strokeColor}`}
+            strokeWidth={strokeWidth}
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+          />
+        </svg>
+        <span className="absolute text-[9px] font-black tracking-tight">{pct}%</span>
+      </div>
+      <div className="text-left">
+        <div className="text-[10px] font-bold leading-tight">Daily Coverage</div>
+        <div className="text-[9px] opacity-80 leading-tight">
+          {posted}/{total} Posted
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AdminFacebookPostsContent() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -456,6 +519,44 @@ export function AdminFacebookPostsContent() {
       }
     } catch {
       toast.error("টিউশন লোড করতে ব্যর্থ হয়েছে।");
+    } finally {
+      setIsBulkCopying(false);
+    }
+  };
+
+  const handleCopyPicked = async () => {
+    if (isBulkCopying || picked.size === 0) return;
+    setIsBulkCopying(true);
+    try {
+      const list = Array.from(picked.values());
+      const bulkText = buildEnglishBulkFacebookPostText(
+        list.map(j => ({ ...j, jobId: jobIdForRequest(j.id) })),
+        {
+          origin: window.location.origin,
+          template: templates,
+          format: selectedBulkFormat,
+          includeHashtags,
+        },
+      );
+      const ok = await copyToClipboard(bulkText);
+      if (ok) {
+        toast.success(`${list.length}টি বাছাইকৃত টিউশনের ক্যাপশন কপি হয়েছে!`);
+        if (autoMarkOnCopy) {
+          const idsToMark = list.map(j => j.id);
+          setPostStatusMutation.mutate(
+            { requestIds: idsToMark, isPosted: true },
+            {
+              onSuccess: () => {
+                toast.success(`${list.length}টি বাছাইকৃত টিউশন 'Posted' হিসেবে চিহ্নিত করা হয়েছে!`);
+              },
+            }
+          );
+        }
+      } else {
+        toast.error("টেক্সট কপি করতে ব্যর্থ হয়েছে।");
+      }
+    } catch {
+      toast.error("ক্যাপশন কপি করতে ব্যর্থ হয়েছে।");
     } finally {
       setIsBulkCopying(false);
     }
@@ -784,9 +885,21 @@ export function AdminFacebookPostsContent() {
       key: "salary",
       label: "Salary",
       cell: job => (
-        <span className="font-bold text-j-ink whitespace-nowrap">
-          {formatSalaryAmount(job.budgetAmount)}
-        </span>
+        <div className="space-y-1">
+          <span className="font-bold text-j-ink whitespace-nowrap block">
+            {formatSalaryAmount(job.budgetAmount)}
+          </span>
+          {job.budgetAmount && job.budgetAmount >= 8000 ? (
+            <span
+              data-testid="high-value-tuition-badge"
+              className="inline-flex items-center gap-1 rounded-md border border-amber-300/80 bg-gradient-to-r from-amber-50 to-orange-50/70 px-1.5 py-0.5 text-2xs font-bold text-amber-900 shadow-2xs whitespace-nowrap"
+              title="High Budget Tuition (8,000+ BDT)"
+            >
+              <Sparkles className="size-2.5 text-amber-600 animate-pulse" />
+              <span>High Budget</span>
+            </span>
+          ) : null}
+        </div>
       ),
     },
     {
@@ -935,13 +1048,13 @@ export function AdminFacebookPostsContent() {
               type="button"
               onClick={() => handleCopySingleInline(job)}
               aria-label={`Copy English inline post for job ${code}`}
-              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition shadow-2xs active:scale-95 cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold shadow-2xs cursor-pointer transition-all duration-150 active:scale-90 ${
                 isCopied
-                  ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+                  ? "border-emerald-600 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-400/50 scale-105"
                   : "border-blue-700/30 bg-gradient-to-r from-[#1877f2] via-[#1a73e8] to-[#166fe5] text-white hover:from-[#166fe5] hover:to-[#1558b0] hover:shadow-xs"
               }`}
             >
-              {isCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+              {isCopied ? <Check className="size-3.5 text-emerald-600 animate-in zoom-in-75 duration-150" /> : <Copy className="size-3.5" />}
               <span>{isCopied ? "Copied!" : "Copy (EN)"}</span>
             </button>
 
@@ -955,7 +1068,7 @@ export function AdminFacebookPostsContent() {
                 }}
                 aria-label={`Preview Facebook post for job ${code}`}
                 className="inline-grid size-7.5 place-items-center rounded-md text-slate-600 hover:bg-white hover:text-j-ink hover:shadow-2xs transition active:scale-90 cursor-pointer"
-                title="Preview Post Text"
+                title={`Quick Preview: Job ${code} • ${job.classCourse || "Tuition"} • ${formatSalaryAmount(job.budgetAmount)} • ${job.locationText || "Dhaka"}`}
               >
                 <Eye className="size-3.5" />
               </button>
@@ -1116,7 +1229,8 @@ export function AdminFacebookPostsContent() {
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <PostingProgressRing posted={livePostedCount} total={livePostedCount + liveUnpostedCount} />
           <label className="flex items-center gap-2 cursor-pointer select-none text-2xs font-semibold text-j-ink-soft hover:text-j-ink transition">
             <input
               type="checkbox"
@@ -1807,6 +1921,67 @@ export function AdminFacebookPostsContent() {
             </div>
           </ModalFooter>
         </Modal>
+      ) : null}
+
+      {/* Floating Batch Dock when 1 or more tuitions are picked */}
+      {picked.size > 0 ? (
+        <div
+          role="region"
+          aria-label="Floating Batch Actions"
+          data-testid="floating-batch-dock"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 sm:gap-3 rounded-2xl bg-slate-900/95 backdrop-blur-md px-3.5 py-2 text-white shadow-2xl border border-slate-700/80 animate-in fade-in slide-in-from-bottom-5 duration-200"
+        >
+          <div className="flex items-center gap-1.5 pl-1 pr-2.5 border-r border-slate-700/80 text-xs font-bold text-sky-400">
+            <Sparkles className="size-3.5 text-amber-400 animate-pulse" />
+            <span>{picked.size} picked</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGenerateBulkPoster}
+            aria-label="Create Poster from picked tuitions"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-primary to-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs transition-all duration-150 active:scale-90 hover:brightness-110 cursor-pointer"
+            title="Open multi-tuition poster for picked jobs"
+          >
+            <ImageIcon className="size-3.5" />
+            <span className="hidden sm:inline">Create Poster</span>
+            <span className="sm:hidden">Poster</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleGenerateVideo}
+            aria-label="Create Video from picked tuitions"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 text-xs font-semibold text-slate-200 transition-all duration-150 active:scale-90 cursor-pointer"
+            title="Generate Video from picked tuitions"
+          >
+            <Film className="size-3.5 text-rose-400" />
+            <span className="hidden sm:inline">Video</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleCopyPicked}
+            aria-label="Copy captions of picked tuitions"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-700 hover:bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white transition-all duration-150 active:scale-90 cursor-pointer"
+            title="Copy captions of picked tuitions"
+          >
+            <Copy className="size-3.5 text-indigo-200" />
+            <span className="hidden sm:inline">Copy ({picked.size})</span>
+            <span className="sm:hidden">Copy</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPicked(new Map())}
+            aria-label="Clear floating selection"
+            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-all duration-150 active:scale-90 cursor-pointer"
+            title="Clear picked selection"
+          >
+            <X className="size-3.5" />
+            <span className="hidden sm:inline">Clear</span>
+          </button>
+        </div>
       ) : null}
 
       {/* Social Media Poster Modals */}
