@@ -458,7 +458,7 @@ describe("Tutor Profile form hydration", () => {
       ...state,
       priorTeachingExperience: "test test test demo demo demo",
     } as any, undefined, limits);
-    expect(dummyExpErrors).toHaveProperty("priorTeachingExperience", "Provide meaningful details about your prior teaching experience rather than repetitive or placeholder text.");
+    expect(dummyExpErrors).toHaveProperty("priorTeachingExperience", "Provide meaningful details about your teaching experience details rather than repetitive or placeholder text.");
 
     // Dummy father and mother names
     const dummyFatherErrors = getTutorProfileSubmissionErrors({

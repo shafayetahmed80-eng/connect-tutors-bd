@@ -277,7 +277,7 @@ const profileShape = {
   teachingExperienceYears: z.number().int().min(0).max(60).optional(),
   priorTeachingExperience: optionalTrimmedText(2000).superRefine((val, ctx) => {
     if (val) {
-      const err = validateTeachingExpertiseText(val, "Prior Teaching Experience");
+      const err = validateTeachingExpertiseText(val, "Teaching Experience Details");
       if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, message: err });
     }
   }),
