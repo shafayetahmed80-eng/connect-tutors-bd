@@ -31,8 +31,8 @@ export const tutorProfileFieldEditTargets: ReadonlyArray<{
   { id: "c-university", section: "c", subGroup: "c-university", label: "Education: University Section", shortLabel: "University Section" },
   { id: "c-higher-secondary", section: "c", subGroup: "c-higher-secondary", label: "Education: Higher Secondary", shortLabel: "Higher Secondary" },
   { id: "c-secondary", section: "c", subGroup: "c-secondary", label: "Education: Secondary", shortLabel: "Secondary" },
-  { id: "d-availability", section: "d", subGroup: "d-availability", label: "Tuition Related: Availability", shortLabel: "Availability" },
   { id: "d-teaching", section: "d", subGroup: "d-teaching", label: "Tuition Related: Teaching Expertise", shortLabel: "Teaching Expertise" },
+  { id: "d-availability", section: "d", subGroup: "d-availability", label: "Tuition Related: Tuition Preferences & Availability", shortLabel: "Tuition Preferences & Availability" },
   { id: "f", section: "f", label: "Credential", shortLabel: "Credential" },
   { id: "e", section: "e", label: "Introduction and review", shortLabel: "Introduction and review" },
 ];

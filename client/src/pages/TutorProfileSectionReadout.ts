@@ -134,7 +134,7 @@ const subGroupHeadings: Record<TutorProfileFieldSubGroup, string> = {
   "c-university": "University Section",
   "c-higher-secondary": "Higher Secondary",
   "c-secondary": "Secondary",
-  "d-availability": "Availability",
+  "d-availability": "Tuition Preferences & Availability",
   "d-teaching": "Teaching Expertise",
 };
 
@@ -217,7 +217,7 @@ const rowBuilders: Record<string, ReadoutRowBuilder> = {
   classLevelIds: (form, resolve) => ({ label: "Class / level", value: list(form.classLevelIds, resolve.classLevel) }),
   curriculumIds: (form, resolve) => ({ label: "Curriculum", value: list(form.curriculumIds, resolve.curriculum) }),
   teachingExperienceYears: form => ({ label: "Teaching experience (years)", value: text(form.teachingExperienceYears) }),
-  priorTeachingExperience: form => ({ label: "Prior teaching experience", value: text(form.priorTeachingExperience) }),
+  priorTeachingExperience: form => ({ label: "Teaching experience details", value: text(form.priorTeachingExperience) }),
   specialExpertise: form => ({ label: "Special expertise", value: text(form.specialExpertise) }),
   academicAchievement: form => ({ label: "Academic achievement", value: text(form.academicAchievement) }),
 

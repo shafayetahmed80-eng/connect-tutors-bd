@@ -34,7 +34,7 @@ const subGroupLabels: Record<TutorProfileSectionGroupId, string> = {
   "c-university": "University Section",
   "c-higher-secondary": "Higher Secondary",
   "c-secondary": "Secondary",
-  "d-availability": "Availability",
+  "d-availability": "Tuition Preferences & Availability",
   "d-teaching": "Teaching Expertise",
 };
 

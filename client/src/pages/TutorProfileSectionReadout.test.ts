@@ -59,12 +59,12 @@ describe("getTutorProfileReadoutSections", () => {
     // own popup. "In your own words" and the old Location and fee fields both
     // fold into Teaching Expertise, the sub-group they belong to.
     expect(sections[2].groups.map(group => group.heading)).toEqual([
-      "Availability",
       "Teaching Expertise",
+      "Tuition Preferences & Availability",
     ]);
     expect(sections[2].groups.map(group => group.editTarget)).toEqual([
-      "d-availability",
       "d-teaching",
+      "d-availability",
     ]);
 
     // Education stages are cards of their own, newest first.

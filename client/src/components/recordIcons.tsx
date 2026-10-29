@@ -131,7 +131,7 @@ const LABEL_ICONS: Record<string, RecordIconName> = {
   // tutor profile - teaching
   "Professional headline": "headline", "About me": "about", "Why choose me": "headline",
   "Teaching approach": "approach", "Special expertise": "experience",
-  "Teaching experience (years)": "experience", "Prior teaching experience": "experience",
+  "Teaching experience (years)": "experience", "Prior teaching experience": "experience", "Teaching experience details": "experience",
   "Primary subjects": "subjects", "Additional subjects": "subjects",
   "Curriculum": "curriculumType", "Student types": "students",
   "Preferred student gender": "studentGender",

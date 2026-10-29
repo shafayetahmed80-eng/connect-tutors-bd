@@ -159,29 +159,27 @@ export const tutorProfileFieldRegistry: readonly TutorProfileFieldMeta[] = [
   { id: "supportingDocument.hsc_certificate", label: "HSC Certificate", section: "f", panel: "documents", sortOrder: 150, requiredByDefault: false, requiredConfigurable: true },
   { id: "supportingDocument.hons_ms_certificate", label: "Hons/MS Certificate", section: "f", panel: "documents", sortOrder: 160, requiredByDefault: false, requiredConfigurable: true },
 
-  // Section d, sub-group d-teaching - "Teaching expertise" (moved here from section c)
-  { id: "primarySubjectIds", label: "Primary Subjects", section: "d", subGroup: "d-teaching", panel: "what-you-teach", sortOrder: 71, requiredByDefault: true, requiredConfigurable: true },
-  { id: "additionalSubjectIds", label: "Additional Subjects", section: "d", subGroup: "d-teaching", panel: "what-you-teach", sortOrder: 72, requiredByDefault: false, requiredConfigurable: true },
-  { id: "classLevelIds", label: "Class / Level", section: "d", subGroup: "d-teaching", panel: "what-you-teach", sortOrder: 73, requiredByDefault: true, requiredConfigurable: true },
-  { id: "curriculumIds", label: "Curriculum", section: "d", subGroup: "d-teaching", panel: "what-you-teach", sortOrder: 74, requiredByDefault: true, requiredConfigurable: true },
-  { id: "teachingExperienceYears", label: "Teaching Experience (Years)", section: "d", subGroup: "d-teaching", panel: "what-you-teach", sortOrder: 75, requiredByDefault: true, requiredConfigurable: true },
-  { id: "priorTeachingExperience", label: "Prior Teaching Experience", section: "d", subGroup: "d-teaching", panel: "own-words", sortOrder: 76, requiredByDefault: false, requiredConfigurable: true },
-  { id: "specialExpertise", label: "Special Expertise", section: "d", subGroup: "d-teaching", panel: "own-words", sortOrder: 77, requiredByDefault: false, requiredConfigurable: true },
-  { id: "academicAchievement", label: "Academic Achievement", section: "d", subGroup: "d-teaching", panel: "own-words", sortOrder: 78, requiredByDefault: false, requiredConfigurable: true },
+  // Section d, sub-group d-teaching - "Teaching expertise"
+  { id: "classLevelIds", label: "Class / Level", section: "d", subGroup: "d-teaching", panel: "what-you-teach", sortOrder: 10, requiredByDefault: true, requiredConfigurable: true },
+  { id: "curriculumIds", label: "Curriculum", section: "d", subGroup: "d-teaching", panel: "what-you-teach", sortOrder: 20, requiredByDefault: true, requiredConfigurable: true },
+  { id: "primarySubjectIds", label: "Primary Subjects", section: "d", subGroup: "d-teaching", panel: "what-you-teach", sortOrder: 30, requiredByDefault: true, requiredConfigurable: true },
+  { id: "additionalSubjectIds", label: "Additional Subjects", section: "d", subGroup: "d-teaching", panel: "what-you-teach", sortOrder: 40, requiredByDefault: false, requiredConfigurable: true },
+  { id: "teachingExperienceYears", label: "Teaching Experience (Years)", section: "d", subGroup: "d-teaching", panel: "what-you-teach", sortOrder: 50, requiredByDefault: true, requiredConfigurable: true },
+  { id: "specialExpertise", label: "Special Expertise", section: "d", subGroup: "d-teaching", panel: "own-words", sortOrder: 60, requiredByDefault: false, requiredConfigurable: true },
+  { id: "priorTeachingExperience", label: "Teaching Experience Details", section: "d", subGroup: "d-teaching", panel: "own-words", sortOrder: 70, requiredByDefault: false, requiredConfigurable: true },
+  { id: "academicAchievement", label: "Academic Achievement", section: "d", subGroup: "d-teaching", panel: "own-words", sortOrder: 80, requiredByDefault: false, requiredConfigurable: true },
 
-  // Section d, sub-group d-availability - "Availability"
-  { id: "tuitionType", label: "Tuition Type", section: "d", subGroup: "d-availability", panel: "how-you-teach", sortOrder: 10, requiredByDefault: true, requiredConfigurable: true },
-  { id: "preferredStudentGender", label: "Preferred Student Gender", section: "d", subGroup: "d-availability", panel: "how-you-teach", sortOrder: 30, requiredByDefault: true, requiredConfigurable: true },
-  { id: "preferredTeachingDays", label: "Preferred Teaching Days", section: "d", subGroup: "d-availability", panel: "how-you-teach", sortOrder: 50, requiredByDefault: true, requiredConfigurable: true },
-  { id: "preferredTimeSlots", label: "Preferred Time Slots", section: "d", subGroup: "d-availability", panel: "how-you-teach", sortOrder: 60, requiredByDefault: true, requiredConfigurable: true },
-
-  // Section d, sub-group d-location - "Location and fee"
-  { id: "currentCityId", label: "Current City", section: "d", subGroup: "d-teaching", panel: "location-fee", sortOrder: 80, requiredByDefault: true, requiredConfigurable: true },
-  { id: "currentLocationId", label: "Current Location", section: "d", subGroup: "d-teaching", panel: "location-fee", sortOrder: 90, requiredByDefault: true, requiredConfigurable: true },
-  { id: "teachingAreaIds", label: "Teaching Areas", section: "d", subGroup: "d-teaching", panel: "location-fee", sortOrder: 100, requiredByDefault: true, requiredConfigurable: true },
-  { id: "feeMin", label: "Minimum Monthly Fee", section: "d", subGroup: "d-teaching", panel: "location-fee", sortOrder: 110, requiredByDefault: true, requiredConfigurable: true },
-  { id: "feeMax", label: "Maximum Monthly Fee", section: "d", subGroup: "d-teaching", panel: "location-fee", sortOrder: 120, requiredByDefault: true, requiredConfigurable: true },
-  { id: "travelDistanceKm", label: "Travel Distance (km)", section: "d", subGroup: "d-teaching", panel: "location-fee", sortOrder: 130, requiredByDefault: false, requiredConfigurable: true },
+  // Section d, sub-group d-availability - "Tuition Preferences & Availability"
+  { id: "tuitionType", label: "Tuition Type", section: "d", subGroup: "d-availability", panel: "how-you-teach", sortOrder: 90, requiredByDefault: true, requiredConfigurable: true },
+  { id: "preferredStudentGender", label: "Preferred Student Gender", section: "d", subGroup: "d-availability", panel: "how-you-teach", sortOrder: 100, requiredByDefault: true, requiredConfigurable: true },
+  { id: "preferredTeachingDays", label: "Preferred Teaching Days", section: "d", subGroup: "d-availability", panel: "how-you-teach", sortOrder: 110, requiredByDefault: true, requiredConfigurable: true },
+  { id: "preferredTimeSlots", label: "Preferred Time Slots", section: "d", subGroup: "d-availability", panel: "how-you-teach", sortOrder: 120, requiredByDefault: true, requiredConfigurable: true },
+  { id: "currentCityId", label: "Current City", section: "d", subGroup: "d-availability", panel: "location-fee", sortOrder: 130, requiredByDefault: true, requiredConfigurable: true },
+  { id: "currentLocationId", label: "Current Location", section: "d", subGroup: "d-availability", panel: "location-fee", sortOrder: 140, requiredByDefault: true, requiredConfigurable: true },
+  { id: "teachingAreaIds", label: "Teaching Areas", section: "d", subGroup: "d-availability", panel: "location-fee", sortOrder: 150, requiredByDefault: true, requiredConfigurable: true },
+  { id: "travelDistanceKm", label: "Travel Distance (km)", section: "d", subGroup: "d-availability", panel: "location-fee", sortOrder: 160, requiredByDefault: false, requiredConfigurable: true },
+  { id: "feeMin", label: "Minimum Monthly Fee", section: "d", subGroup: "d-availability", panel: "location-fee", sortOrder: 170, requiredByDefault: true, requiredConfigurable: true },
+  { id: "feeMax", label: "Maximum Monthly Fee", section: "d", subGroup: "d-availability", panel: "location-fee", sortOrder: 180, requiredByDefault: true, requiredConfigurable: true },
 
   // Section e - Introduction and review (no sub-groups)
   { id: "aboutMe", label: "About Me", section: "e", panel: "introduction", sortOrder: 10, requiredByDefault: false, requiredConfigurable: true },
@@ -258,7 +256,7 @@ export const tutorProfileFieldSections: readonly TutorProfileFieldSection[] = ["
 export const tutorProfileFieldSubGroups: readonly TutorProfileFieldSubGroup[] = [
   "a-identity", "a-family",
   "c-university", "c-higher-secondary", "c-secondary",
-  "d-availability", "d-teaching",
+  "d-teaching", "d-availability",
 ];
 
 /** Sub-groups a section opens one at a time, or `undefined` for a section edited as one popup. */

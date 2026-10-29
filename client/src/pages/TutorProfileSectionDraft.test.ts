@@ -217,6 +217,6 @@ describe("Tutor Profile section draft payloads", () => {
     expect(getTutorProfileSectionGroups("c")?.map(group => group.id)).toEqual(["c-university", "c-higher-secondary", "c-secondary"]);
     expect(getTutorProfileSectionGroups("a")?.map(group => group.id)).toEqual(["a-identity", "a-family"]);
     // Tuition and location now edits one sub-group at a time.
-    expect(getTutorProfileSectionGroups("d")?.map(group => group.id)).toEqual(["d-availability", "d-teaching"]);
+    expect(getTutorProfileSectionGroups("d")?.map(group => group.id)).toEqual(["d-teaching", "d-availability"]);
   });
 });
