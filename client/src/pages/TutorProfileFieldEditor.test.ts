@@ -23,7 +23,7 @@ describe("Tutor Profile field editor logic", () => {
 
     expect(new Set(grouped.keys())).toEqual(new Set([
       "a-identity", "a-family", "c-university", "c-higher-secondary", "c-secondary",
-      "d-availability", "d-teaching", "f", "e",
+      "d-teaching", "d-availability", "f", "e",
     ]));
     expect(editTargetFor(config.byId.get("profilePhotoUrl")!)).toBeNull();
     for (const [, fields] of Array.from(grouped.entries())) {
@@ -78,7 +78,7 @@ describe("Tutor Profile field editor logic", () => {
   it("declares every target exactly once, covering every section", () => {
     expect(tutorProfileFieldEditTargets.map(t => t.id)).toEqual([
       "a-identity", "a-family", "c-university", "c-higher-secondary", "c-secondary",
-      "d-availability", "d-teaching", "f", "e",
+      "d-teaching", "d-availability", "f", "e",
     ]);
   });
 

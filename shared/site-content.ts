@@ -229,7 +229,7 @@ const tutorProfileSlots: SiteContentSlot[] = [
   { id: "tutor-profile.group.c-university", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "University Section", defaultText: "University Section", defaultTextClass: "text-sm" },
   { id: "tutor-profile.group.c-higher-secondary", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Higher Secondary", defaultText: "Higher Secondary", defaultTextClass: "text-sm" },
   { id: "tutor-profile.group.c-secondary", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Secondary", defaultText: "Secondary", defaultTextClass: "text-sm" },
-  { id: "tutor-profile.group.d-availability", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Availability", defaultText: "Availability", defaultTextClass: "text-sm" },
+  { id: "tutor-profile.group.d-availability", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Tuition Preferences & Availability", defaultText: "Tuition Preferences & Availability", defaultTextClass: "text-sm" },
   { id: "tutor-profile.group.d-teaching", page: "tutor-profile", surface: "Tutor dashboard", group: "Card headings", label: "Teaching Expertise", defaultText: "Teaching Expertise", defaultTextClass: "text-sm" },
 
   { id: "tutor-profile.form.qualification-history", page: "tutor-profile", surface: "Tutor dashboard", group: "In-form headings", label: "Qualification history heading", defaultText: "Qualification history", defaultTextClass: "text-sm" },

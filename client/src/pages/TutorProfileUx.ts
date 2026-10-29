@@ -133,7 +133,7 @@ const completionFieldLabels: Partial<Record<TutorProfileSubmissionErrorKey, stri
   aboutMe: tutorProfileCopy.fields.aboutMe,
   teachingApproach: tutorProfileCopy.fields.teachingApproach,
   whyChooseMe: tutorProfileCopy.fields.whyChooseMe,
-  priorTeachingExperience: "Prior Teaching Experience",
+  priorTeachingExperience: "Teaching Experience Details",
   specialExpertise: "Special Expertise",
   academicAchievement: "Academic Achievement",
 };
@@ -390,7 +390,7 @@ export function getTutorProfileSubmissionErrors(form: TutorProfileSubmissionPrev
 
   const formAny = form as Record<string, unknown>;
   if (typeof formAny.priorTeachingExperience === "string" && formAny.priorTeachingExperience.trim()) {
-    const err = validateTeachingExpertiseText(formAny.priorTeachingExperience, "Prior Teaching Experience");
+    const err = validateTeachingExpertiseText(formAny.priorTeachingExperience, "Teaching Experience Details");
     if (err) errors.priorTeachingExperience = err;
   }
   if (typeof formAny.specialExpertise === "string" && formAny.specialExpertise.trim()) {

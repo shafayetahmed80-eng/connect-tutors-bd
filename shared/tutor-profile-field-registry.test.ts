@@ -36,7 +36,7 @@ describe("Tutor Profile field registry", () => {
     expect(subGroupsForSection("a")).toEqual(["a-identity", "a-family"]);
     // Education opens one stage at a time, university first.
     expect(subGroupsForSection("c")).toEqual(["c-university", "c-higher-secondary", "c-secondary"]);
-    expect(subGroupsForSection("d")).toEqual(["d-availability", "d-teaching"]);
+    expect(subGroupsForSection("d")).toEqual(["d-teaching", "d-availability"]);
   });
 
   it("finds a declared field and returns undefined for an unknown one", () => {
@@ -186,10 +186,10 @@ describe("Tutor Profile field panels", () => {
     // Teaching expertise ships in this tab now, second, straight after
     // Availability - see the section-d entries in the registry.
     expect(panels.map(panel => panel.panel)).toEqual([
-      "how-you-teach", "what-you-teach", "own-words", "location-fee",
+      "what-you-teach", "own-words", "how-you-teach", "location-fee",
     ]);
     expect(panels[3].fields.map(field => field.id)).toEqual([
-      "currentCityId", "currentLocationId", "teachingAreaIds", "feeMin", "feeMax", "travelDistanceKm",
+      "currentCityId", "currentLocationId", "teachingAreaIds", "travelDistanceKm", "feeMin", "feeMax",
     ]);
   });
 

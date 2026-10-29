@@ -454,6 +454,10 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     dialog = screen.getByRole("dialog");
     expect(within(dialog).getByRole("combobox", { name: /Class \/ Level/ }).getAttribute("aria-required")).toBeNull();
     expect(within(dialog).getByRole("combobox", { name: /Curriculum/ }).getAttribute("aria-required")).toBe("true");
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    await user.click(screen.getByRole("button", { name: "Edit Tuition Preferences & Availability" }));
+    dialog = screen.getByRole("dialog");
     expect(within(dialog).getByLabelText(/Maximum Monthly Fee/).getAttribute("aria-required")).toBeNull();
     expect(within(dialog).getByLabelText(/Minimum Monthly Fee/).getAttribute("aria-required")).toBe("true");
     trpcMocks.resolvedFields.mockImplementation(() => ({ data: undefined }));
@@ -685,7 +689,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
 
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
+    await user.click(screen.getByRole("button", { name: "Edit Tuition Preferences & Availability" }));
     dialog = screen.getByRole("dialog");
     const teachingAreas = within(dialog).getByRole("combobox", { name: /Teaching Areas/ });
     // The marker is drawn by the profile's own label above the chip box, so it
@@ -704,7 +708,7 @@ describe("TutorProfileWorkspace FP-02 feedback", () => {
 
     // The remaining incomplete section surfaces its errors when opened from its tab.
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
+    await user.click(screen.getByRole("button", { name: "Edit Tuition Preferences & Availability" }));
     const teachingDialog = screen.getByRole("dialog");
     expect(within(teachingDialog).getByText("Select your current location.")).toBeTruthy();
     expect(within(teachingDialog).getByText("Select at least one teaching area.")).toBeTruthy();
@@ -881,7 +885,7 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
+    await user.click(screen.getByRole("button", { name: "Edit Tuition Preferences & Availability" }));
     const dialog = screen.getByRole("dialog");
     // Named, not counted: every multi-select in this panel is a combobox too
     // now, so the position of the Current Location box is no longer fixed.
@@ -931,7 +935,7 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
     })));
 
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
+    await user.click(screen.getByRole("button", { name: "Edit Tuition Preferences & Availability" }));
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByDisplayValue("Dhaka · city")).toBeTruthy();
     expect(within(dialog).getByDisplayValue("Uttara · thana")).toBeTruthy();
@@ -963,7 +967,7 @@ describe("TutorProfileWorkspace Bangladesh hierarchy search", () => {
 
     // Opening the editor mounts the City box, which seeds its own text from
     // the resolved label and re-searches the catalog with that literal text.
-    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
+    await user.click(screen.getByRole("button", { name: "Edit Tuition Preferences & Availability" }));
     await waitFor(() => expect(trpcMocks.searchBangladeshLocations).toHaveBeenCalledWith(expect.objectContaining({ query: "Dhaka · city" })));
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }));
 
@@ -1133,7 +1137,7 @@ describe("what the Teaching expertise and Availability boxes ask for", () => {
     render(<TutorProfileWorkspace profile={{ ...completeProfile, preferredTeachingDays: [] }} onboardingFallback={null} />);
 
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Availability" }));
+    await user.click(screen.getByRole("button", { name: "Edit Tuition Preferences & Availability" }));
     const dialog = screen.getByRole("dialog");
 
     fireEvent.click(within(dialog).getByRole("combobox", { name: /Preferred Teaching Days/ }));
@@ -1272,7 +1276,7 @@ describe("Permanent Address and the Availability choices", () => {
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
     await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
     const dialog = screen.getByRole("dialog");
-    const expInput = within(dialog).getByLabelText(/^Teaching Experience/) as HTMLInputElement;
+    const expInput = within(dialog).getByLabelText(/^Teaching Experience \(Years\)/) as HTMLInputElement;
     fireEvent.change(expInput, { target: { value: "10" } });
     await user.click(within(dialog).getByRole("button", { name: /^Submit/ }));
 
@@ -1365,7 +1369,7 @@ describe("Permanent Address and the Availability choices", () => {
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Availability" }));
+    await user.click(screen.getByRole("button", { name: "Edit Tuition Preferences & Availability" }));
     const dialog = screen.getByRole("dialog");
 
     const type = within(dialog).getByRole("combobox", { name: /Tuition Type/ });
@@ -1379,12 +1383,12 @@ describe("Permanent Address and the Availability choices", () => {
     expect(within(dialog).queryByRole("radiogroup", { name: /Tuition Type/ })).toBeNull();
   });
 
-  it("blocks saving Teaching Expertise draft when feeMax is lower than feeMin", async () => {
+  it("blocks saving Tuition Preferences & Availability draft when feeMax is lower than feeMin", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
+    await user.click(screen.getByRole("button", { name: "Edit Tuition Preferences & Availability" }));
     const dialog = screen.getByRole("dialog");
 
     const feeMinInput = within(dialog).getByLabelText(/Minimum Monthly Fee/) as HTMLInputElement;
@@ -1399,12 +1403,12 @@ describe("Permanent Address and the Availability choices", () => {
     expect(trpcMocks.saveDraft).not.toHaveBeenCalled();
   });
 
-  it("blocks saving Teaching Expertise draft when feeMin is below 1,000 BDT", async () => {
+  it("blocks saving Tuition Preferences & Availability draft when feeMin is below 1,000 BDT", async () => {
     const user = userEvent.setup({ document: window.document });
     render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
 
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
+    await user.click(screen.getByRole("button", { name: "Edit Tuition Preferences & Availability" }));
     const dialog = screen.getByRole("dialog");
 
     const feeMinInput = within(dialog).getByLabelText(/Minimum Monthly Fee/) as HTMLInputElement;
@@ -1484,7 +1488,7 @@ describe("TutorProfileWorkspace Readiness, Moderation, Travel Consistency & Smar
     render(<TutorProfileWorkspace profile={onlineProfile} onboardingFallback={null} />);
 
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
+    await user.click(screen.getByRole("button", { name: "Edit Tuition Preferences & Availability" }));
     const dialog = screen.getByRole("dialog");
 
     const travelInput = within(dialog).getByLabelText(/Travel Distance/) as HTMLInputElement;
@@ -1504,9 +1508,26 @@ describe("TutorProfileWorkspace Readiness, Moderation, Travel Consistency & Smar
     render(<TutorProfileWorkspace profile={multiAreaProfile} onboardingFallback={null} />);
 
     await user.click(screen.getByRole("tab", { name: /Tuition/ }));
-    await user.click(screen.getByRole("button", { name: "Edit Teaching Expertise" }));
+    await user.click(screen.getByRole("button", { name: "Edit Tuition Preferences & Availability" }));
     const dialog = screen.getByRole("dialog");
 
     expect(within(dialog).getAllByText(/You have chosen a 1-5 km travel limit \(4 km\)/).length).toBeGreaterThan(0);
+  });
+
+  it("renders religion as a standard select dropdown with predefined options", async () => {
+    const user = userEvent.setup({ document: window.document });
+    render(<TutorProfileWorkspace profile={completeProfile} onboardingFallback={null} />);
+
+    await user.click(screen.getByRole("button", { name: "Edit Identity and contact" }));
+    const dialog = screen.getByRole("dialog");
+    const religionSelect = within(dialog).getByLabelText(/Religion/i) as HTMLSelectElement;
+    expect(religionSelect.tagName.toLowerCase()).toBe("select");
+
+    const optionValues = Array.from(religionSelect.options).map(opt => opt.value);
+    expect(optionValues).toContain("Islam");
+    expect(optionValues).toContain("Hinduism");
+    expect(optionValues).toContain("Christianity");
+    expect(optionValues).toContain("Buddhism");
+    expect(optionValues).toContain("Others");
   });
 });

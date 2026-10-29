@@ -165,7 +165,7 @@ const editTargetTitles: Record<TutorProfileSectionGroupId, string> = {
   "c-university": "University Section",
   "c-higher-secondary": "Higher Secondary",
   "c-secondary": "Secondary",
-  "d-availability": "Availability",
+  "d-availability": "Tuition Preferences & Availability",
   "d-teaching": "Teaching Expertise",
 };
 
@@ -1247,7 +1247,7 @@ function TutorProfileWorkspaceBody({
         if (expErr) sectionErrors.teachingExperienceYears = expErr;
       }
       if (form.priorTeachingExperience?.trim()) {
-        const err = validateTeachingExpertiseText(form.priorTeachingExperience, "Prior Teaching Experience");
+        const err = validateTeachingExpertiseText(form.priorTeachingExperience, "Teaching Experience Details");
         if (err) sectionErrors.priorTeachingExperience = err;
       }
       if (form.specialExpertise?.trim()) {
@@ -1258,6 +1258,14 @@ function TutorProfileWorkspaceBody({
         const err = validateTeachingExpertiseText(form.academicAchievement, "Academic Achievement");
         if (err) sectionErrors.academicAchievement = err;
       }
+      if (Object.keys(sectionErrors).length > 0) {
+        setFieldErrors(current => ({ ...current, ...sectionErrors }));
+        setFeedback({ type: "error", message: "Review the highlighted details and try again." });
+        return false;
+      }
+    }
+    if (target === "d" || target === "d-availability") {
+      const sectionErrors: TutorProfileSubmissionErrors = {};
       const feeErrors = validateTuitionFees(form.feeMin, form.feeMax);
       if (feeErrors.feeMinError) sectionErrors.feeMin = feeErrors.feeMinError;
       if (feeErrors.feeMaxError) sectionErrors.feeMax = feeErrors.feeMaxError;
@@ -1642,7 +1650,7 @@ function TutorProfileWorkspaceBody({
         : <FormPhoneInput label={fieldLabel(fieldId, tutorProfileCopy.fields.phone)} required={isRequired(fieldId)} value={form.phone} onChange={value => update("phone", value)} error={fieldErrors.phone ?? phoneErrors.phone} />;
       case "contactEmail": return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.email)} required={isRequired(fieldId)} type="email" name="email" autoComplete="email" value={form.contactEmail} onChange={event => update("contactEmail", event.target.value)} error={fieldErrors.contactEmail} />;
       case "privateDetails.nationality": return <label className={tp.fieldRow}><span className={tp.fieldLabel}>{fieldLabel(fieldId, "Nationality")}{isRequired(fieldId) ? <span aria-hidden="true" className="text-tp-danger"> *</span> : null}</span><select aria-label={fieldLabel(fieldId, "Nationality")} value={form.privateDetails.nationality || "Bangladeshi"} onChange={event => updatePrivateDetail("nationality", event.target.value)} className={fieldClassName}>{tutorNationalityOptions.map(option => <option key={option} value={option}>{option}</option>)}</select></label>;
-      case "privateDetails.religion": return <SearchableSingleSelect label={fieldLabel(fieldId, "Religion")} required={isRequired(fieldId)} options={tutorReligionOptions.map(option => ({ id: option, label: option }))} value={form.privateDetails.religion ?? ""} onChange={value => updatePrivateDetail("religion", value)} emptyMessage="No religion found." />;
+      case "privateDetails.religion": return <FormSelect label={fieldLabel(fieldId, "Religion")} showRequiredMarker={isRequired(fieldId)} options={tutorReligionOptions} placeholder="Select religion" value={form.privateDetails.religion ?? ""} onChange={event => updatePrivateDetail("religion", event.target.value)} error={fieldErrors["privateDetails.religion" as TutorProfileSubmissionErrorKey]} />;
       case "privateDetails.presentAddress": return <FormTextArea label={fieldLabel(fieldId, "Present Address")} rows={2} required={isRequired(fieldId)} name="street-address" autoComplete="street-address" value={form.privateDetails.presentAddress} onChange={event => updatePrivateDetail("presentAddress", event.target.value)} placeholder="House/Road, Sector/Block, Area" error={fieldErrors["privateDetails.presentAddress" as TutorProfileSubmissionErrorKey]} />;
       case "privateDetails.permanentAddress": return <FormTextArea label={fieldLabel(fieldId, "Permanent Address")} rows={2} required={isRequired(fieldId)} name="street-address" autoComplete="street-address" value={form.privateDetails.permanentAddress} onChange={event => updatePrivateDetail("permanentAddress", event.target.value)} placeholder="Village/Road, Thana/Upazila, District" error={fieldErrors["privateDetails.permanentAddress" as TutorProfileSubmissionErrorKey]} />;
       case "privateDetails.additionalPhone": return <FormPhoneInput required={isRequired(fieldId)} label={fieldLabel(fieldId, "Additional Phone")} value={form.privateDetails.additionalPhone} onChange={value => updatePrivateDetail("additionalPhone", value)} error={fieldErrors["privateDetails.additionalPhone" as TutorProfileSubmissionErrorKey] ?? phoneErrors.additionalPhone} />;
@@ -1725,8 +1733,8 @@ function TutorProfileWorkspaceBody({
         return <FormInput label={fieldLabel(fieldId, tutorProfileCopy.fields.teachingExperience)} showRequiredMarker={isRequired(fieldId)} type="number" min="0" max="60" value={form.teachingExperienceYears} onChange={event => update("teachingExperienceYears", event.target.value)} error={fieldErrors.teachingExperienceYears ?? expError ?? undefined} />;
       }
       case "priorTeachingExperience": {
-        const priorError = form.priorTeachingExperience ? validateTeachingExpertiseText(form.priorTeachingExperience, "Prior Teaching Experience") : null;
-        return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "Prior Teaching Experience")} value={form.priorTeachingExperience} onChange={event => update("priorTeachingExperience", event.target.value)} placeholder="Briefly describe previous tutoring, coaching, or classroom experience." error={fieldErrors.priorTeachingExperience ?? priorError ?? undefined} />;
+        const priorError = form.priorTeachingExperience ? validateTeachingExpertiseText(form.priorTeachingExperience, "Teaching Experience Details") : null;
+        return <FormTextArea required={isRequired(fieldId)} label={fieldLabel(fieldId, "Teaching Experience Details")} value={form.priorTeachingExperience} onChange={event => update("priorTeachingExperience", event.target.value)} placeholder="Briefly describe previous tutoring, coaching, or classroom experience." error={fieldErrors.priorTeachingExperience ?? priorError ?? undefined} />;
       }
       case "specialExpertise": {
         const expError = form.specialExpertise ? validateTeachingExpertiseText(form.specialExpertise, "Special Expertise") : null;
