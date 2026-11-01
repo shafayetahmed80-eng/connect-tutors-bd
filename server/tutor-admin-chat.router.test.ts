@@ -31,6 +31,12 @@ const dbMocks = vi.hoisted(() => ({
   toggleTutorAdminChatThreadAiAutoReply: vi.fn(),
   getAiChatSettings: vi.fn(),
   updateAiChatSettings: vi.fn(),
+  submitTutorAdminChatMessageFeedback: vi.fn(),
+  getAiChatAnalytics: vi.fn(),
+  listAiKnowledgeFaqs: vi.fn(),
+  createAiKnowledgeFaq: vi.fn(),
+  updateAiKnowledgeFaq: vi.fn(),
+  deleteAiKnowledgeFaq: vi.fn(),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -262,5 +268,28 @@ describe("the Admin side of the Tutor chat", () => {
     dbMocks.updateAiChatSettings.mockResolvedValue({ ...mockSettings, enabled: false });
     await expect(createCaller(admin).admin.updateAiChatSettings({ enabled: false })).resolves.toEqual({ ...mockSettings, enabled: false });
     expect(dbMocks.updateAiChatSettings).toHaveBeenCalledWith({ enabled: false });
+  });
+
+  it("submits AI response feedback as active tutor", async () => {
+    dbMocks.submitTutorAdminChatMessageFeedback.mockResolvedValue({ updated: true });
+    await expect(createCaller(activeTutor).tutorAdminChat.submitAiFeedback({ messageId: 5, feedback: "helpful" })).resolves.toEqual({ updated: true });
+    expect(dbMocks.submitTutorAdminChatMessageFeedback).toHaveBeenCalledWith({ tutorId: "tutor-1503", messageId: 5, feedback: "helpful", note: undefined });
+  });
+
+  it("fetches AI chat analytics as admin", async () => {
+    const mockAnalytics = { totalAiMessages: 10, helpfulCount: 8, unhelpfulCount: 2, escalatedCount: 1 };
+    dbMocks.getAiChatAnalytics.mockResolvedValue(mockAnalytics);
+    await expect(createCaller(admin).admin.getAiChatAnalytics()).resolves.toEqual(mockAnalytics);
+    expect(dbMocks.getAiChatAnalytics).toHaveBeenCalled();
+  });
+
+  it("creates and lists custom AI knowledge FAQs as admin", async () => {
+    dbMocks.createAiKnowledgeFaq.mockResolvedValue({ id: 1 });
+    await expect(createCaller(admin).admin.createAiKnowledgeFaq({ question: "কীভাবে টাকা দেব?", answer: "বিকাশে" })).resolves.toEqual({ id: 1 });
+    expect(dbMocks.createAiKnowledgeFaq).toHaveBeenCalledWith({ question: "কীভাবে টাকা দেব?", answer: "বিকাশে", category: undefined, audience: undefined });
+
+    dbMocks.listAiKnowledgeFaqs.mockResolvedValue([{ id: 1, question: "কীভাবে টাকা দেব?", answer: "বিকাশে" }]);
+    await expect(createCaller(admin).admin.listAiKnowledgeFaqs()).resolves.toEqual([{ id: 1, question: "কীভাবে টাকা দেব?", answer: "বিকাশে" }]);
+    expect(dbMocks.listAiKnowledgeFaqs).toHaveBeenCalledWith(undefined);
   });
 });

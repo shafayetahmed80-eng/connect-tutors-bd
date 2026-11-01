@@ -9,9 +9,12 @@
  */
 
 import { generateAiChatResponse, type TutorChatContext } from "@shared/ai-chat-knowledge";
+import { toBanglaDigits } from "@shared/digits";
 import { getDb } from "./db";
 import {
   aiChatSettings,
+  aiKnowledgeFaqs,
+  tutorRequests,
   tutorAdminChatMessages,
   tutorAdminChatThreads,
   tutors,
@@ -19,7 +22,7 @@ import {
   tutorJobInterests,
   tutorUniversityIdDocuments,
 } from "../drizzle/schema";
-import { eq, count } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { notifyAdminsOfChatMessage, notifyTutorOfChatMessage } from "./chat-ws";
 
 export interface ProcessAiChatMessageInput {
@@ -175,6 +178,47 @@ export async function processTutorMessageForAiAssistant(
 
   let finalReplyText = localReply.replyText;
 
+  // Check custom FAQ rules from aiKnowledgeFaqs
+  try {
+    const customFaqs = await database
+      .select({ question: aiKnowledgeFaqs.question, answer: aiKnowledgeFaqs.answer })
+      .from(aiKnowledgeFaqs)
+      .where(and(eq(aiKnowledgeFaqs.isActive, true), inArray(aiKnowledgeFaqs.audience, ["all", "tutor"])));
+
+    const lowerQuery = input.messageText.toLowerCase().trim();
+    const matchingFaq = customFaqs.find(f => lowerQuery.includes(f.question.toLowerCase().trim()) || f.question.toLowerCase().trim().includes(lowerQuery));
+    if (matchingFaq) {
+      finalReplyText = matchingFaq.answer;
+    }
+  } catch {}
+
+  // Live Job Recommendation integration
+  if (localReply.intent === "JOB_RECOMMENDATION") {
+    try {
+      const liveJobs = await database
+        .select({
+          id: tutorRequests.id,
+          classCourse: tutorRequests.classCourse,
+          subjects: tutorRequests.subjects,
+          locationLabel: tutorRequests.tuitionLocationLabel,
+          locationText: tutorRequests.locationText,
+          budgetAmount: tutorRequests.budgetAmount,
+        })
+        .from(tutorRequests)
+        .where(eq(tutorRequests.publicationState, "published"))
+        .orderBy(desc(tutorRequests.id))
+        .limit(3);
+
+      if (liveJobs.length > 0) {
+        const jobSnippets = liveJobs.map((j, i) =>
+          `${toBanglaDigits(i + 1)}. [Job ID: TR-${j.id}] — ${j.locationLabel || j.locationText || "ঢাকা"}, শ্রেণি: ${j.classCourse || "যেকোনো"}, বিষয়: ${j.subjects || "সাধারণ"}, পারিশ্রমিক: ${toBanglaDigits(j.budgetAmount || 0)} ৳/মাস`
+        ).join("\n");
+
+        finalReplyText += `\n\n🎯 আপনার জন্য সাম্প্রতিক খালি কয়েকটি টিউশন:\n${jobSnippets}\n\n👉 কার্ডের 'View & Apply' বাটনে ক্লিক করে সরাসরি আবেদন করতে পারেন।`;
+      }
+    } catch {}
+  }
+
   // 4. If LLM API key is present and intent is not a direct human escalation, attempt LLM refinement
   if (process.env.GEMINI_API_KEY && !localReply.isEscalated) {
     const systemInstruction = `You are the Connect Tutors BD AI Assistant (কানেক্ট টিউটরস এআই সাপোর্ট).
@@ -204,6 +248,7 @@ Guidelines:
     senderRole: "admin",
     body: finalReplyText,
     isAiGenerated: true,
+    aiActionChips: localReply.actionChips ?? null,
     createdAt: now,
   });
 

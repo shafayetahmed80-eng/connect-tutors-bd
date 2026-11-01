@@ -35,6 +35,7 @@ vi.mock("@/lib/trpc", () => ({
       send: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.send(input); options.onSuccess?.(); }, isPending: false }) },
       markRead: { useMutation: () => ({ mutate: state.markRead, isPending: false }) },
       react: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.react(input); options.onSuccess?.(); }, isPending: false }) },
+      submitAiFeedback: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
     },
   },
 }));

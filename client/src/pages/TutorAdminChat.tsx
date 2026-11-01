@@ -27,7 +27,7 @@ import {
 } from "@/components/chat/ChatProductivityShortcuts";
 import { motion } from "framer-motion";
 import SearchInput from "@/components/SearchInput";
-import { Briefcase, Check, Clock, CornerUpLeft, Loader2, Maximize2, Mic, Paperclip, Phone, Plus, RotateCcw, Send, ShieldCheck, Sparkles, Square, ThumbsUp, WifiOff, X } from "lucide-react";
+import { Briefcase, Check, Clock, CornerUpLeft, Loader2, Maximize2, Mic, Paperclip, Phone, Plus, RotateCcw, Send, ShieldCheck, Sparkles, Square, ThumbsDown, ThumbsUp, WifiOff, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -38,9 +38,23 @@ const TYPING_PING_MS = 2000;
 const TYPING_EXPIRES_MS = 3000;
 const PAGE_SIZE = 30;
 
-type ChatMessage = { id: number; senderRole: "tutor" | "admin"; body: string; attachmentUrl: string | null; attachmentContentType: string | null; tutorReacted: boolean; adminReacted: boolean; createdAt: string | Date; isAiGenerated?: boolean | null };
+type ChatMessage = {
+  id: number;
+  senderRole: "tutor" | "admin";
+  body: string;
+  attachmentUrl: string | null;
+  attachmentContentType: string | null;
+  tutorReacted: boolean;
+  adminReacted: boolean;
+  createdAt: string | Date;
+  isAiGenerated?: boolean | null;
+  aiFeedback?: "helpful" | "unhelpful" | null;
+  aiFeedbackNote?: string | null;
+  aiActionChips?: Array<{ label: string; url: string; icon?: string }> | null;
+};
 
 const AI_QUICK_SUGGESTIONS = [
+  { label: "আমার জন্য টিউশন আছে?", prompt: "আমার প্রোফাইলের সাথে মিলে এমন কোনো টিউশন বা জব আছে কি?" },
   { label: "ভেরিফিকেশন নিয়ম", prompt: "ভেরিফিকেশন হতে কত সময় লাগে এবং কী কী ডকুমেন্ট প্রয়োজন?" },
   { label: "সিভি ডাউনলোড", prompt: "আমার সিভি (CV) কীভাবে ডাউনলোড করবো?" },
   { label: "টিউশন ফি ও পেমেন্ট", prompt: "টিউশন প্ল্যাটফর্ম ফি ও পেমেন্টের নিয়ম কী?" },
@@ -163,6 +177,13 @@ export function TutorAdminChatPanel() {
   });
   const markRead = trpc.tutorAdminChat.markRead.useMutation({ onSuccess: () => utils.tutorAdminChat.unreadCount.invalidate() });
   const react = trpc.tutorAdminChat.react.useMutation({ onSuccess: () => utils.tutorAdminChat.thread.invalidate() });
+  const submitFeedback = trpc.tutorAdminChat.submitAiFeedback.useMutation({
+    onSuccess: () => {
+      toast.success("আপনার মতামতের জন্য ধন্যবাদ!");
+      void utils.tutorAdminChat.thread.invalidate();
+    },
+    onError: error => toast.error(error.message || "মতামত গ্রহণে সমস্যা হয়েছে"),
+  });
   const contact = useSiteContact();
   const [isCalling, setIsCalling] = useState(false);
   const callTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -532,6 +553,21 @@ export function TutorAdminChatPanel() {
                 </div>
               </motion.div>
 
+              {!own && message.isAiGenerated && message.aiActionChips && message.aiActionChips.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-1.5 max-w-[85%]">
+                  {message.aiActionChips.map((chip, chipIdx) => (
+                    <a
+                      key={chipIdx}
+                      href={chip.url}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-2xs font-bold text-sky-800 shadow-2xs hover:bg-sky-100 hover:border-sky-300 transition-colors"
+                    >
+                      <span>{chip.label}</span>
+                      <span aria-hidden="true">&rarr;</span>
+                    </a>
+                  ))}
+                </div>
+              ) : null}
+
               {jobIds.map(jid => (
                 <ChatTuitionJobCard
                   key={jid}
@@ -589,6 +625,39 @@ export function TutorAdminChatPanel() {
                     <CornerUpLeft className="size-3" />
                     <span>Reply</span>
                   </button>
+                  {!own && message.isAiGenerated ? (
+                    <div className="inline-flex items-center gap-1 border-l border-j-border/60 pl-1.5">
+                      <span className="text-3xs font-semibold text-j-ink-faint mr-0.5">সহায়ক?</span>
+                      <button
+                        type="button"
+                        onClick={() => submitFeedback.mutate({ messageId: message.id, feedback: "helpful" })}
+                        disabled={submitFeedback.isPending}
+                        title="সহায়ক উত্তর (Helpful)"
+                        aria-label="Helpful AI response"
+                        className={`p-1 rounded-full text-2xs transition-colors ${
+                          message.aiFeedback === "helpful"
+                            ? "bg-emerald-100 text-emerald-700 font-bold ring-1 ring-emerald-300"
+                            : "text-j-ink-faint hover:text-emerald-600 hover:bg-emerald-50"
+                        }`}
+                      >
+                        <ThumbsUp size={11} className={message.aiFeedback === "helpful" ? "fill-emerald-600 text-emerald-600" : ""} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => submitFeedback.mutate({ messageId: message.id, feedback: "unhelpful" })}
+                        disabled={submitFeedback.isPending}
+                        title="অপ্রাসঙ্গিক বা ভুল (Unhelpful)"
+                        aria-label="Unhelpful AI response"
+                        className={`p-1 rounded-full text-2xs transition-colors ${
+                          message.aiFeedback === "unhelpful"
+                            ? "bg-rose-100 text-rose-700 font-bold ring-1 ring-rose-300"
+                            : "text-j-ink-faint hover:text-rose-600 hover:bg-rose-50"
+                        }`}
+                      >
+                        <ThumbsDown size={11} className={message.aiFeedback === "unhelpful" ? "fill-rose-600 text-rose-600" : ""} />
+                      </button>
+                    </div>
+                  ) : null}
                   {message.adminReacted ? <span className="text-2xs font-semibold text-j-ink-faint">👍 Admin</span> : null}
                   {own ? (
                     <MessageStatusTicks status={seen ? "seen" : "delivered"} />

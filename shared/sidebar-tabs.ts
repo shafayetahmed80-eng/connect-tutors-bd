@@ -156,6 +156,7 @@ export const sidebarPanels: SidebarPanelMeta[] = [
       ["/admin/dynamic/job-card", "Job card"],
       ["/admin/dynamic/limits", "Limits"],
       ["/admin/dynamic/admin-control", "Admin Control"],
+      ["/admin/dynamic/ai-settings", "AI Settings & Training"],
       ["/admin/admin-profiles", "Admin Profiles"],
       ["/admin/reports", "Admin activity report"],
       ["/admin/security", "Admin security"],

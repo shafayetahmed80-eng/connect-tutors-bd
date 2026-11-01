@@ -102,6 +102,7 @@ describe("Admin workspace navigation", () => {
       expect.objectContaining({ label: "Job card", path: "/admin/dynamic/job-card" }),
       expect.objectContaining({ label: "Limits", path: "/admin/dynamic/limits" }),
       expect.objectContaining({ label: "Admin Control", path: "/admin/dynamic/admin-control" }),
+      expect.objectContaining({ label: "AI Settings & Training", path: "/admin/dynamic/ai-settings" }),
     ]);
   });
 
@@ -119,6 +120,7 @@ describe("Admin workspace navigation", () => {
     expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/legal-pages");
     expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/limits");
     expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/admin-control");
+    expect(adminItems.map(item => item.path)).not.toContain("/admin/dynamic/ai-settings");
   });
 
   it("orders the Dynamic Section after Operations and before the Owner controls", () => {

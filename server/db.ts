@@ -81,6 +81,9 @@ import {
   tutorAdminChatThreads,
   tutorAdminChatMessages,
   aiChatSettings,
+  aiKnowledgeFaqs,
+  guardianAiChatMessages,
+  guardianAiChatThreads,
   tutorAdminChatNotes,
   chatQuickReplies,
   adminMessageTemplates,
@@ -7011,6 +7014,8 @@ export async function getTutorAdminChatThread(input: { tutorId: string }) {
       senderRole: tutorAdminChatMessages.senderRole,
       body: tutorAdminChatMessages.body,
       isAiGenerated: tutorAdminChatMessages.isAiGenerated,
+      aiFeedback: tutorAdminChatMessages.aiFeedback,
+      aiActionChips: tutorAdminChatMessages.aiActionChips,
       attachmentKey: tutorAdminChatMessages.attachmentKey,
       attachmentContentType: tutorAdminChatMessages.attachmentContentType,
       tutorReactedAt: tutorAdminChatMessages.tutorReactedAt,
@@ -12485,4 +12490,196 @@ export async function updateAiChatSettings(input: { enabled?: boolean; welcomeMe
     });
   }
   return getAiChatSettings();
+}
+
+export async function submitTutorAdminChatMessageFeedback(input: {
+  tutorId: string;
+  messageId: number;
+  feedback: "helpful" | "unhelpful";
+  note?: string;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database
+    .update(tutorAdminChatMessages)
+    .set({
+      aiFeedback: input.feedback,
+      aiFeedbackNote: input.note ? input.note.slice(0, 255) : null,
+    })
+    .where(eq(tutorAdminChatMessages.id, input.messageId));
+  return { updated: true as const };
+}
+
+export async function getAiChatAnalytics() {
+  const database = await getDb();
+  if (!database) {
+    return {
+      totalAiMessages: 0,
+      tutorMessages: 0,
+      guardianMessages: 0,
+      helpfulCount: 0,
+      unhelpfulCount: 0,
+      escalatedCount: 0,
+      satisfactionRate: 100,
+    };
+  }
+  const [totalTutorRow] = await database
+    .select({ value: count() })
+    .from(tutorAdminChatMessages)
+    .where(eq(tutorAdminChatMessages.isAiGenerated, true));
+
+  const [totalGuardianRow] = await database
+    .select({ value: count() })
+    .from(guardianAiChatMessages)
+    .where(eq(guardianAiChatMessages.isAiGenerated, true));
+
+  const [helpfulTutorRow] = await database
+    .select({ value: count() })
+    .from(tutorAdminChatMessages)
+    .where(eq(tutorAdminChatMessages.aiFeedback, "helpful"));
+
+  const [helpfulGuardianRow] = await database
+    .select({ value: count() })
+    .from(guardianAiChatMessages)
+    .where(eq(guardianAiChatMessages.aiFeedback, "helpful"));
+
+  const [unhelpfulTutorRow] = await database
+    .select({ value: count() })
+    .from(tutorAdminChatMessages)
+    .where(eq(tutorAdminChatMessages.aiFeedback, "unhelpful"));
+
+  const [unhelpfulGuardianRow] = await database
+    .select({ value: count() })
+    .from(guardianAiChatMessages)
+    .where(eq(guardianAiChatMessages.aiFeedback, "unhelpful"));
+
+  const [escalatedTutorRow] = await database
+    .select({ value: count() })
+    .from(tutorAdminChatThreads)
+    .where(isNotNull(tutorAdminChatThreads.aiEscalatedAt));
+
+  const [escalatedGuardianRow] = await database
+    .select({ value: count() })
+    .from(guardianAiChatThreads)
+    .where(isNotNull(guardianAiChatThreads.aiEscalatedAt));
+
+  const tutorMessages = Number(totalTutorRow?.value ?? 0);
+  const guardianMessages = Number(totalGuardianRow?.value ?? 0);
+  const totalAiMessages = tutorMessages + guardianMessages;
+
+  const helpfulCount = Number(helpfulTutorRow?.value ?? 0) + Number(helpfulGuardianRow?.value ?? 0);
+  const unhelpfulCount = Number(unhelpfulTutorRow?.value ?? 0) + Number(unhelpfulGuardianRow?.value ?? 0);
+  const escalatedCount = Number(escalatedTutorRow?.value ?? 0) + Number(escalatedGuardianRow?.value ?? 0);
+
+  const feedbackTotal = helpfulCount + unhelpfulCount;
+  const satisfactionRate = feedbackTotal > 0 ? Math.round((helpfulCount / feedbackTotal) * 100) : 100;
+
+  return {
+    totalAiMessages,
+    tutorMessages,
+    guardianMessages,
+    helpfulCount,
+    unhelpfulCount,
+    escalatedCount,
+    satisfactionRate,
+  };
+}
+
+export async function listAiKnowledgeFaqs(category?: string) {
+  const database = await getDb();
+  if (!database) return [];
+  const condition = category ? eq(aiKnowledgeFaqs.category, category) : undefined;
+  return database
+    .select()
+    .from(aiKnowledgeFaqs)
+    .where(condition)
+    .orderBy(desc(aiKnowledgeFaqs.id));
+}
+
+export async function createAiKnowledgeFaq(input: {
+  question: string;
+  answer: string;
+  category?: string;
+  audience?: "all" | "tutor" | "guardian";
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [result] = await database.insert(aiKnowledgeFaqs).values({
+    question: input.question,
+    answer: input.answer,
+    category: input.category || "general",
+    audience: input.audience || "all",
+    isActive: true,
+  });
+  return { id: (result as any).insertId };
+}
+
+export async function updateAiKnowledgeFaq(input: {
+  id: number;
+  question?: string;
+  answer?: string;
+  category?: string;
+  audience?: "all" | "tutor" | "guardian";
+  isActive?: boolean;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database
+    .update(aiKnowledgeFaqs)
+    .set({ ...input, updatedAt: new Date() })
+    .where(eq(aiKnowledgeFaqs.id, input.id));
+  return { updated: true as const };
+}
+
+export async function deleteAiKnowledgeFaq(input: { id: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database.delete(aiKnowledgeFaqs).where(eq(aiKnowledgeFaqs.id, input.id));
+  return { deleted: true as const };
+}
+
+export async function getGuardianAiChatThread(input: { guardianUserId: number }) {
+  const database = await getDb();
+  if (!database) return { messages: [], aiEscalatedAt: null };
+  const [thread] = await database
+    .select()
+    .from(guardianAiChatThreads)
+    .where(eq(guardianAiChatThreads.guardianUserId, input.guardianUserId))
+    .limit(1);
+
+  if (!thread) return { messages: [], aiEscalatedAt: null };
+
+  const rows = await database
+    .select({
+      id: guardianAiChatMessages.id,
+      senderRole: guardianAiChatMessages.senderRole,
+      body: guardianAiChatMessages.body,
+      isAiGenerated: guardianAiChatMessages.isAiGenerated,
+      aiFeedback: guardianAiChatMessages.aiFeedback,
+      aiActionChips: guardianAiChatMessages.aiActionChips,
+      createdAt: guardianAiChatMessages.createdAt,
+    })
+    .from(guardianAiChatMessages)
+    .where(eq(guardianAiChatMessages.threadId, thread.id))
+    .orderBy(desc(guardianAiChatMessages.id))
+    .limit(50);
+
+  return {
+    messages: rows.reverse(),
+    aiEscalatedAt: thread.aiEscalatedAt,
+  };
+}
+
+export async function submitGuardianChatMessageFeedback(input: {
+  guardianUserId: number;
+  messageId: number;
+  feedback: "helpful" | "unhelpful";
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  await database
+    .update(guardianAiChatMessages)
+    .set({ aiFeedback: input.feedback })
+    .where(eq(guardianAiChatMessages.id, input.messageId));
+  return { updated: true as const };
 }

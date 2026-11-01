@@ -147,6 +147,12 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
     summary: "অভিভাবক সব আবেদনকারী টিউটর দেখবেন, নাকি শুধু Admin-এর শর্টলিস্ট করা টিউটর — আবেদনের সংখ্যা দুই ক্ষেত্রেই সবাইকে গোনে। সাথে টিউটর ও অভিভাবক প্যানেলের “Join our Community” লিংক (আলাদা আলাদা), টিউটরের প্ল্যাটফর্ম চার্জের হার, আর টিউটর কোথায় টাকা পাঠাবে (bKash, Nagad, Rocket, ব্যাংক)। এর সাথে টিউটর ও অভিভাবকের পাসওয়ার্ডের পর SMS কোড চালু/বন্ধ করার সুইচ, আর একবার কোড দিলে সেই ব্রাউজার কত দিন মনে থাকবে। আর নতুন টিউশন লাইভ হলে মানানসই টিউটরদের ঘণ্টায় নোটিশ ও ফোনে অ্যালার্ট যাবে কিনা, তার সুইচ।",
     seeAt: [GUARDIAN_APPLIED_TUTORS, TUTOR_DASHBOARD, GUARDIAN_DASHBOARD, TUTOR_PAYMENT, TUTOR_NOTIFICATIONS],
   },
+  {
+    path: "/admin/dynamic/ai-settings",
+    label: "AI Settings & Training",
+    summary: "টিউটর ও অভিভাবক লাইভ চ্যাটের এআই স্বয়ংক্রিয় উত্তর চালু/বন্ধ, ওয়েলকাম ও ফলব্যাক মেসেজ, কাস্টম সিস্টেম প্রম্পট, সন্তুষ্টি অ্যানালিটিক্স এবং কাস্টম নলেজ এফএকিউ ট্রেইনিং কনফিগারেশন।",
+    seeAt: [TUTOR_DASHBOARD, GUARDIAN_DASHBOARD],
+  },
 ];
 
 /** The guide row for a Dynamic Section route, or undefined for any other page. */

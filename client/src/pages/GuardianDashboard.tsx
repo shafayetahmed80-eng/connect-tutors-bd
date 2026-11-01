@@ -18,6 +18,7 @@ import GuardianProfileWorkspaceBody from "@/pages/GuardianProfileWorkspace";
 import { GuardianAppliedTuitionsContent, GuardianAppliedTutorsContent } from "@/pages/GuardianAppliedTutors";
 import { GuardianTutorProfileContent } from "@/pages/GuardianTutorProfile";
 import { GUARDIAN_SETTINGS_PATH, GuardianSettingsContent } from "@/pages/PanelSettings";
+import { GuardianAiChatModal } from "@/components/chat/GuardianAiChatModal";
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -274,5 +275,22 @@ export default function GuardianDashboard() {
   const requestId = rawRequestId ? Number(rawRequestId) : undefined;
   const tutorId = profileParams?.tutorId ? decodeURIComponent(profileParams.tutorId) : undefined;
   const workspaceHeader = useGuardianWorkspaceHeader();
-  return <DashboardLayout workspaceHeader={workspaceHeader} title="Guardian workspace" loginPath="/auth" navigationItems={guardianDashboardNavigation} sidebarIdentity={<GuardianSidebarIdentity />} sidebarPanel="guardian" homePath="/guardian/dashboard"><GuardianDashboardContent section={section} requestId={Number.isFinite(requestId) ? requestId : undefined} tutorId={tutorId} /></DashboardLayout>;
+  return (
+    <DashboardLayout
+      workspaceHeader={workspaceHeader}
+      title="Guardian workspace"
+      loginPath="/auth"
+      navigationItems={guardianDashboardNavigation}
+      sidebarIdentity={<GuardianSidebarIdentity />}
+      sidebarPanel="guardian"
+      homePath="/guardian/dashboard"
+    >
+      <GuardianDashboardContent
+        section={section}
+        requestId={Number.isFinite(requestId) ? requestId : undefined}
+        tutorId={tutorId}
+      />
+      <GuardianAiChatModal />
+    </DashboardLayout>
+  );
 }

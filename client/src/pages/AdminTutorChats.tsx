@@ -53,7 +53,20 @@ const TYPING_EXPIRES_MS = 3000;
 const PAGE_SIZE = 30;
 const STARTER_MESSAGE = "Hi, this is the Connect Tutors Admin team. Let us know if you have any questions about your profile, tuitions, or account.";
 
-type ChatMessage = { id: number; senderRole: "tutor" | "admin"; body: string; attachmentUrl: string | null; attachmentContentType: string | null; tutorReacted: boolean; adminReacted: boolean; createdAt: string | Date; isAiGenerated?: boolean | null };
+type ChatMessage = {
+  id: number;
+  senderRole: "tutor" | "admin";
+  body: string;
+  attachmentUrl: string | null;
+  attachmentContentType: string | null;
+  tutorReacted: boolean;
+  adminReacted: boolean;
+  createdAt: string | Date;
+  isAiGenerated?: boolean | null;
+  aiFeedback?: "helpful" | "unhelpful" | null;
+  aiFeedbackNote?: string | null;
+  aiActionChips?: Array<{ label: string; url: string; icon?: string }> | null;
+};
 type ChatThreadRow = { tutorId: string; tutorName: string; tutorNumber: number | null; lastMessageAt: string | Date | null; lastMessagePreview: string | null; unreadCount: number; claimedByAdminId: number | null; claimedByAdminName: string | null };
 
 function formatChatTime(value: string | Date) {
@@ -1075,6 +1088,20 @@ function ThreadPanel({
                 </div>
               </motion.div>
 
+              {message.isAiGenerated && message.aiActionChips && message.aiActionChips.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-1.5 max-w-[85%]">
+                  {message.aiActionChips.map((chip, chipIdx) => (
+                    <span
+                      key={chipIdx}
+                      className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-2xs font-semibold text-sky-800"
+                    >
+                      <span>{chip.label}</span>
+                      <span className="text-3xs text-sky-600">({chip.url})</span>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+
               {jobIds.map(jid => (
                 <ChatTuitionJobCard
                   key={jid}
@@ -1143,6 +1170,17 @@ function ThreadPanel({
                       <BookmarkPlus className="size-3.5" />
                       <span className="hidden sm:inline">Save as template</span>
                     </button>
+                  ) : null}
+                  {message.isAiGenerated && message.aiFeedback ? (
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-bold border ${
+                        message.aiFeedback === "helpful"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-rose-50 text-rose-700 border-rose-200"
+                      }`}
+                    >
+                      {message.aiFeedback === "helpful" ? "👍 Tutor: Helpful" : "👎 Tutor: Unhelpful"}
+                    </span>
                   ) : null}
                   {message.tutorReacted ? <span className="text-2xs font-semibold text-j-ink-faint">👍 Tutor</span> : null}
                   {own ? (
