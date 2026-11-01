@@ -24,6 +24,7 @@ import { TutorRecommendedJobs } from "@/components/TutorRecommendedJobs";
 import TutorPaymentsPanel from "@/components/TutorPaymentsPanel";
 import { TutorNotificationInbox } from "./TutorNotificationInbox";
 import { TutorAdminChatPanel } from "./TutorAdminChat";
+import { TutorAiChatModal } from "@/components/chat/TutorAiChatModal";
 import { TutorProfileWorkspace } from "./TutorProfileWorkspace";
 import { TutorProfileSkeleton } from "./TutorProfileSkeleton";
 import { shouldAllowTutorProfileNavigation } from "./TutorProfileNavigationGuard";
@@ -320,6 +321,7 @@ export default function TutorDashboard() {
       {section === "how-it-works" && <SiteContentProvider page="how-it-works"><HowItWorksPlayer panel="tutor" /></SiteContentProvider>}
       {["certificate", "refer-earn", "exclusively-yours", "community"].includes(section) && <DashboardDesignPreview section={section} />}
     </div>
+    <TutorAiChatModal hideFloatingButton={section === "chat"} />
   </DashboardLayout>;
 }
 

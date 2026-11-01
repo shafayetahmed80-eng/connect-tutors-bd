@@ -27,7 +27,7 @@ import {
 } from "@/components/chat/ChatProductivityShortcuts";
 import { motion } from "framer-motion";
 import SearchInput from "@/components/SearchInput";
-import { Briefcase, Check, Clock, CornerUpLeft, Loader2, Maximize2, Mic, Paperclip, Phone, Plus, RotateCcw, Send, ShieldCheck, Sparkles, Square, ThumbsDown, ThumbsUp, WifiOff, X } from "lucide-react";
+import { Bot, Briefcase, Check, Clock, CornerUpLeft, ExternalLink, Loader2, Maximize2, Mic, Paperclip, Phone, Plus, RotateCcw, Send, ShieldCheck, Sparkles, Square, ThumbsDown, ThumbsUp, User, WifiOff, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -414,10 +414,20 @@ export function TutorAdminChatPanel() {
     className="relative flex h-[calc(100dvh-160px)] sm:h-[calc(100vh-220px)] min-h-[340px] sm:min-h-[420px] flex-col overflow-hidden rounded-xl border border-j-border bg-white shadow-[0_10px_26px_-18px_rgba(38,83,117,0.5)]"
   >
     <ChatDropzoneOverlay isDragging={isDraggingOver} />
-    <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[#dce9f1] px-4 py-3">
-      <div className="brand-logo flex items-center gap-2" style={{ fontSize: "17px" }}>
-        <BrandMark />
-        <span className="brand-wordmark flex"><strong>{brandWordmark.primary}</strong><em>{brandWordmark.secondary}</em></span>
+    <header className="flex flex-wrap items-center justify-between gap-2 border-b border-sky-100 bg-gradient-to-r from-sky-600 via-sky-700 to-indigo-700 px-4 py-3 text-white shadow-xs">
+      <div className="flex items-center gap-2.5">
+        <div className="grid size-9 place-items-center rounded-xl bg-white/15 text-white backdrop-blur-xs">
+          <Bot size={20} />
+        </div>
+        <div>
+          <div className="brand-logo flex items-center gap-2 text-white" style={{ fontSize: "16px" }}>
+            <BrandMark />
+            <span className="brand-wordmark flex text-white"><strong className="text-white">{brandWordmark.primary}</strong><em className="text-sky-200">{brandWordmark.secondary}</em></span>
+          </div>
+          <p className="text-3xs text-sky-100 font-medium">
+            কানেক্ট টিউটরস (Member: BTPA-077) · সার্বক্ষণিক সহায়তা
+          </p>
+        </div>
       </div>
       <div className="flex items-center gap-2.5">
         {!isOnline ? (
@@ -425,8 +435,8 @@ export function TutorAdminChatPanel() {
             <WifiOff className="size-2.5" /> Offline
           </span>
         ) : connectionStatus === "connected" ? (
-          <span className="flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-2xs font-bold text-emerald-700" title="Connected in real-time">
-            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
+          <span className="flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-400/20 px-2 py-0.5 text-2xs font-bold text-emerald-200" title="Connected in real-time">
+            <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live
           </span>
         ) : null}
         <ChatEmergencyCallWhatsAppActions contact={contact} />
@@ -502,23 +512,34 @@ export function TutorAdminChatPanel() {
                 }}
                 className={`max-w-[80%] px-4 py-2.5 shadow-xs cursor-pointer select-text transition-shadow ${
                   own
-                    ? "rounded-2xl rounded-tr-xs bg-gradient-to-br from-j-accent to-[#156cb6] text-white"
-                    : "rounded-2xl rounded-tl-xs border border-j-border bg-gradient-to-br from-slate-50 to-white text-j-ink"
+                    ? "rounded-2xl rounded-tr-xs bg-gradient-to-br from-sky-600 to-indigo-600 text-white shadow-2xs"
+                    : "rounded-2xl rounded-tl-xs border border-sky-100 bg-white text-j-ink shadow-2xs"
                 }`}
               >
                 {!own ? (
                   <div className="mb-1 flex items-center gap-1.5">
-                    <p className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">
-                      {message.isAiGenerated ? "কানেক্ট টিউটরস এআই" : "Admin"}
-                    </p>
                     {message.isAiGenerated ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-1.5 py-0.2 text-3xs font-bold text-blue-700 border border-blue-200">
-                        <Sparkles className="size-2.5 text-blue-600" />
-                        AI Assistant
-                      </span>
-                    ) : null}
+                      <>
+                        <Bot className="size-3 text-sky-600" />
+                        <p className="text-2xs font-extrabold text-sky-800">কানেক্ট টিউটরস এআই</p>
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-100 px-1.5 py-0.2 text-3xs font-bold text-sky-700 border border-sky-200">
+                          <Sparkles className="size-2 text-sky-600" />
+                          AI Assistant
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Bot className="size-3 text-indigo-600" />
+                        <p className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Admin</p>
+                      </>
+                    )}
                   </div>
-                ) : null}
+                ) : (
+                  <div className="mb-1 flex items-center gap-1 text-3xs font-bold uppercase tracking-wider text-white/80">
+                    <span>আপনি</span>
+                    <User size={10} />
+                  </div>
+                )}
                 {isDeleted ? (
                   <DeletedMessagePlaceholder own={own} />
                 ) : isEditing ? (
@@ -559,10 +580,10 @@ export function TutorAdminChatPanel() {
                     <a
                       key={chipIdx}
                       href={chip.url}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-2xs font-bold text-sky-800 shadow-2xs hover:bg-sky-100 hover:border-sky-300 transition-colors"
+                      className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-3xs font-bold text-sky-800 shadow-2xs hover:bg-sky-100 hover:border-sky-300 transition-colors"
                     >
                       <span>{chip.label}</span>
-                      <span aria-hidden="true">&rarr;</span>
+                      <ExternalLink size={9} />
                     </a>
                   ))}
                 </div>
@@ -793,9 +814,9 @@ export function TutorAdminChatPanel() {
               );
             })}
           </div>
-          <div className="flex flex-wrap items-center gap-1.5 border-b border-[#eef3f7] bg-blue-50/30 px-3 py-1.5 text-2xs">
-            <span className="flex items-center gap-1 font-bold text-blue-800">
-              <Sparkles className="size-3 text-blue-600 shrink-0" />
+          <div className="flex gap-1.5 overflow-x-auto border-b border-sky-100 bg-sky-50/60 p-2 scrollbar-none items-center">
+            <span className="shrink-0 flex items-center gap-1 text-3xs font-extrabold text-sky-800 uppercase tracking-wider pl-1">
+              <Sparkles className="size-3 text-sky-600 shrink-0" />
               <span>দ্রুত প্রশ্ন (AI):</span>
             </span>
             {AI_QUICK_SUGGESTIONS.map(item => (
@@ -803,7 +824,7 @@ export function TutorAdminChatPanel() {
                 key={item.label}
                 type="button"
                 onClick={() => setBody(item.prompt)}
-                className="inline-flex items-center rounded-lg border border-blue-200/70 bg-white px-2 py-0.5 text-2xs font-medium text-blue-900 transition-colors hover:border-blue-400 hover:bg-blue-50"
+                className="shrink-0 rounded-full border border-sky-200 bg-white px-2.5 py-1 text-3xs font-bold text-sky-800 shadow-2xs hover:bg-sky-100 hover:border-sky-300 transition-colors"
               >
                 {item.label}
               </button>
@@ -932,7 +953,7 @@ export function TutorAdminChatPanel() {
                   placeholder="Write a message…"
                   className="min-h-9 flex-1 resize-none py-2 text-sm leading-relaxed"
                 />
-                <ChatSendButton ariaLabel="Send message" disabled={(!body.trim() && !pastedImageFile) || send.isPending || uploadProgress !== null} isPending={send.isPending} />
+                <ChatSendButton ariaLabel="Send message" disabled={(!body.trim() && !pastedImageFile) || send.isPending || uploadProgress !== null} isPending={send.isPending} className="bg-gradient-to-tr from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 shadow-md" />
               </>
             )}
           </form>

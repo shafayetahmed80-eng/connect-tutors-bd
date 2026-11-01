@@ -1041,8 +1041,8 @@ function ThreadPanel({
                 }}
                 className={`max-w-[80%] px-4 py-2.5 shadow-xs cursor-pointer select-text transition-shadow ${
                   own
-                    ? "rounded-2xl rounded-tr-xs bg-gradient-to-br from-j-accent to-[#156cb6] text-white"
-                    : "rounded-2xl rounded-tl-xs border border-j-border bg-gradient-to-br from-slate-50 to-white text-j-ink"
+                    ? "rounded-2xl rounded-tr-xs bg-gradient-to-br from-sky-600 to-indigo-600 text-white shadow-2xs"
+                    : "rounded-2xl rounded-tl-xs border border-sky-100 bg-white text-j-ink shadow-2xs"
                 }`}
               >
                 {own && message.isAiGenerated ? (
@@ -1425,7 +1425,7 @@ function ThreadPanel({
               placeholder="Reply as Admin…"
               className="min-h-9 flex-1 resize-none py-2 text-sm leading-relaxed"
             />
-            <ChatSendButton ariaLabel="Send reply" disabled={(!body.trim() && !pastedImageFile) || send.isPending || uploadProgress !== null} isPending={send.isPending} />
+            <ChatSendButton ariaLabel="Send reply" disabled={(!body.trim() && !pastedImageFile) || send.isPending || uploadProgress !== null} isPending={send.isPending} className="bg-gradient-to-tr from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 shadow-md" />
           </>
         )}
       </form>
