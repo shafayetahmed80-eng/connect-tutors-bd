@@ -149,7 +149,7 @@ export const adminDynamicGuide: readonly AdminDynamicGuideEntry[] = [
   },
   {
     path: "/admin/dynamic/ai-settings",
-    label: "AI Assistant & Training",
+    label: "AI Settings & Training",
     summary: "টিউটর ও অভিভাবক লাইভ চ্যাটের এআই স্বয়ংক্রিয় উত্তর চালু/বন্ধ, ওয়েলকাম ও ফলব্যাক মেসেজ, কাস্টম সিস্টেম প্রম্পট, সন্তুষ্টি অ্যানালিটিক্স এবং কাস্টম নলেজ এফএকিউ ট্রেইনিং কনফিগারেশন।",
     seeAt: [TUTOR_DASHBOARD, GUARDIAN_DASHBOARD],
   },
