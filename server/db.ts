@@ -80,6 +80,7 @@ import {
   tutorReviews,
   tutorAdminChatThreads,
   tutorAdminChatMessages,
+  aiChatSettings,
   tutorAdminChatNotes,
   chatQuickReplies,
   adminMessageTemplates,
@@ -7009,6 +7010,7 @@ export async function getTutorAdminChatThread(input: { tutorId: string }) {
       id: tutorAdminChatMessages.id,
       senderRole: tutorAdminChatMessages.senderRole,
       body: tutorAdminChatMessages.body,
+      isAiGenerated: tutorAdminChatMessages.isAiGenerated,
       attachmentKey: tutorAdminChatMessages.attachmentKey,
       attachmentContentType: tutorAdminChatMessages.attachmentContentType,
       tutorReactedAt: tutorAdminChatMessages.tutorReactedAt,
@@ -7023,7 +7025,7 @@ export async function getTutorAdminChatThread(input: { tutorId: string }) {
     const { attachmentKey, tutorReactedAt, adminReactedAt, ...rest } = row;
     return { ...rest, attachmentUrl: await resolveChatAttachmentUrl(attachmentKey), tutorReacted: Boolean(tutorReactedAt), adminReacted: Boolean(adminReactedAt) };
   }));
-  return { messages, tutorLastReadAt: thread.tutorLastReadAt, adminLastReadAt: thread.adminLastReadAt, eligible, mode };
+  return { messages, tutorLastReadAt: thread.tutorLastReadAt, adminLastReadAt: thread.adminLastReadAt, aiAutoReply: thread.aiAutoReply ?? true, aiEscalatedAt: thread.aiEscalatedAt ?? null, eligible, mode };
 }
 
 /** Toggles one side's 👍 on a message - either side may react to any message in their own thread, own or the other's. */
@@ -7370,7 +7372,7 @@ export async function getTutorAdminChatThreadForAdmin(input: { tutorId: string }
   const { messages, tutorLastReadAt, adminLastReadAt } = await getTutorAdminChatThread({ tutorId: input.tutorId });
   const claimedByAdmin = alias(users, "chat_claimed_by_admin");
   const [claim] = await database
-    .select({ claimedByAdminId: tutorAdminChatThreads.claimedByAdminId, claimedByAdminName: claimedByAdmin.name, archivedAt: tutorAdminChatThreads.archivedAt })
+    .select({ claimedByAdminId: tutorAdminChatThreads.claimedByAdminId, claimedByAdminName: claimedByAdmin.name, archivedAt: tutorAdminChatThreads.archivedAt, aiAutoReply: tutorAdminChatThreads.aiAutoReply, aiEscalatedAt: tutorAdminChatThreads.aiEscalatedAt })
     .from(tutorAdminChatThreads)
     .leftJoin(claimedByAdmin, eq(claimedByAdmin.id, tutorAdminChatThreads.claimedByAdminId))
     .where(eq(tutorAdminChatThreads.tutorId, input.tutorId));
@@ -7382,6 +7384,8 @@ export async function getTutorAdminChatThreadForAdmin(input: { tutorId: string }
     claimedByAdminId: claim?.claimedByAdminId ?? null,
     claimedByAdminName: claim?.claimedByAdminName ?? null,
     archivedAt: claim?.archivedAt ?? null,
+    aiAutoReply: claim?.aiAutoReply ?? true,
+    aiEscalatedAt: claim?.aiEscalatedAt ?? null,
   };
 }
 
@@ -12434,4 +12438,51 @@ export async function setFacebookPostStatus(
   }
 
   return { success: true, count: uniqueIds.length };
+}
+
+export async function toggleTutorAdminChatThreadAiAutoReply(input: { tutorId: string; enabled: boolean }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const threadId = await getOrCreateTutorAdminChatThreadId(database, input.tutorId);
+  await database.update(tutorAdminChatThreads).set({ aiAutoReply: input.enabled }).where(eq(tutorAdminChatThreads.id, threadId));
+  return { success: true, aiAutoReply: input.enabled };
+}
+
+export async function getAiChatSettings() {
+  const database = await getDb();
+  if (!database) {
+    return {
+      enabled: true,
+      welcomeMessage: "আসসালামু আলাইকুম! কানেক্ট টিউটরস এআই সাপোর্ট অ্যাসিস্ট্যান্টে স্বাগতম। আপনার যেকোনো প্রশ্নে সাহায্য করতে প্রস্তুত।",
+      fallbackMessage: "আপনার প্রশ্নটি বুঝতে পেরেছি। বিষয়টি আরও বিশদভাবে খতিয়ে দেখতে আমাদের এডমিন টিমকে জানানো হয়েছে, শীঘ্রই একজন এডমিন রিপ্লাই করবেন।",
+      systemPrompt: null,
+    };
+  }
+  const [row] = await database.select().from(aiChatSettings).limit(1);
+  if (!row) {
+    return {
+      enabled: true,
+      welcomeMessage: "আসসালামু আলাইকুম! কানেক্ট টিউটরস এআই সাপোর্ট অ্যাসিস্ট্যান্টে স্বাগতম। আপনার যেকোনো প্রশ্নে সাহায্য করতে প্রস্তুত।",
+      fallbackMessage: "আপনার প্রশ্নটি বুঝতে পেরেছি। বিষয়টি আরও বিশদভাবে খতিয়ে দেখতে আমাদের এডমিন টিমকে জানানো হয়েছে, শীঘ্রই একজন এডমিন রিপ্লাই করবেন।",
+      systemPrompt: null,
+    };
+  }
+  return row;
+}
+
+export async function updateAiChatSettings(input: { enabled?: boolean; welcomeMessage?: string; fallbackMessage?: string; systemPrompt?: string | null }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [row] = await database.select({ id: aiChatSettings.id }).from(aiChatSettings).limit(1);
+  if (row) {
+    await database.update(aiChatSettings).set(input).where(eq(aiChatSettings.id, row.id));
+  } else {
+    await database.insert(aiChatSettings).values({
+      enabled: input.enabled ?? true,
+      welcomeMessage: input.welcomeMessage,
+      fallbackMessage: input.fallbackMessage,
+      systemPrompt: input.systemPrompt,
+    });
+  }
+  return getAiChatSettings();
 }

@@ -474,4 +474,29 @@ it("invalidates thread query when access_mode socket frame is received", () => {
     fireEvent.click(retryBtn);
     expect(state.refetch).toHaveBeenCalled();
   });
+
+  it("shows the AI Assistant badge when message isAiGenerated is true", () => {
+    state.messages = [
+      message({
+        body: "আপনার ভেরিফিকেশন তথ্য পর্যালোচনা করা হচ্ছে।",
+        isAiGenerated: true,
+      }),
+    ];
+    render(<TutorAdminChatPanel />);
+
+    expect(screen.getByText("কানেক্ট টিউটরস এআই")).toBeTruthy();
+    expect(screen.getByText("AI Assistant")).toBeTruthy();
+    expect(screen.getByText("আপনার ভেরিফিকেশন তথ্য পর্যালোচনা করা হচ্ছে।")).toBeTruthy();
+  });
+
+  it("fills the chat textarea when an AI quick question chip is clicked", () => {
+    render(<TutorAdminChatPanel />);
+
+    const chip = screen.getByRole("button", { name: "ভেরিফিকেশন নিয়ম" });
+    expect(chip).toBeTruthy();
+
+    fireEvent.click(chip);
+    const textarea = screen.getByPlaceholderText("Write a message…") as HTMLTextAreaElement;
+    expect(textarea.value).toBe("ভেরিফিকেশন হতে কত সময় লাগে এবং কী কী ডকুমেন্ট প্রয়োজন?");
+  });
 });

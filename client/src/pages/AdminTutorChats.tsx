@@ -41,7 +41,7 @@ import {
   useChatKeyboardShortcuts,
 } from "@/components/chat/ChatProductivityShortcuts";
 import { motion } from "framer-motion";
-import { ArchiveRestore, ArrowLeft, BookmarkPlus, Briefcase, Clock, CornerUpLeft, ListPlus, Loader2, Maximize2, Mic, Paperclip, Plus, RotateCcw, Search, Send, Square, StickyNote, ThumbsUp, UserCheck, UserRound, UserRoundCheck, UserRoundX, WifiOff, X } from "lucide-react";
+import { AlertTriangle, ArchiveRestore, ArrowLeft, BookmarkPlus, Bot, Briefcase, Clock, CornerUpLeft, ListPlus, Loader2, Maximize2, Mic, Paperclip, Plus, RotateCcw, Search, Send, Sparkles, Square, StickyNote, ThumbsUp, UserCheck, UserRound, UserRoundCheck, UserRoundX, WifiOff, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSearch } from "wouter";
 import { toast } from "sonner";
@@ -53,7 +53,7 @@ const TYPING_EXPIRES_MS = 3000;
 const PAGE_SIZE = 30;
 const STARTER_MESSAGE = "Hi, this is the Connect Tutors Admin team. Let us know if you have any questions about your profile, tuitions, or account.";
 
-type ChatMessage = { id: number; senderRole: "tutor" | "admin"; body: string; attachmentUrl: string | null; attachmentContentType: string | null; tutorReacted: boolean; adminReacted: boolean; createdAt: string | Date };
+type ChatMessage = { id: number; senderRole: "tutor" | "admin"; body: string; attachmentUrl: string | null; attachmentContentType: string | null; tutorReacted: boolean; adminReacted: boolean; createdAt: string | Date; isAiGenerated?: boolean | null };
 type ChatThreadRow = { tutorId: string; tutorName: string; tutorNumber: number | null; lastMessageAt: string | Date | null; lastMessagePreview: string | null; unreadCount: number; claimedByAdminId: number | null; claimedByAdminName: string | null };
 
 function formatChatTime(value: string | Date) {
@@ -542,6 +542,13 @@ function ThreadPanel({
     onSuccess: async () => { await Promise.all([utils.admin.getTutorChatThread.invalidate({ tutorId }), utils.admin.listTutorChatThreads.invalidate()]); },
   });
   const react = trpc.admin.reactToChatMessage.useMutation({ onSuccess: () => utils.admin.getTutorChatThread.invalidate({ tutorId }) });
+  const toggleAiAutoReply = trpc.admin.toggleTutorChatAiAutoReply.useMutation({
+    onSuccess: async () => {
+      await utils.admin.getTutorChatThread.invalidate({ tutorId });
+      toast.success("AI Auto-Reply setting updated.");
+    },
+    onError: error => toast.error(error.message),
+  });
 
   const allMessages = (threadQuery.data?.messages ?? []) as ChatMessage[];
   const messages = useMemo(() => {
@@ -922,6 +929,23 @@ function ThreadPanel({
           : <button type="button" onClick={() => claim.mutate({ tutorId })} className="flex shrink-0 items-center gap-1 rounded-lg border border-j-border px-2 py-1 text-2xs font-bold text-j-ink-soft hover:bg-j-surface-sunken">
               <UserRoundCheck size={13} /> Claim
             </button>}
+        <button
+          type="button"
+          onClick={() => {
+            const current = threadQuery.data?.aiAutoReply ?? true;
+            toggleAiAutoReply.mutate({ tutorId, enabled: !current });
+          }}
+          disabled={toggleAiAutoReply.isPending}
+          title="Toggle automatic AI answers for this tutor"
+          className={`flex shrink-0 items-center gap-1 rounded-lg border px-2 py-1 text-2xs font-bold transition-colors ${
+            (threadQuery.data?.aiAutoReply ?? true)
+              ? "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+              : "border-slate-300 bg-slate-100 text-slate-600 hover:bg-slate-200"
+          }`}
+        >
+          <Bot size={13} className={(threadQuery.data?.aiAutoReply ?? true) ? "text-blue-600" : "text-slate-400"} />
+          <span>AI Auto-Reply: {(threadQuery.data?.aiAutoReply ?? true) ? "ON" : "OFF"}</span>
+        </button>
         <div className="hidden shrink-0 sm:block">
           <SearchInput
             ref={searchInputRef}
@@ -940,6 +964,17 @@ function ThreadPanel({
     </header>
 
     <ChatOutOfOfficeBanner />
+    {threadQuery.data?.aiEscalatedAt ? (
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-rose-200 bg-rose-50 px-4 py-2 text-xs font-semibold text-rose-900">
+        <span className="flex items-center gap-1.5">
+          <AlertTriangle className="size-4 text-rose-600 shrink-0" />
+          <span>⚠️ টিউটর সরাসরি মানুষের/এডমিনের সহায়তা চেয়েছেন (Human Assistance Requested)</span>
+        </span>
+        <span className="text-2xs text-rose-700">
+          {formatChatTime(threadQuery.data.aiEscalatedAt)}
+        </span>
+      </div>
+    ) : null}
     {pinnedJobId ? (
       <PinnedJobBanner jobId={pinnedJobId} onUnpin={() => handleTogglePin(pinnedJobId)} />
     ) : null}
@@ -997,6 +1032,14 @@ function ThreadPanel({
                     : "rounded-2xl rounded-tl-xs border border-j-border bg-gradient-to-br from-slate-50 to-white text-j-ink"
                 }`}
               >
+                {own && message.isAiGenerated ? (
+                  <div className="mb-1 flex items-center gap-1">
+                    <span className="inline-flex items-center gap-1 rounded bg-white/20 px-1.5 py-0.5 text-3xs font-bold text-white tracking-wide">
+                      <Bot className="size-2.5" />
+                      AI Auto-Replied
+                    </span>
+                  </div>
+                ) : null}
                 {!own ? <p className="mb-0.5 text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Tutor</p> : null}
                 {isDeleted ? (
                   <DeletedMessagePlaceholder own={own} />

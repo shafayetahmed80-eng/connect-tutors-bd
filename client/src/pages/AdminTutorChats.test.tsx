@@ -18,6 +18,8 @@ const state = vi.hoisted(() => ({
   claimedByAdminId: null as number | null,
   claimedByAdminName: null as string | null,
   archivedAt: null as string | null,
+  aiAutoReply: true,
+  aiEscalatedAt: null as string | null,
   stats: { awaitingReplyCount: 0, avgResponseMinutes: null as number | null },
   quickReplies: [] as any[],
   notes: [] as any[],
@@ -26,6 +28,7 @@ const state = vi.hoisted(() => ({
   claim: vi.fn(),
   release: vi.fn(),
   reopen: vi.fn(),
+  toggleAiAutoReply: vi.fn(),
   addNote: vi.fn(),
   createQuickReply: vi.fn(),
   deleteQuickReply: vi.fn(),
@@ -70,7 +73,7 @@ vi.mock("@/lib/trpc", () => ({
       getTutorChatThread: {
         useQuery: (input: unknown) => {
           state.threadInput = input;
-          return { data: { tutor: state.threadTutor, messages: state.threadMessages, tutorLastReadAt: state.tutorLastReadAt, claimedByAdminId: state.claimedByAdminId, claimedByAdminName: state.claimedByAdminName, archivedAt: state.archivedAt }, isLoading: state.threadLoading };
+          return { data: { tutor: state.threadTutor, messages: state.threadMessages, tutorLastReadAt: state.tutorLastReadAt, claimedByAdminId: state.claimedByAdminId, claimedByAdminName: state.claimedByAdminName, archivedAt: state.archivedAt, aiAutoReply: state.aiAutoReply, aiEscalatedAt: state.aiEscalatedAt }, isLoading: state.threadLoading };
         },
       },
       sendTutorChatMessage: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.send(input); options.onSuccess?.(); }, isPending: false }) },
@@ -89,6 +92,7 @@ vi.mock("@/lib/trpc", () => ({
       listTutorChatNotes: { useQuery: () => ({ data: { notes: state.notes }, isLoading: false }) },
       addTutorChatNote: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.addNote(input); options.onSuccess?.(); }, isPending: false }) },
       reactToChatMessage: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.react(input); options.onSuccess?.(); }, isPending: false }) },
+      toggleTutorChatAiAutoReply: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.toggleAiAutoReply(input); options.onSuccess?.(); }, isPending: false }) },
     },
   },
 }));
@@ -113,6 +117,8 @@ afterEach(() => {
   state.claimedByAdminId = null;
   state.claimedByAdminName = null;
   state.archivedAt = null;
+  state.aiAutoReply = true;
+  state.aiEscalatedAt = null;
   state.stats = { awaitingReplyCount: 0, avgResponseMinutes: null };
   state.quickReplies = [];
   state.notes = [];
@@ -121,6 +127,7 @@ afterEach(() => {
   state.claim.mockReset();
   state.release.mockReset();
   state.reopen.mockReset();
+  state.toggleAiAutoReply.mockReset();
   state.addNote.mockReset();
   state.createQuickReply.mockReset();
   state.deleteQuickReply.mockReset();
@@ -895,5 +902,45 @@ describe("the card and filter panel over the conversations", () => {
 
     // In header, topic badge should also be visible
     expect(screen.getByTitle("Selected inquiry topic")).toBeTruthy();
+  });
+
+  it("displays AI Auto-Replied badge for AI generated admin messages", () => {
+    state.threads = [thread({ tutorId: "t1", tutorName: "Tutor One", tutorNumber: 101 })];
+    state.threadMessages = [
+      message({
+        id: 10,
+        senderRole: "admin",
+        body: "আপনার ভেরিফিকেশন প্রক্রিয়াধীন রয়েছে।",
+        isAiGenerated: true,
+      }),
+    ];
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByRole("button", { name: /Tutor One/ }));
+
+    expect(screen.getByText("AI Auto-Replied")).toBeTruthy();
+    expect(screen.getByText("আপনার ভেরিফিকেশন প্রক্রিয়াধীন রয়েছে।")).toBeTruthy();
+  });
+
+  it("toggles AI Auto-Reply setting when button is clicked", () => {
+    state.threads = [thread({ tutorId: "t1", tutorName: "Tutor One", tutorNumber: 101 })];
+    state.aiAutoReply = true;
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByRole("button", { name: /Tutor One/ }));
+
+    const toggleBtn = screen.getByTitle("Toggle automatic AI answers for this tutor");
+    expect(toggleBtn).toBeTruthy();
+    expect(screen.getByText("AI Auto-Reply: ON")).toBeTruthy();
+
+    fireEvent.click(toggleBtn);
+    expect(state.toggleAiAutoReply).toHaveBeenCalledWith({ tutorId: "t1", enabled: false });
+  });
+
+  it("displays human escalation banner when aiEscalatedAt is set", () => {
+    state.threads = [thread({ tutorId: "t1", tutorName: "Tutor One", tutorNumber: 101 })];
+    state.aiEscalatedAt = "2026-11-01T10:00:00.000Z";
+    render(<AdminTutorChatsContent />);
+    fireEvent.click(screen.getByRole("button", { name: /Tutor One/ }));
+
+    expect(screen.getByText(/টিউটর সরাসরি মানুষের\/এডমিনের সহায়তা চেয়েছেন/)).toBeTruthy();
   });
 });

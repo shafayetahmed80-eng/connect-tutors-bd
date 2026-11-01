@@ -27,7 +27,7 @@ import {
 } from "@/components/chat/ChatProductivityShortcuts";
 import { motion } from "framer-motion";
 import SearchInput from "@/components/SearchInput";
-import { Briefcase, Check, Clock, CornerUpLeft, Loader2, Maximize2, Mic, Paperclip, Phone, Plus, RotateCcw, Send, ShieldCheck, Square, ThumbsUp, WifiOff, X } from "lucide-react";
+import { Briefcase, Check, Clock, CornerUpLeft, Loader2, Maximize2, Mic, Paperclip, Phone, Plus, RotateCcw, Send, ShieldCheck, Sparkles, Square, ThumbsUp, WifiOff, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -38,7 +38,15 @@ const TYPING_PING_MS = 2000;
 const TYPING_EXPIRES_MS = 3000;
 const PAGE_SIZE = 30;
 
-type ChatMessage = { id: number; senderRole: "tutor" | "admin"; body: string; attachmentUrl: string | null; attachmentContentType: string | null; tutorReacted: boolean; adminReacted: boolean; createdAt: string | Date };
+type ChatMessage = { id: number; senderRole: "tutor" | "admin"; body: string; attachmentUrl: string | null; attachmentContentType: string | null; tutorReacted: boolean; adminReacted: boolean; createdAt: string | Date; isAiGenerated?: boolean | null };
+
+const AI_QUICK_SUGGESTIONS = [
+  { label: "ভেরিফিকেশন নিয়ম", prompt: "ভেরিফিকেশন হতে কত সময় লাগে এবং কী কী ডকুমেন্ট প্রয়োজন?" },
+  { label: "সিভি ডাউনলোড", prompt: "আমার সিভি (CV) কীভাবে ডাউনলোড করবো?" },
+  { label: "টিউশন ফি ও পেমেন্ট", prompt: "টিউশন প্ল্যাটফর্ম ফি ও পেমেন্টের নিয়ম কী?" },
+  { label: "অনলাইন টিউশন ও দূরত্ব", prompt: "অনলাইন টিউশনে ট্রাভেল ডিসট্যান্স বা দূরত্বের নিয়ম কী?" },
+  { label: "এডমিনের সাথে কথা বলা", prompt: "আমি জরুরি প্রয়োজনে সরাসরি একজন এডমিনের সাথে কথা বলতে চাই।" },
+];
 
 type OutboxMessage = {
   tempId: string;
@@ -477,7 +485,19 @@ export function TutorAdminChatPanel() {
                     : "rounded-2xl rounded-tl-xs border border-j-border bg-gradient-to-br from-slate-50 to-white text-j-ink"
                 }`}
               >
-                {!own ? <p className="mb-0.5 text-2xs font-bold uppercase tracking-wide text-j-ink-faint">Admin</p> : null}
+                {!own ? (
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <p className="text-2xs font-bold uppercase tracking-wide text-j-ink-faint">
+                      {message.isAiGenerated ? "কানেক্ট টিউটরস এআই" : "Admin"}
+                    </p>
+                    {message.isAiGenerated ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-1.5 py-0.2 text-3xs font-bold text-blue-700 border border-blue-200">
+                        <Sparkles className="size-2.5 text-blue-600" />
+                        AI Assistant
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
                 {isDeleted ? (
                   <DeletedMessagePlaceholder own={own} />
                 ) : isEditing ? (
@@ -703,6 +723,22 @@ export function TutorAdminChatPanel() {
                 </button>
               );
             })}
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 border-b border-[#eef3f7] bg-blue-50/30 px-3 py-1.5 text-2xs">
+            <span className="flex items-center gap-1 font-bold text-blue-800">
+              <Sparkles className="size-3 text-blue-600 shrink-0" />
+              <span>দ্রুত প্রশ্ন (AI):</span>
+            </span>
+            {AI_QUICK_SUGGESTIONS.map(item => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => setBody(item.prompt)}
+                className="inline-flex items-center rounded-lg border border-blue-200/70 bg-white px-2 py-0.5 text-2xs font-medium text-blue-900 transition-colors hover:border-blue-400 hover:bg-blue-50"
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
           <form onSubmit={handleSubmit} className="flex items-end gap-2 p-3">
             <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" onChange={handleAttach} />
