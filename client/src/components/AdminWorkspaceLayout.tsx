@@ -3,7 +3,7 @@ import DashboardLayout, { getDashboardAvatarInitials, type DashboardNavigationIt
 import { trpc } from "@/lib/trpc";
 import { setRecentSearchScope } from "@/lib/recentSearches";
 import { getAdminTwoFactorDestination, type AdminTwoFactorStatus } from "@/pages/admin-two-factor-routing";
-import { Image as ImageIcon, Images, PenTool, CircleCheckBig, CircleX, Download, Inbox, IdCard, MessageCircle, Newspaper, Palette, Share2, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutPanelTop, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users, Workflow } from "lucide-react";
+import { Image as ImageIcon, Images, PenTool, CircleCheckBig, CircleX, Download, Inbox, IdCard, MessageCircle, Newspaper, Palette, Share2, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, BrainCircuit, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutPanelTop, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users, Workflow } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { AdminPushBellDot } from "@/components/AdminPushBellDot";
 import { AdminPushHeaderPopover } from "@/components/AdminPushHeaderPopover";
@@ -48,6 +48,7 @@ const dynamicSectionItems: DashboardNavigationItem[] = [
   { icon: LayoutPanelTop, label: "Job card", path: "/admin/dynamic/job-card", sectionLabel: "Dynamic Section", subgroup: dynamicAppearance },
   { icon: SlidersHorizontal, label: "Limits", path: "/admin/dynamic/limits", sectionLabel: "Dynamic Section", subgroup: dynamicControls },
   { icon: ToggleRight, label: "Admin Control", path: "/admin/dynamic/admin-control", sectionLabel: "Dynamic Section", subgroup: dynamicControls },
+  { icon: BrainCircuit, label: "AI Settings & Training", path: "/admin/dynamic/ai-settings", sectionLabel: "Dynamic Section", subgroup: dynamicControls },
 ];
 
 /**

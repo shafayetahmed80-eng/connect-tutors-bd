@@ -14,6 +14,7 @@ export type AiChatIntent =
   | "VERIFICATION_DOCUMENTS"
   | "CV_DOWNLOAD"
   | "JOB_APPLICATION"
+  | "JOB_RECOMMENDATION"
   | "TUITION_FEES"
   | "ONLINE_TUITION"
   | "APPOINTMENT_LETTER"
@@ -46,6 +47,7 @@ export interface AiGeneratedReply {
   confidence: number;
   isEscalated: boolean;
   suggestedQuickReplies?: string[];
+  actionChips?: Array<{ label: string; url: string; icon?: string }>;
 }
 
 /** Intent keyword dictionary covering Bengali, Banglish, and English */
@@ -104,6 +106,16 @@ const INTENT_RULES: Array<{
     ],
     keywords: ["apply", "job board", "আবেদন", "টিউশন", "শর্টলিস্ট"],
     weight: 80,
+  },
+  {
+    intent: "JOB_RECOMMENDATION",
+    patterns: [
+      /টিউশন.*খালি|জব.*আছে|টিউশন.*আছে|কোনো.*টিউশন|পড়াতে চাই|টিউশন চাই|টিউশন দেন|টিউশন দিবেন|কোনো জব/i,
+      /job.*available|tuition.*available|any jobs|recommend.*job|jobs for me|any tuition/i,
+      /kono job ache|kono tuition ache|tuition lagbe|job chai|tuition chai/i,
+    ],
+    keywords: ["job available", "tuition available", "টিউশন আছে", "জব আছে", "টিউশন চাই", "জব খালি"],
+    weight: 85,
   },
   {
     intent: "ONLINE_TUITION",
@@ -228,6 +240,7 @@ export function generateAiChatResponse(input: {
         confidence: match.confidence,
         isEscalated: true,
         suggestedQuickReplies: ["জরুরি হেল্পলাইন নম্বর", "অফিস ঠিকানা"],
+        actionChips: [{ label: "📞 হেল্পলাইনে কল করুন", url: "tel:+8801516131411" }],
       };
     }
 
@@ -239,6 +252,7 @@ export function generateAiChatResponse(input: {
           confidence: 95,
           isEscalated: false,
           suggestedQuickReplies: ["জব বোর্ডে আবেদন নিয়ম", "সিভি ডাউনলোড"],
+          actionChips: [{ label: "💼 জব বোর্ড ভিজিট করুন", url: "/job-board" }],
         };
       }
 
@@ -249,6 +263,7 @@ export function generateAiChatResponse(input: {
           confidence: 90,
           isEscalated: false,
           suggestedQuickReplies: ["কী কী ডকুমেন্ট লাগবে?", "প্রোফাইল চেকলিস্ট"],
+          actionChips: [{ label: "📄 ডকুমেন্ট আপলোড করুন", url: "/tutor/dashboard" }],
         };
       }
 
@@ -289,6 +304,7 @@ export function generateAiChatResponse(input: {
         confidence: 90,
         isEscalated: false,
         suggestedQuickReplies: ["প্রোফাইল এডিট করব কীভাবে?", "জব বোর্ডে আবেদন"],
+        actionChips: [{ label: "⬇️ ১-পেজ সিভি দেখুন", url: "/tutor/dashboard" }],
       };
     }
 
@@ -300,6 +316,18 @@ export function generateAiChatResponse(input: {
         confidence: 88,
         isEscalated: false,
         suggestedQuickReplies: ["অ্যাপ্লিকেশন স্ট্যাটাস", "টিউশন স্যালারি রেঞ্জ"],
+        actionChips: [{ label: "💼 জব বোর্ড ব্রাউজ করুন", url: "/job-board" }],
+      };
+    }
+
+        case "JOB_RECOMMENDATION": {
+      return {
+        replyText: `ধন্যবাদ ${tutorName}। আপনার বিষয় ও পছন্দের এলাকার সাথে মানানসই সাম্প্রতিক লাইভ টিউশনগুলো জব বোর্ডে প্রকাশিত রয়েছে। এছাড়া উপযুক্ত টিউশন কার্ডগুলো সরাসরি পর্যালোচনা করতে পারেন।`,
+        intent: "JOB_RECOMMENDATION",
+        confidence: match.confidence,
+        isEscalated: false,
+        suggestedQuickReplies: ["আবেদনের নিয়ম", "সিভি ডাউনলোড"],
+        actionChips: [{ label: "💼 জব বোর্ডে সকল টিউশন দেখুন", url: "/job-board" }],
       };
     }
 

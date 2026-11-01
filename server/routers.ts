@@ -8,6 +8,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import * as db from "./db";
 import { processTutorMessageForAiAssistant } from "./ai-chat-assistant";
+import { processGuardianAiChatMessage } from "./guardian-ai-chat-assistant";
 import { getRecommendedJobsForTutor } from "./tutor-job-recommender";
 import { adminJobFiltersSchema } from "./admin-job-filters";
 import { adminGuardianRequestQueueFiltersSchema } from "./admin-request-filters";
@@ -2686,6 +2687,32 @@ export const appRouter = router({
         systemPrompt: z.string().trim().nullable().optional(),
       }))
       .mutation(({ input }) => db.updateAiChatSettings(input)),
+    getAiChatAnalytics: adminProcedure
+      .query(() => db.getAiChatAnalytics()),
+    listAiKnowledgeFaqs: adminProcedure
+      .input(z.object({ category: z.string().optional() }).optional())
+      .query(({ input }) => db.listAiKnowledgeFaqs(input?.category)),
+    createAiKnowledgeFaq: adminProcedure
+      .input(z.object({
+        question: z.string().trim().min(1).max(500),
+        answer: z.string().trim().min(1),
+        category: z.string().trim().max(100).optional(),
+        audience: z.enum(["all", "tutor", "guardian"]).optional(),
+      }))
+      .mutation(({ input }) => db.createAiKnowledgeFaq(input)),
+    updateAiKnowledgeFaq: adminProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        question: z.string().trim().min(1).max(500).optional(),
+        answer: z.string().trim().min(1).optional(),
+        category: z.string().trim().max(100).optional(),
+        audience: z.enum(["all", "tutor", "guardian"]).optional(),
+        isActive: z.boolean().optional(),
+      }))
+      .mutation(({ input }) => db.updateAiKnowledgeFaq(input)),
+    deleteAiKnowledgeFaq: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(({ input }) => db.deleteAiKnowledgeFaq(input)),
     /** One Tutor's applications, for the job-status row on their Admin profile page. */
     listTutorApplications: adminProcedure
       .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
@@ -3191,6 +3218,38 @@ export const appRouter = router({
     react: activeTutorProcedure
       .input(z.object({ messageId: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) => db.toggleTutorAdminChatMessageReaction({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id), messageId: input.messageId, role: "tutor" })),
+    submitAiFeedback: activeTutorProcedure
+      .input(z.object({
+        messageId: z.number().int().positive(),
+        feedback: z.enum(["helpful", "unhelpful"]),
+        note: z.string().trim().max(255).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => db.submitTutorAdminChatMessageFeedback({
+        tutorId: await getAuthenticatedTutorProfileId(ctx.user.id),
+        messageId: input.messageId,
+        feedback: input.feedback,
+        note: input.note,
+      })),
+  }),
+  guardianAiChat: router({
+    thread: guardianProcedure
+      .query(async ({ ctx }) => db.getGuardianAiChatThread({ guardianUserId: ctx.user.id })),
+    send: guardianProcedure
+      .input(z.object({ body: z.string().trim().min(1).max(2000) }))
+      .mutation(async ({ ctx, input }) => processGuardianAiChatMessage({
+        guardianUserId: ctx.user.id,
+        messageText: input.body,
+      })),
+    submitAiFeedback: guardianProcedure
+      .input(z.object({
+        messageId: z.number().int().positive(),
+        feedback: z.enum(["helpful", "unhelpful"]),
+      }))
+      .mutation(async ({ ctx, input }) => db.submitGuardianChatMessageFeedback({
+        guardianUserId: ctx.user.id,
+        messageId: input.messageId,
+        feedback: input.feedback,
+      })),
   }),
   guardianNotifications: router({
     mine: guardianProcedure

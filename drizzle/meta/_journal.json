@@ -981,6 +981,13 @@
       "when": 1796700000000,
       "tag": "0139_ai_live_chat_assistant",
       "breakpoints": true
+    },
+    {
+      "idx": 140,
+      "version": "5",
+      "when": 1796800000000,
+      "tag": "0140_ai_chat_ecosystem_suite",
+      "breakpoints": true
     }
   ]
 }

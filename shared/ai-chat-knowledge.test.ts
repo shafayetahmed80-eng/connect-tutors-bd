@@ -136,5 +136,16 @@ describe("shared/ai-chat-knowledge", () => {
       expect(response.intent).toBe("BTPA_MEMBERSHIP");
       expect(response.replyText).toContain("BTPA - 077");
     });
+
+    it("detects job recommendation inquiry and returns action chips", () => {
+      const response = generateAiChatResponse({
+        message: "আমার জন্য কি কোনো টিউশন খালি আছে?",
+        tutorContext: mockContext,
+      });
+
+      expect(response.intent).toBe("JOB_RECOMMENDATION");
+      expect(response.actionChips).toBeDefined();
+      expect(response.actionChips?.[0]?.url).toBe("/job-board");
+    });
   });
 });

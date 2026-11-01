@@ -4,6 +4,7 @@ import {
   foreignKey,
   index,
   int,
+  json,
   mediumtext,
   mysqlEnum,
   mysqlTable,
@@ -1786,6 +1787,9 @@ export const tutorAdminChatMessages = mysqlTable(
     adminReactedAt: timestamp("adminReactedAt"),
     /** Flag indicating this message was produced by the Connect Tutors AI Assistant. */
     isAiGenerated: boolean("isAiGenerated").default(false).notNull(),
+    aiFeedback: mysqlEnum("aiFeedback", ["helpful", "unhelpful"]),
+    aiFeedbackNote: varchar("aiFeedbackNote", { length: 255 }),
+    aiActionChips: json("aiActionChips"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [
@@ -2346,4 +2350,62 @@ export const aiChatSettings = mysqlTable(
   }
 );
 export type AiChatSetting = typeof aiChatSettings.$inferSelect;
+
+/**
+ * Guardian AI Live Chat Threads
+ */
+export const guardianAiChatThreads = mysqlTable(
+  "guardian_ai_chat_threads",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    guardianUserId: int("guardianUserId").notNull().references(() => users.id),
+    lastMessageAt: timestamp("lastMessageAt"),
+    lastMessagePreview: varchar("lastMessagePreview", { length: 255 }),
+    aiEscalatedAt: timestamp("aiEscalatedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    index("guardian_ai_chat_threads_user_idx").on(table.guardianUserId),
+  ]
+);
+export type GuardianAiChatThread = typeof guardianAiChatThreads.$inferSelect;
+
+/**
+ * Guardian AI Live Chat Messages
+ */
+export const guardianAiChatMessages = mysqlTable(
+  "guardian_ai_chat_messages",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    threadId: int("threadId").notNull().references(() => guardianAiChatThreads.id),
+    senderRole: mysqlEnum("senderRole", ["guardian", "assistant", "admin"]).notNull(),
+    body: varchar("body", { length: 2000 }).notNull(),
+    isAiGenerated: boolean("isAiGenerated").default(false).notNull(),
+    aiFeedback: mysqlEnum("aiFeedback", ["helpful", "unhelpful"]),
+    aiActionChips: json("aiActionChips"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    index("guardian_ai_chat_messages_thread_idx").on(table.threadId, table.createdAt),
+  ]
+);
+export type GuardianAiChatMessage = typeof guardianAiChatMessages.$inferSelect;
+
+/**
+ * Custom Knowledge & FAQ Pairs for AI Live Chat Assistant Training
+ */
+export const aiKnowledgeFaqs = mysqlTable(
+  "ai_knowledge_faqs",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    question: varchar("question", { length: 500 }).notNull(),
+    answer: text("answer").notNull(),
+    category: varchar("category", { length: 100 }).default("general").notNull(),
+    audience: mysqlEnum("audience", ["all", "tutor", "guardian"]).default("all").notNull(),
+    isActive: boolean("isActive").default(true).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  }
+);
+export type AiKnowledgeFaq = typeof aiKnowledgeFaqs.$inferSelect;
 
