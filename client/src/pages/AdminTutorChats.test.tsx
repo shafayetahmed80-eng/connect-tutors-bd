@@ -23,6 +23,11 @@ const state = vi.hoisted(() => ({
   stats: { awaitingReplyCount: 0, avgResponseMinutes: null as number | null },
   quickReplies: [] as any[],
   notes: [] as any[],
+  guardianThreads: [] as any[],
+  guardianThread: null as any,
+  guardianMessages: [] as any[],
+  sendGuardianMessage: vi.fn(),
+  resolveGuardianEscalation: vi.fn(),
   send: vi.fn(),
   markRead: vi.fn(),
   claim: vi.fn(),
@@ -61,9 +66,41 @@ vi.mock("@/lib/trpc", () => ({
         getTutorChatStats: { invalidate: vi.fn() },
         listChatQuickReplies: { invalidate: vi.fn() },
         listTutorChatNotes: { invalidate: vi.fn() },
+        listGuardianChatThreads: { invalidate: vi.fn() },
+        getGuardianChatThread: { invalidate: vi.fn() },
       },
     }),
     admin: {
+      listGuardianChatThreads: {
+        useQuery: () => ({
+          data: { items: state.guardianThreads, total: state.guardianThreads.length, page: 1, pageSize: 50 },
+          isLoading: false,
+        }),
+      },
+      getGuardianChatThread: {
+        useQuery: () => ({
+          data: state.guardianThread ? { thread: state.guardianThread, messages: state.guardianMessages } : null,
+          isLoading: false,
+        }),
+      },
+      sendGuardianChatMessage: {
+        useMutation: (options?: { onSuccess?: () => void }) => ({
+          mutate: (input: unknown) => {
+            state.sendGuardianMessage(input);
+            options?.onSuccess?.();
+          },
+          isPending: false,
+        }),
+      },
+      resolveGuardianChatEscalation: {
+        useMutation: (options?: { onSuccess?: () => void }) => ({
+          mutate: (input: unknown) => {
+            state.resolveGuardianEscalation(input);
+            options?.onSuccess?.();
+          },
+          isPending: false,
+        }),
+      },
       listTutorChatThreads: {
         useQuery: (input: unknown) => {
           state.threadsQueryInput = input;
@@ -942,5 +979,104 @@ describe("the card and filter panel over the conversations", () => {
     fireEvent.click(screen.getByRole("button", { name: /Tutor One/ }));
 
     expect(screen.getByText(/টিউটর সরাসরি মানুষের\/এডমিনের সহায়তা চেয়েছেন/)).toBeTruthy();
+  });
+
+  describe("Guardian Chat Tab in Admin", () => {
+    it("renders tab controls and switches to Guardian Chat panel on click", () => {
+      render(<AdminTutorChatsContent />);
+
+      const tutorTabBtn = screen.getByRole("button", { name: /টিউটর চ্যাট/ });
+      const guardianTabBtn = screen.getByRole("button", { name: /অভিভাবক চ্যাট/ });
+
+      expect(tutorTabBtn).toBeTruthy();
+      expect(guardianTabBtn).toBeTruthy();
+
+      // Click Guardian tab
+      fireEvent.click(guardianTabBtn);
+
+      // Guardian panel placeholder/search should be visible
+      expect(screen.getByPlaceholderText(/অভিভাবকের নাম, ফোন বা আইডি দিয়ে খুঁজুন/)).toBeTruthy();
+      expect(screen.getByText("অভিভাবক চ্যাট সিলেক্ট করুন")).toBeTruthy();
+    });
+
+    it("displays guardian thread list and allows selecting and replying", () => {
+      state.guardianThreads = [
+        {
+          threadId: 12,
+          guardianUserId: 50,
+          guardianName: "Mrs. Farhana",
+          guardianPhone: "01700112233",
+          guardianId: 789,
+          lastMessageAt: new Date().toISOString(),
+          lastMessagePreview: "Need an English teacher for class 8",
+          aiEscalatedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+        },
+      ];
+      state.guardianThread = {
+        id: 12,
+        guardianUserId: 50,
+        guardianName: "Mrs. Farhana",
+        guardianPhone: "01700112233",
+        guardianId: 789,
+        lastMessageAt: new Date().toISOString(),
+        lastMessagePreview: "Need an English teacher for class 8",
+        aiEscalatedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      };
+      state.guardianMessages = [
+        {
+          id: 1,
+          threadId: 12,
+          senderRole: "guardian",
+          body: "Need an English teacher for class 8",
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: 2,
+          threadId: 12,
+          senderRole: "assistant",
+          body: "Hello! We have noted your requirement.",
+          createdAt: new Date().toISOString(),
+        },
+      ];
+
+      render(<AdminTutorChatsContent />);
+
+      // Switch to Guardian tab
+      fireEvent.click(screen.getByRole("button", { name: /অভিভাবক চ্যাট/ }));
+
+      // Thread item should show in list
+      expect(screen.getByText("Mrs. Farhana")).toBeTruthy();
+      expect(screen.getByText("01700112233")).toBeTruthy();
+      expect(screen.getByText("GDN-789")).toBeTruthy();
+
+      // Click the thread to open details
+      fireEvent.click(screen.getByText("Mrs. Farhana"));
+
+      // Header and messages should be visible
+      expect(screen.getAllByText("Mrs. Farhana").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Need an English teacher for class 8").length).toBeGreaterThan(0);
+      expect(screen.getByText("Hello! We have noted your requirement.")).toBeTruthy();
+      expect(screen.getByText("Member: BTPA - 077")).toBeTruthy();
+
+      // Escalation badge and resolve button
+      const resolveBtn = screen.getByRole("button", { name: /রিসলভ করুন/ });
+      expect(resolveBtn).toBeTruthy();
+      fireEvent.click(resolveBtn);
+      expect(state.resolveGuardianEscalation).toHaveBeenCalledWith({ threadId: 12 });
+
+      // Reply as admin
+      const textarea = screen.getByPlaceholderText(/অভিভাবককে এডমিন হিসেবে উত্তর লিখুন/);
+      fireEvent.change(textarea, { target: { value: "We have contacted 2 tutors for you." } });
+
+      const sendBtn = screen.getByRole("button", { name: /Send reply to guardian/ });
+      fireEvent.click(sendBtn);
+
+      expect(state.sendGuardianMessage).toHaveBeenCalledWith({
+        threadId: 12,
+        body: "We have contacted 2 tutors for you.",
+      });
+    });
   });
 });

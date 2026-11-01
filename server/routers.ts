@@ -2548,6 +2548,30 @@ export const appRouter = router({
       }))
       .query(({ ctx, input }) => db.listTutorAdminChatThreadsForAdmin({ ...input, adminUserId: ctx.user.id })),
     tutorChatUnreadThreadCount: adminProcedure.query(() => db.getTutorAdminChatUnreadThreadCountForAdmin()),
+    listGuardianChatThreads: adminProcedure
+      .input(z.object({
+        query: z.string().trim().max(120).default(""),
+        page: z.number().int().min(1).default(1),
+        pageSize: z.number().int().min(1).max(100).default(30),
+        escalatedOnly: z.boolean().default(false),
+      }).default({ query: "", page: 1, pageSize: 30, escalatedOnly: false }))
+      .query(({ input }) => db.listGuardianChatThreadsForAdmin(input)),
+    getGuardianChatThread: adminProcedure
+      .input(z.object({ threadId: z.number().int().positive() }))
+      .query(({ input }) => db.getGuardianChatThreadForAdmin(input)),
+    sendGuardianChatMessage: adminProcedure
+      .input(z.object({
+        threadId: z.number().int().positive(),
+        body: z.string().trim().min(1).max(2000),
+      }))
+      .mutation(({ ctx, input }) => db.sendGuardianChatMessageFromAdmin({
+        threadId: input.threadId,
+        adminUserId: ctx.user.id,
+        body: input.body,
+      })),
+    resolveGuardianChatEscalation: adminProcedure
+      .input(z.object({ threadId: z.number().int().positive() }))
+      .mutation(({ input }) => db.resolveGuardianChatEscalation(input)),
     /** How busy the inbox is: threads awaiting a reply, and the 30-day average response time. */
     getTutorChatStats: adminProcedure.query(() => db.getTutorAdminChatStats()),
     reopenTutorChatThread: adminProcedure
