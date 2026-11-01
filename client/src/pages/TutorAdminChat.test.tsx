@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   eligible: true,
   mode: "appointed" as "appointed" | "approved" | "all" | "disabled",
   adminLastReadAt: null as string | null,
+  aiEscalatedAt: null as string | null,
   send: vi.fn(),
   markRead: vi.fn(),
   react: vi.fn(),
@@ -31,7 +32,7 @@ vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: () => ({ tutorAdminChat: { thread: { invalidate: state.invalidateThread }, unreadCount: { invalidate: vi.fn() } } }),
     tutorAdminChat: {
-      thread: { useQuery: () => ({ data: state.isError ? undefined : { messages: state.messages, tutorLastReadAt: null, adminLastReadAt: state.adminLastReadAt, eligible: state.eligible, mode: state.mode }, isLoading: state.isLoading, isError: state.isError, refetch: state.refetch }) },
+      thread: { useQuery: () => ({ data: state.isError ? undefined : { messages: state.messages, tutorLastReadAt: null, adminLastReadAt: state.adminLastReadAt, eligible: state.eligible, mode: state.mode, aiEscalatedAt: state.aiEscalatedAt }, isLoading: state.isLoading, isError: state.isError, refetch: state.refetch }) },
       send: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.send(input); options.onSuccess?.(); }, isPending: false }) },
       markRead: { useMutation: () => ({ mutate: state.markRead, isPending: false }) },
       react: { useMutation: (options: { onSuccess?: () => void }) => ({ mutate: (input: unknown) => { state.react(input); options.onSuccess?.(); }, isPending: false }) },
@@ -499,5 +500,12 @@ it("invalidates thread query when access_mode socket frame is received", () => {
     fireEvent.click(chip);
     const textarea = screen.getByPlaceholderText("Write a message…") as HTMLTextAreaElement;
     expect(textarea.value).toBe("ভেরিফিকেশন হতে কত সময় লাগে এবং কী কী ডকুমেন্ট প্রয়োজন?");
+  });
+
+  it("displays escalation warning banner when aiEscalatedAt is set on thread", () => {
+    state.aiEscalatedAt = "2026-11-01T10:00:00.000Z";
+    render(<TutorAdminChatPanel />);
+
+    expect(screen.getByText(/আপনার মেসেজটি পর্যালোচনা ও ফলো-আপের জন্য এডমিন টিমের কাছে এসকেলেট করা হয়েছে/)).toBeTruthy();
   });
 });
