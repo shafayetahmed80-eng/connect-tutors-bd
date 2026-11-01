@@ -182,6 +182,7 @@ Open `http://localhost:3000` in your browser.
 For in-depth architectural and operational guides, consult the dedicated documentation:
 
 - 📖 **[মাস্টার সিস্টেম ও ফিচার ডকুমেন্টেশন (Full Website Documentation)](docs/FULL_WEBSITE_DOCUMENTATION_BN.md)** — বাংলা ভাষায় সমগ্র ওয়েবসাইটের পূর্ণাঙ্গ বিস্তারিত গাইড।
+- 👨‍🏫 **[টিউটর প্যানেল ইন-ডিটেইলস ডকুমেন্টেশন (Tutor Panel In-Depth Documentation)](docs/TUTOR_PANEL_IN_DEPTH_DOCUMENTATION_BN.md)** — টিউটর প্যানেল ও প্রোফাইল ওয়ার্কস্পেসের বিস্তারিত অপারেশনাল ও টেকনিক্যাল ম্যানুয়াল।
 - 🚀 **[Deploy From Zero Guide (BN)](DEPLOY_FROM_ZERO_BN.md)** — নতুন সার্ভার সেটআপ ও ডিপ্লয়মেন্ট নির্দেশিকা।
 - 🌐 **[Production Deployment Guide (BN)](PRODUCTION_DEPLOYMENT_BN.md)** — সিপ্যানেল ও লিনাক্স ভিপিএস ডেপ্লয়মেন্ট নির্দেশিকা।
 - 📱 **[Mobile OTP & RBAC Architecture (BN)](MOBILE_OTP_RBAC_FLOW_AND_CODE_STRUCTURE_BN.md)** — মোবাইল অথেনটিকেশন ও অ্যাক্সেস কন্ট্রোল ফ্লো।
