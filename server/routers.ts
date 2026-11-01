@@ -7,6 +7,7 @@ import { parse as parseCookieHeader } from "cookie";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import * as db from "./db";
+import { processTutorMessageForAiAssistant } from "./ai-chat-assistant";
 import { getRecommendedJobsForTutor } from "./tutor-job-recommender";
 import { adminJobFiltersSchema } from "./admin-job-filters";
 import { adminGuardianRequestQueueFiltersSchema } from "./admin-request-filters";
@@ -2672,6 +2673,19 @@ export const appRouter = router({
     releaseTutorChatThread: adminProcedure
       .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
       .mutation(({ input }) => db.releaseTutorAdminChatThread(input)),
+    toggleTutorChatAiAutoReply: adminProcedure
+      .input(z.object({ tutorId: z.string().trim().min(1).max(32), enabled: z.boolean() }))
+      .mutation(({ input }) => db.toggleTutorAdminChatThreadAiAutoReply(input)),
+    getAiChatSettings: adminProcedure
+      .query(() => db.getAiChatSettings()),
+    updateAiChatSettings: adminProcedure
+      .input(z.object({
+        enabled: z.boolean().optional(),
+        welcomeMessage: z.string().trim().max(500).optional(),
+        fallbackMessage: z.string().trim().max(500).optional(),
+        systemPrompt: z.string().trim().nullable().optional(),
+      }))
+      .mutation(({ input }) => db.updateAiChatSettings(input)),
     /** One Tutor's applications, for the job-status row on their Admin profile page. */
     listTutorApplications: adminProcedure
       .input(z.object({ tutorId: z.string().trim().min(1).max(32) }))
@@ -3162,6 +3176,14 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const result = await db.sendTutorAdminChatMessageFromTutor({ tutorId: await getAuthenticatedTutorProfileId(ctx.user.id), body: input.body, attachmentKey: input.attachmentKey, attachmentContentType: input.attachmentContentType });
         if (!result.sent) throw new TRPCError({ code: "FORBIDDEN", message: "You can message the Admin team once at least one of your tuitions has been appointed." });
+        if (input.body) {
+          void processTutorMessageForAiAssistant({
+            tutorId: await getAuthenticatedTutorProfileId(ctx.user.id),
+            messageText: input.body,
+          }).catch(err => {
+            console.warn("[AI Assistant] Background processing failed:", err);
+          });
+        }
         return result;
       }),
     markRead: activeTutorProcedure

@@ -1751,6 +1751,10 @@ export const tutorAdminChatThreads = mysqlTable(
     claimedByAdminId: int("claimedByAdminId"),
     /** Set once the thread has sat idle for 30 days; cleared the moment either side writes again, or an Admin reopens it by hand. */
     archivedAt: timestamp("archivedAt"),
+    /** Whether AI assistant auto-reply is active for this thread. Default true; Admin can toggle off for manual 1-on-1 mode. */
+    aiAutoReply: boolean("aiAutoReply").default(true).notNull(),
+    /** Set if the AI escalated this thread or user requested human assistance. */
+    aiEscalatedAt: timestamp("aiEscalatedAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [
@@ -1780,6 +1784,8 @@ export const tutorAdminChatMessages = mysqlTable(
     /** A quick 👍 from that side - set the moment they toggle it, cleared (not deleted) if they un-react. */
     tutorReactedAt: timestamp("tutorReactedAt"),
     adminReactedAt: timestamp("adminReactedAt"),
+    /** Flag indicating this message was produced by the Connect Tutors AI Assistant. */
+    isAiGenerated: boolean("isAiGenerated").default(false).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [
@@ -2324,3 +2330,20 @@ export const tutorReviews = mysqlTable(
   ]
 );
 export type TutorReview = typeof tutorReviews.$inferSelect;
+
+/**
+ * Global configuration and defaults for the Connect Tutors AI Live Chat Assistant.
+ */
+export const aiChatSettings = mysqlTable(
+  "ai_chat_settings",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    enabled: boolean("enabled").default(true).notNull(),
+    welcomeMessage: varchar("welcomeMessage", { length: 500 }).default("আসসালামু আলাইকুম! কানেক্ট টিউটরস এআই সাপোর্ট অ্যাসিস্ট্যান্টে স্বাগতম। আপনার যেকোনো প্রশ্নে সাহায্য করতে প্রস্তুত।").notNull(),
+    systemPrompt: text("systemPrompt"),
+    fallbackMessage: varchar("fallbackMessage", { length: 500 }).default("আপনার প্রশ্নটি বুঝতে পেরেছি। বিষয়টি আরও বিশদভাবে খতিয়ে দেখতে আমাদের এডমিন টিমকে জানানো হয়েছে, শীঘ্রই একজন এডমিন রিপ্লাই করবেন।").notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  }
+);
+export type AiChatSetting = typeof aiChatSettings.$inferSelect;
+

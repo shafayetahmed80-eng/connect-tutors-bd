@@ -28,6 +28,9 @@ const dbMocks = vi.hoisted(() => ({
   subscribeAdminToChatPush: vi.fn(),
   unsubscribeAdminFromChatPush: vi.fn(),
   toggleTutorAdminChatMessageReaction: vi.fn(),
+  toggleTutorAdminChatThreadAiAutoReply: vi.fn(),
+  getAiChatSettings: vi.fn(),
+  updateAiChatSettings: vi.fn(),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -242,5 +245,22 @@ describe("the Admin side of the Tutor chat", () => {
   it("is an Admin's to use", async () => {
     await expect(createCaller(activeTutor).admin.listTutorChatThreads({})).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(dbMocks.listTutorAdminChatThreadsForAdmin).not.toHaveBeenCalled();
+  });
+
+  it("toggles tutor chat AI auto-reply as admin", async () => {
+    dbMocks.toggleTutorAdminChatThreadAiAutoReply.mockResolvedValue({ success: true, aiAutoReply: false });
+    await expect(createCaller(admin).admin.toggleTutorChatAiAutoReply({ tutorId: "tutor-1503", enabled: false })).resolves.toEqual({ success: true, aiAutoReply: false });
+    expect(dbMocks.toggleTutorAdminChatThreadAiAutoReply).toHaveBeenCalledWith({ tutorId: "tutor-1503", enabled: false });
+  });
+
+  it("retrieves and updates global AI chat settings as admin", async () => {
+    const mockSettings = { id: 1, enabled: true, welcomeMessage: "Welcome", fallbackMessage: "Fallback", systemPrompt: null };
+    dbMocks.getAiChatSettings.mockResolvedValue(mockSettings);
+    await expect(createCaller(admin).admin.getAiChatSettings()).resolves.toEqual(mockSettings);
+    expect(dbMocks.getAiChatSettings).toHaveBeenCalled();
+
+    dbMocks.updateAiChatSettings.mockResolvedValue({ ...mockSettings, enabled: false });
+    await expect(createCaller(admin).admin.updateAiChatSettings({ enabled: false })).resolves.toEqual({ ...mockSettings, enabled: false });
+    expect(dbMocks.updateAiChatSettings).toHaveBeenCalledWith({ enabled: false });
   });
 });
