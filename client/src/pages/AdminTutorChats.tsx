@@ -1,3 +1,4 @@
+import { AdminGuardianChatsPanel } from "@/components/chat/AdminGuardianChatsPanel";
 import { AdminChatFilterFields, useAdminChatFilters } from "@/components/AdminChatFilters";
 import { getPresetsByCategory } from "@shared/message-presets";
 import { extractTopicFromMessage } from "@shared/admin-control";
@@ -1457,6 +1458,14 @@ export function AdminTutorChatsContent() {
   const isMobile = useIsMobile();
   const search = useSearch();
   const utils = trpc.useUtils();
+  const [chatTab, setChatTab] = useState<"tutor" | "guardian">(() => {
+    return new URLSearchParams(search).get("tab") === "guardian" ? "guardian" : "tutor";
+  });
+  const guardianEscalatedQuery = trpc.admin.listGuardianChatThreads.useQuery(
+    { query: "", page: 1, pageSize: 50, escalatedOnly: true },
+    { refetchInterval: 30000 }
+  );
+  const guardianEscalatedCount = guardianEscalatedQuery.data?.total ?? 0;
   const [selectedTutorId, setSelectedTutorId] = useState<string | null>(() => new URLSearchParams(search).get("tutorId"));
   const [archived, setArchived] = useState(false);
   const [query, setQuery] = useState("");
@@ -1526,9 +1535,45 @@ export function AdminTutorChatsContent() {
   };
 
   return <div className="space-y-3">
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <ChatStatsStrip />
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#dce9f1] pb-2.5">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setChatTab("tutor")}
+          className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+            chatTab === "tutor"
+              ? "bg-j-accent text-white shadow-xs"
+              : "bg-white text-j-ink-soft hover:bg-j-surface-sunken border border-j-border"
+          }`}
+        >
+          <UserRound className="size-4" />
+          <span>👨‍🏫 টিউটর চ্যাট (Tutors)</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setChatTab("guardian")}
+          className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+            chatTab === "guardian"
+              ? "bg-j-accent text-white shadow-xs"
+              : "bg-white text-j-ink-soft hover:bg-j-surface-sunken border border-j-border"
+          }`}
+        >
+          <Bot className="size-4" />
+          <span>👨‍👩‍👧 অভিভাবক চ্যাট (Guardians)</span>
+          {guardianEscalatedCount > 0 && (
+            <span className="rounded-full bg-rose-500 px-2 py-0.5 text-2xs text-white font-extrabold animate-pulse">
+              {guardianEscalatedCount} টি সহায়তা আবশ্যক
+            </span>
+          )}
+        </button>
+      </div>
+      {chatTab === "tutor" ? <ChatStatsStrip /> : null}
     </div>
+
+    {chatTab === "guardian" ? (
+      <AdminGuardianChatsPanel />
+    ) : (
+      <>
     {threadOpenOnPhone ? null : <AdminRequestFilterBar
       filters={panel}
       eyebrow={archived ? "Archived Chats" : "Active Chats"}
@@ -1588,11 +1633,13 @@ export function AdminTutorChatsContent() {
               : <p className="grid h-full place-items-center px-6 text-center text-sm text-j-ink-muted">Select a Tutor to view the conversation.</p>}
           </div>
         </div>}
+      </>
+    )}
   </div>;
 }
 
 export default function AdminTutorChats() {
-  return <AdminWorkspaceLayout title="Tutor Chats">
+  return <AdminWorkspaceLayout title="Live Chats">
     <div className="mx-auto w-full max-w-[100rem] pb-10">
       <AdminTutorChatsContent />
     </div>

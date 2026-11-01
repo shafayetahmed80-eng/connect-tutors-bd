@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   Bot,
   ExternalLink,
+  Maximize2,
   Minimize2,
   Send,
   Sparkles,
@@ -14,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
+import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { ChatTuitionJobCard, extractJobIdsFromText } from "./ChatTuitionActions";
 
@@ -51,8 +53,15 @@ export interface TutorAiChatModalProps {
 export function TutorAiChatModal({ hideFloatingButton = false }: TutorAiChatModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState("");
+  const [, setLocation] = useLocation();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (hideFloatingButton) {
+      setIsOpen(false);
+    }
+  }, [hideFloatingButton]);
 
   const utils = trpc.useUtils ? trpc.useUtils() : ({} as any);
   const threadQuery = trpc.tutorAdminChat?.thread?.useQuery
@@ -155,6 +164,18 @@ export function TutorAiChatModal({ hideFloatingButton = false }: TutorAiChatModa
             </div>
 
             <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  setLocation("/tutor/dashboard/chat");
+                }}
+                className="grid size-7 place-items-center rounded-lg text-white/80 hover:bg-white/15 hover:text-white transition-colors"
+                title="পূর্ণাঙ্গ চ্যাটে দেখুন"
+                aria-label="পূর্ণাঙ্গ চ্যাটে দেখুন"
+              >
+                <Maximize2 size={14} />
+              </button>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}

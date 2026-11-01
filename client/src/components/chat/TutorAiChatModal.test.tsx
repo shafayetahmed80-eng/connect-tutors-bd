@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   invalidate: vi.fn(),
   sendMutate: vi.fn(),
   feedbackMutate: vi.fn(),
+  setLocation: vi.fn(),
   messages: [
     {
       id: 1,
@@ -26,6 +27,10 @@ const mocks = vi.hoisted(() => ({
       aiFeedback: null,
     },
   ],
+}));
+
+vi.mock("wouter", () => ({
+  useLocation: () => ["/tutor/dashboard", mocks.setLocation],
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -92,6 +97,17 @@ describe("TutorAiChatModal", () => {
     expect(screen.getByText("কানেক্ট টিউটরস (Member: BTPA-077)")).toBeDefined();
     expect(screen.getByText("আমার জন্য কোনো টিউশন আছে?")).toBeDefined();
     expect(screen.getByTestId("job-card-101")).toBeDefined();
+  });
+
+  it("navigates to full-page chat when clicking expand button in modal header", () => {
+    render(<TutorAiChatModal />);
+    fireEvent.click(screen.getByRole("button", { name: /টিউটর এআই সহায়তা চালু করুন/i }));
+
+    const expandBtn = screen.getByRole("button", { name: "পূর্ণাঙ্গ চ্যাটে দেখুন" });
+    expect(expandBtn).toBeDefined();
+    fireEvent.click(expandBtn);
+
+    expect(mocks.setLocation).toHaveBeenCalledWith("/tutor/dashboard/chat");
   });
 
   it("renders action chips and triggers feedback mutation on click", () => {

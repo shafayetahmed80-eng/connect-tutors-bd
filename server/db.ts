@@ -12683,3 +12683,165 @@ export async function submitGuardianChatMessageFeedback(input: {
     .where(eq(guardianAiChatMessages.id, input.messageId));
   return { updated: true as const };
 }
+
+
+export async function listGuardianChatThreadsForAdmin(input: {
+  query?: string;
+  page?: number;
+  pageSize?: number;
+  escalatedOnly?: boolean;
+}) {
+  const database = await getDb();
+  if (!database) return { items: [], total: 0 };
+
+  const trimmedQuery = (input.query ?? "").trim();
+  const searchCondition = trimmedQuery
+    ? or(
+        like(users.name, `%${trimmedQuery}%`),
+        like(users.loginPhone, `%${trimmedQuery}%`),
+        like(guardianProfiles.phone, `%${trimmedQuery}%`),
+        like(guardianProfiles.guardianId, `%${trimmedQuery}%`),
+      )
+    : undefined;
+
+  const escalatedCondition = input.escalatedOnly ? isNotNull(guardianAiChatThreads.aiEscalatedAt) : undefined;
+  const condition = and(searchCondition, escalatedCondition);
+
+  const page = Math.max(1, input.page ?? 1);
+  const pageSize = Math.min(100, Math.max(1, input.pageSize ?? 30));
+  const offset = (page - 1) * pageSize;
+
+  const items = await database
+    .select({
+      threadId: guardianAiChatThreads.id,
+      guardianUserId: guardianAiChatThreads.guardianUserId,
+      guardianName: users.name,
+      guardianPhone: sql<string>`coalesce(${guardianProfiles.phone}, ${users.loginPhone}, '')`,
+      guardianId: guardianProfiles.guardianId,
+      lastMessageAt: guardianAiChatThreads.lastMessageAt,
+      lastMessagePreview: guardianAiChatThreads.lastMessagePreview,
+      aiEscalatedAt: guardianAiChatThreads.aiEscalatedAt,
+      createdAt: guardianAiChatThreads.createdAt,
+    })
+    .from(guardianAiChatThreads)
+    .innerJoin(users, eq(users.id, guardianAiChatThreads.guardianUserId))
+    .leftJoin(guardianProfiles, eq(guardianProfiles.userId, users.id))
+    .where(condition)
+    .orderBy(desc(guardianAiChatThreads.lastMessageAt))
+    .limit(pageSize)
+    .offset(offset);
+
+  const [countResult] = await database
+    .select({ count: sql<number>`count(*)` })
+    .from(guardianAiChatThreads)
+    .innerJoin(users, eq(users.id, guardianAiChatThreads.guardianUserId))
+    .leftJoin(guardianProfiles, eq(guardianProfiles.userId, users.id))
+    .where(condition);
+
+  return {
+    items,
+    total: Number(countResult?.count ?? 0),
+  };
+}
+
+export async function getGuardianChatThreadForAdmin(input: { threadId: number }) {
+  const database = await getDb();
+  if (!database) return null;
+
+  const [threadRow] = await database
+    .select({
+      id: guardianAiChatThreads.id,
+      guardianUserId: guardianAiChatThreads.guardianUserId,
+      guardianName: users.name,
+      guardianEmail: users.email,
+      guardianPhone: sql<string>`coalesce(${guardianProfiles.phone}, ${users.loginPhone}, '')`,
+      guardianId: guardianProfiles.guardianId,
+      cityLocationId: guardianProfiles.cityLocationId,
+      locationId: guardianProfiles.locationId,
+      verificationStatus: guardianProfiles.verificationStatus,
+      lastMessageAt: guardianAiChatThreads.lastMessageAt,
+      lastMessagePreview: guardianAiChatThreads.lastMessagePreview,
+      aiEscalatedAt: guardianAiChatThreads.aiEscalatedAt,
+      createdAt: guardianAiChatThreads.createdAt,
+    })
+    .from(guardianAiChatThreads)
+    .innerJoin(users, eq(users.id, guardianAiChatThreads.guardianUserId))
+    .leftJoin(guardianProfiles, eq(guardianProfiles.userId, users.id))
+    .where(eq(guardianAiChatThreads.id, input.threadId))
+    .limit(1);
+
+  if (!threadRow) return null;
+
+  const messages = await database
+    .select({
+      id: guardianAiChatMessages.id,
+      threadId: guardianAiChatMessages.threadId,
+      senderRole: guardianAiChatMessages.senderRole,
+      body: guardianAiChatMessages.body,
+      isAiGenerated: guardianAiChatMessages.isAiGenerated,
+      aiFeedback: guardianAiChatMessages.aiFeedback,
+      aiActionChips: guardianAiChatMessages.aiActionChips,
+      createdAt: guardianAiChatMessages.createdAt,
+    })
+    .from(guardianAiChatMessages)
+    .where(eq(guardianAiChatMessages.threadId, input.threadId))
+    .orderBy(asc(guardianAiChatMessages.id));
+
+  return {
+    thread: threadRow,
+    messages,
+  };
+}
+
+export async function sendGuardianChatMessageFromAdmin(input: {
+  threadId: number;
+  adminUserId: number;
+  body: string;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database unavailable");
+
+  const [thread] = await database
+    .select()
+    .from(guardianAiChatThreads)
+    .where(eq(guardianAiChatThreads.id, input.threadId))
+    .limit(1);
+
+  if (!thread) throw new Error("Thread not found");
+
+  const now = new Date();
+  const [inserted] = await database.insert(guardianAiChatMessages).values({
+    threadId: input.threadId,
+    senderRole: "admin",
+    body: input.body,
+    isAiGenerated: false,
+    createdAt: now,
+  });
+
+  await database
+    .update(guardianAiChatThreads)
+    .set({
+      lastMessageAt: now,
+      lastMessagePreview: input.body.slice(0, 255),
+    })
+    .where(eq(guardianAiChatThreads.id, input.threadId));
+
+  return {
+    success: true,
+    messageId: inserted.insertId,
+  };
+}
+
+export async function resolveGuardianChatEscalation(input: { threadId: number }) {
+  const database = await getDb();
+  if (!database) throw new Error("Database unavailable");
+
+  await database
+    .update(guardianAiChatThreads)
+    .set({
+      aiEscalatedAt: null,
+    })
+    .where(eq(guardianAiChatThreads.id, input.threadId));
+
+  return { success: true };
+}

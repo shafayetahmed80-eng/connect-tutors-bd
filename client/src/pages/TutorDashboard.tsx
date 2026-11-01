@@ -321,7 +321,7 @@ export default function TutorDashboard() {
       {section === "how-it-works" && <SiteContentProvider page="how-it-works"><HowItWorksPlayer panel="tutor" /></SiteContentProvider>}
       {["certificate", "refer-earn", "exclusively-yours", "community"].includes(section) && <DashboardDesignPreview section={section} />}
     </div>
-    <TutorAiChatModal hideFloatingButton={section === "chat"} />
+    {section !== "chat" && <TutorAiChatModal />}
   </DashboardLayout>;
 }
 
