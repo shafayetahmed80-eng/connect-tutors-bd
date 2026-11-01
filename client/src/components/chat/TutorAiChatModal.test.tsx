@@ -83,6 +83,11 @@ describe("TutorAiChatModal", () => {
     expect(screen.getByText("এআই সহায়তা")).toBeDefined();
   });
 
+  it("renders unread count badge on trigger button when unreadCount is positive", () => {
+    render(<TutorAiChatModal unreadCount={3} />);
+    expect(screen.getByText("3")).toBeDefined();
+  });
+
   it("hides the floating trigger button when hideFloatingButton is true", () => {
     render(<TutorAiChatModal hideFloatingButton={true} />);
     expect(screen.queryByRole("button", { name: /টিউটর এআই সহায়তা চালু করুন/i })).toBeNull();
@@ -93,8 +98,8 @@ describe("TutorAiChatModal", () => {
     const trigger = screen.getByRole("button", { name: /টিউটর এআই সহায়তা চালু করুন/i });
     fireEvent.click(trigger);
 
-    expect(screen.getByText("টিউটর এআই সহকারী")).toBeDefined();
-    expect(screen.getByText("কানেক্ট টিউটরস (Member: BTPA-077)")).toBeDefined();
+    expect(screen.getByText("কানেক্ট সাপোর্ট ও এআই সহকারী")).toBeDefined();
+    expect(screen.getByText(/Member: BTPA-077/)).toBeDefined();
     expect(screen.getByText("আমার জন্য কোনো টিউশন আছে?")).toBeDefined();
     expect(screen.getByTestId("job-card-101")).toBeDefined();
   });
@@ -103,7 +108,7 @@ describe("TutorAiChatModal", () => {
     render(<TutorAiChatModal />);
     fireEvent.click(screen.getByRole("button", { name: /টিউটর এআই সহায়তা চালু করুন/i }));
 
-    const expandBtn = screen.getByRole("button", { name: "পূর্ণাঙ্গ চ্যাটে দেখুন" });
+    const expandBtn = screen.getByRole("button", { name: "পূর্ণাঙ্গ সাপোর্ট চ্যাটে দেখুন" });
     expect(expandBtn).toBeDefined();
     fireEvent.click(expandBtn);
 

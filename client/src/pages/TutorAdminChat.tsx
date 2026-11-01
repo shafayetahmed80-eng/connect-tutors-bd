@@ -27,7 +27,7 @@ import {
 } from "@/components/chat/ChatProductivityShortcuts";
 import { motion } from "framer-motion";
 import SearchInput from "@/components/SearchInput";
-import { Bot, Briefcase, Check, Clock, CornerUpLeft, ExternalLink, Loader2, Maximize2, Mic, Paperclip, Phone, Plus, RotateCcw, Send, ShieldCheck, Sparkles, Square, ThumbsDown, ThumbsUp, User, WifiOff, X } from "lucide-react";
+import { AlertTriangle, Bot, Briefcase, Check, Clock, CornerUpLeft, ExternalLink, Loader2, Maximize2, Mic, Paperclip, Phone, Plus, RotateCcw, Send, ShieldCheck, Sparkles, Square, ThumbsDown, ThumbsUp, User, WifiOff, X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -425,7 +425,7 @@ export function TutorAdminChatPanel() {
             <span className="brand-wordmark flex text-white"><strong className="text-white">{brandWordmark.primary}</strong><em className="text-sky-200">{brandWordmark.secondary}</em></span>
           </div>
           <p className="text-3xs text-sky-100 font-medium">
-            কানেক্ট টিউটরস (Member: BTPA-077) · সার্বক্ষণিক সহায়তা
+            কানেক্ট টিউটরস (Member: BTPA-077) · সার্বক্ষণিক এআই ও অ্যাডমিন সহায়তা
           </p>
         </div>
       </div>
@@ -445,6 +445,12 @@ export function TutorAdminChatPanel() {
     </header>
 
     <ChatOutOfOfficeBanner />
+    {Boolean(threadQuery.data?.aiEscalatedAt) && (
+      <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-semibold text-amber-800">
+        <AlertTriangle size={15} className="shrink-0 text-amber-600" />
+        <span>আপনার মেসেজটি পর্যালোচনা ও ফলো-আপের জন্য এডমিন টিমের কাছে এসকেলেট করা হয়েছে। এডমিন দ্রুত রেসপন্স করবেন।</span>
+      </div>
+    )}
     {pinnedJobId ? (
       <PinnedJobBanner jobId={pinnedJobId} onUnpin={() => handleTogglePin(pinnedJobId)} />
     ) : null}

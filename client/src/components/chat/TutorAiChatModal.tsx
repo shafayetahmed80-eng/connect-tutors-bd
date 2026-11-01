@@ -48,9 +48,10 @@ interface TutorChatMessageItem {
 
 export interface TutorAiChatModalProps {
   hideFloatingButton?: boolean;
+  unreadCount?: number;
 }
 
-export function TutorAiChatModal({ hideFloatingButton = false }: TutorAiChatModalProps) {
+export function TutorAiChatModal({ hideFloatingButton = false, unreadCount }: TutorAiChatModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState("");
   const [, setLocation] = useLocation();
@@ -134,9 +135,15 @@ export function TutorAiChatModal({ hideFloatingButton = false }: TutorAiChatModa
             <span className="absolute -top-1 -right-1 size-2.5 rounded-full bg-emerald-400 ring-2 ring-white" />
           </div>
           <span className="text-xs font-bold tracking-wide">এআই সহায়তা</span>
-          <span className="rounded-full bg-white/20 px-1.5 py-0.2 text-3xs font-black uppercase text-white">
-            Live
-          </span>
+          {typeof unreadCount === "number" && unreadCount > 0 ? (
+            <span className="rounded-full bg-rose-500 px-1.5 py-0.2 text-3xs font-extrabold text-white animate-pulse">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          ) : (
+            <span className="rounded-full bg-white/20 px-1.5 py-0.2 text-3xs font-black uppercase text-white">
+              Live
+            </span>
+          )}
         </button>
       )}
 
@@ -151,14 +158,14 @@ export function TutorAiChatModal({ hideFloatingButton = false }: TutorAiChatModa
               </div>
               <div>
                 <h3 className="text-xs font-extrabold flex items-center gap-1.5">
-                  <span>টিউটর এআই সহকারী</span>
+                  <span>কানেক্ট সাপোর্ট ও এআই সহকারী</span>
                   <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-400/20 px-1.5 py-0.2 text-3xs font-bold text-emerald-200">
                     <span className="size-1 rounded-full bg-emerald-400" />
-                    Online
+                    Live
                   </span>
                 </h3>
                 <p className="text-3xs text-sky-100 font-medium">
-                  কানেক্ট টিউটরস (Member: BTPA-077)
+                  কানেক্ট টিউটরস (Member: BTPA-077) · সার্বক্ষণিক সহায়তা
                 </p>
               </div>
             </div>
@@ -171,8 +178,8 @@ export function TutorAiChatModal({ hideFloatingButton = false }: TutorAiChatModa
                   setLocation("/tutor/dashboard/chat");
                 }}
                 className="grid size-7 place-items-center rounded-lg text-white/80 hover:bg-white/15 hover:text-white transition-colors"
-                title="পূর্ণাঙ্গ চ্যাটে দেখুন"
-                aria-label="পূর্ণাঙ্গ চ্যাটে দেখুন"
+                title="পূর্ণাঙ্গ সাপোর্ট চ্যাটে দেখুন"
+                aria-label="পূর্ণাঙ্গ সাপোর্ট চ্যাটে দেখুন"
               >
                 <Maximize2 size={14} />
               </button>
