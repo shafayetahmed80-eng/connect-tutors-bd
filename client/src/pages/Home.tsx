@@ -16,6 +16,8 @@ import SiteFooter from "@/components/SiteFooter";
 import BackToTopButton from "@/components/BackToTopButton";
 import { useScrollReveal } from "@/lib/scrollReveal";
 import { loadStudioFont, studioFontFamily } from "@/lib/image-studio-fonts";
+import { ExpressTutorRequestCard } from "@/components/ExpressTutorRequestCard";
+import { ExpressTutorFloatingTrigger } from "@/components/ExpressTutorFloatingTrigger";
 
 export const homeEditorialImages = {
   hero: "/images/hero.webp",
@@ -118,6 +120,13 @@ function HomeContent() {
               <div className="hero-float-card float-card-one"><Heart size={16} fill="currentColor" /><span>{t("home.hero.floatOne.lead", hero.floatOne.lead)}<br /><strong>{t("home.hero.floatOne.strong", hero.floatOne.strong)}</strong></span></div>
               <div className="hero-float-card float-card-two"><CalendarDays size={17} /><span>{t("home.hero.floatTwo.lead", hero.floatTwo.lead)}<br /><strong>{t("home.hero.floatTwo.strong", hero.floatTwo.strong)}</strong></span></div>
             </div>
+          </div>
+        </section>
+
+        {/* 15-Second Mobile-First Express Tutor Request Card */}
+        <section className="py-6 sm:py-10 bg-gradient-to-b from-sky-50/60 to-white dark:from-slate-900/40 dark:to-background border-y border-sky-100/70 dark:border-slate-800/60" aria-label="Express Tutor Request">
+          <div className="shell max-w-4xl mx-auto px-4">
+            <ExpressTutorRequestCard source="home_hero" />
           </div>
         </section>
 
@@ -288,6 +297,7 @@ function HomeContent() {
       </main>
       <SiteFooter />
       <BackToTopButton />
+      <ExpressTutorFloatingTrigger source="floating_action" />
     </div>
   );
 }

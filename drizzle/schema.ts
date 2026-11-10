@@ -2409,3 +2409,52 @@ export const aiKnowledgeFaqs = mysqlTable(
 );
 export type AiKnowledgeFaq = typeof aiKnowledgeFaqs.$inferSelect;
 
+export const expressTutorRequestStatusValues = ["new", "contacted", "converted", "cancelled"] as const;
+export type ExpressTutorRequestStatus = (typeof expressTutorRequestStatusValues)[number];
+
+export const expressTutorRequestSourceValues = [
+  "home_hero",
+  "job_board",
+  "mobile_drawer",
+  "floating_action",
+  "direct",
+] as const;
+export type ExpressTutorRequestSource = (typeof expressTutorRequestSourceValues)[number];
+
+/**
+ * 15-second mobile-first Express Tutor Requests (Quick leads) from Home/Job Board
+ */
+export const expressTutorRequests = mysqlTable(
+  "express_tutor_requests",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    phone: varchar("phone", { length: 16 }).notNull(),
+    guardianName: varchar("guardianName", { length: 120 }),
+    classCourse: varchar("classCourse", { length: 120 }).notNull(),
+    curriculumType: varchar("curriculumType", { length: 60 }),
+    subjects: varchar("subjects", { length: 255 }),
+    tuitionType: varchar("tuitionType", { length: 32 }).default("home").notNull(),
+    cityLocationId: varchar("cityLocationId", { length: 80 }).references(() => locations.id),
+    locationId: varchar("locationId", { length: 80 }).references(() => locations.id),
+    locationLabel: varchar("locationLabel", { length: 160 }).notNull(),
+    notes: varchar("notes", { length: 500 }),
+    source: mysqlEnum("source", expressTutorRequestSourceValues).default("home_hero").notNull(),
+    status: mysqlEnum("status", expressTutorRequestStatusValues).default("new").notNull(),
+    contactedAt: timestamp("contactedAt"),
+    contactedByAdminId: int("contactedByAdminId").references(() => users.id),
+    convertedRequestId: int("convertedRequestId").references(() => tutorRequests.id),
+    ipAddress: varchar("ipAddress", { length: 45 }),
+    userAgent: varchar("userAgent", { length: 255 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    index("express_tutor_requests_status_idx").on(table.status),
+    index("express_tutor_requests_phone_idx").on(table.phone),
+    index("express_tutor_requests_created_idx").on(table.createdAt),
+  ]
+);
+export type ExpressTutorRequest = typeof expressTutorRequests.$inferSelect;
+export type InsertExpressTutorRequest = typeof expressTutorRequests.$inferInsert;
+
+
