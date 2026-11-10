@@ -151,6 +151,10 @@ import {
   adminPushPreferences,
   facebookPostTemplates,
   tutorRequestFacebookPosts,
+  expressTutorRequests,
+  type ExpressTutorRequest,
+  type InsertExpressTutorRequest,
+  type ExpressTutorRequestStatus,
 } from "../drizzle/schema";
 import {
   DEFAULT_BULK_FOOTER,
@@ -12845,3 +12849,92 @@ export async function resolveGuardianChatEscalation(input: { threadId: number })
 
   return { success: true };
 }
+
+export async function createExpressTutorRequest(data: InsertExpressTutorRequest): Promise<{ id: number }> {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const result = await database.insert(expressTutorRequests).values(data);
+  return { id: Number(result[0].insertId) };
+}
+
+export async function listExpressTutorRequests(options?: {
+  status?: ExpressTutorRequestStatus;
+  limit?: number;
+  offset?: number;
+  search?: string;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const conditions = [];
+  if (options?.status) {
+    conditions.push(eq(expressTutorRequests.status, options.status));
+  }
+  if (options?.search && options.search.trim()) {
+    const q = `%${options.search.trim()}%`;
+    conditions.push(
+      or(
+        like(expressTutorRequests.phone, q),
+        like(expressTutorRequests.guardianName, q),
+        like(expressTutorRequests.classCourse, q),
+        like(expressTutorRequests.locationLabel, q)
+      )
+    );
+  }
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  const items = await database
+    .select()
+    .from(expressTutorRequests)
+    .where(whereClause)
+    .orderBy(desc(expressTutorRequests.createdAt))
+    .limit(options?.limit ?? 50)
+    .offset(options?.offset ?? 0);
+
+  const [totalRow] = await database
+    .select({ count: sql<number>`count(*)` })
+    .from(expressTutorRequests)
+    .where(whereClause);
+
+  return { items, total: Number(totalRow?.count ?? 0) };
+}
+
+export async function getExpressTutorRequestById(id: number): Promise<ExpressTutorRequest | null> {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const [row] = await database
+    .select()
+    .from(expressTutorRequests)
+    .where(eq(expressTutorRequests.id, id))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function updateExpressTutorRequestStatus(input: {
+  id: number;
+  status: ExpressTutorRequestStatus;
+  adminUserId?: number;
+  notes?: string;
+  convertedRequestId?: number;
+}) {
+  const database = await getDb();
+  if (!database) throw new Error("Database is not available");
+  const updateData: Partial<InsertExpressTutorRequest> = {
+    status: input.status,
+    updatedAt: new Date(),
+  };
+  if (input.status === "contacted") {
+    updateData.contactedAt = new Date();
+    if (input.adminUserId) updateData.contactedByAdminId = input.adminUserId;
+  }
+  if (input.notes !== undefined) {
+    updateData.notes = input.notes;
+  }
+  if (input.convertedRequestId !== undefined) {
+    updateData.convertedRequestId = input.convertedRequestId;
+  }
+  await database
+    .update(expressTutorRequests)
+    .set(updateData)
+    .where(eq(expressTutorRequests.id, input.id));
+  return { success: true as const };
+}
+

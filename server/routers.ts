@@ -71,7 +71,13 @@ import {
   policyBodySchema,
   policyPageKeySchema,
 } from "./site-content";
-import { isTelegramAdminConfigured, notifyTelegramAdmin } from "./telegram-notification";
+import { isTelegramAdminConfigured, notifyTelegramAdmin, sendTelegramAdminText } from "./telegram-notification";
+import {
+  expressTutorRequestInputSchema,
+  EXPRESS_REQUEST_STATUSES,
+  normalizeExpressRequestPhone,
+  buildExpressRequestTelegramMessage,
+} from "@shared/express-tutor-request";
 import { imageStudioMarkKinds, listImageStudioMarks, setImageStudioMark } from "./image-studio";
 import { deleteImageStudioFont, listImageStudioUploadedFonts } from "./image-studio-fonts";
 import { ImageStudioColourError, createImageStudioColour, deleteImageStudioColour, listImageStudioOwnColours } from "./image-studio-colours";
@@ -479,6 +485,7 @@ const TWO_FACTOR_RATE_LIMITED_MESSAGE = "Too many attempts. Please wait a few mi
 const GUARDIAN_REQUEST_WINDOW_MS = 60 * 60_000;
 export const GUARDIAN_REQUEST_RATE_LIMITED_MESSAGE = "আপনি প্রতি ঘণ্টায় সর্বোচ্চ ৫টি টিউশন রিকোয়েস্ট তৈরি করতে পারবেন। কিছুক্ষণ পর আবার চেষ্টা করুন।";
 const guardianRequestRateLimiter = createAuthRateLimiter({ windowMs: GUARDIAN_REQUEST_WINDOW_MS, maxAttempts: 5, blockMs: GUARDIAN_REQUEST_WINDOW_MS });
+const expressRequestRateLimiter = createAuthRateLimiter({ windowMs: 15 * 60_000, maxAttempts: 5, blockMs: 15 * 60_000 });
 const ADMIN_TOTP_ISSUER = "Connect Tutors Admin";
 
 /** What an authenticator app shows beside the issuer: the Admin's own User ID where one is set. */
@@ -499,6 +506,7 @@ export function __resetAuthRateLimitsForTests() {
   twoFactorChallengeRateLimiter.clear();
   adminWrongPasswordStreak.clear();
   guardianRequestRateLimiter.clear();
+  expressRequestRateLimiter.clear();
 }
 
 function passwordLoginRateLimitKeys(ip: string, role: string, identifier: string) {
@@ -3195,6 +3203,30 @@ export const appRouter = router({
         if (!result.created) throw new TRPCError({ code: "NOT_FOUND", message: "Tutor request was not found." });
         return result;
       }),
+    listExpressRequests: adminProcedure
+      .input(z.object({
+        status: z.enum(EXPRESS_REQUEST_STATUSES).optional(),
+        search: z.string().trim().max(100).optional(),
+        limit: z.number().int().min(1).max(100).default(50),
+        offset: z.number().int().min(0).default(0),
+      }))
+      .query(({ input }) => db.listExpressTutorRequests(input)),
+    updateExpressRequestStatus: adminProcedure
+      .input(z.object({
+        id: z.number().int().positive(),
+        status: z.enum(EXPRESS_REQUEST_STATUSES),
+        notes: z.string().trim().max(500).optional(),
+        convertedRequestId: z.number().int().positive().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        return db.updateExpressTutorRequestStatus({
+          id: input.id,
+          status: input.status,
+          adminUserId: ctx.user.id,
+          notes: input.notes,
+          convertedRequestId: input.convertedRequestId,
+        });
+      }),
   }),
   /** The Tutor's inbox, alongside the Guardian's so both sides are told the same way. */
   tutorNotifications: router({
@@ -3632,6 +3664,70 @@ export const appRouter = router({
       }).catch(() => {});
       return { success: true, notificationDelivered, ...result } as const;
     }),
+    submitExpress: publicProcedure
+      .input(expressTutorRequestInputSchema)
+      .mutation(async ({ ctx, input }) => {
+        // Honeypot bot protection: ignore bot submissions gracefully
+        if (input.honeypot && input.honeypot.trim().length > 0) {
+          return { success: true as const, id: 0, phone: input.phone };
+        }
+
+        const ip = getRequestIp(ctx);
+        const limitKey = `express:${ip}`;
+        if (expressRequestRateLimiter.check(limitKey).blocked) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: "অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন। খুব বেশি অনুরোধ পাঠানো হয়েছে।",
+          });
+        }
+        expressRequestRateLimiter.record(limitKey);
+
+        const phone = normalizeExpressRequestPhone(input.phone);
+        const userAgent = ctx.req.headers["user-agent"] ? String(ctx.req.headers["user-agent"]).slice(0, 255) : null;
+
+        const result = await db.createExpressTutorRequest({
+          phone,
+          guardianName: input.guardianName || null,
+          classCourse: input.classCourse,
+          curriculumType: input.curriculumType || "Bangla Medium",
+          subjects: input.subjects || "All Subjects",
+          tuitionType: input.tuitionType,
+          cityLocationId: input.cityLocationId || null,
+          locationId: input.locationId || null,
+          locationLabel: input.locationLabel,
+          notes: input.notes || null,
+          source: input.source,
+          status: "new",
+          ipAddress: ip,
+          userAgent,
+        });
+
+        if (isTelegramAdminConfigured()) {
+          const telegramMessage = buildExpressRequestTelegramMessage({
+            id: result.id,
+            phone,
+            guardianName: input.guardianName,
+            classCourse: input.classCourse,
+            curriculumType: input.curriculumType,
+            subjects: input.subjects,
+            tuitionType: input.tuitionType,
+            locationLabel: input.locationLabel,
+            source: input.source,
+            notes: input.notes,
+          });
+          void sendTelegramAdminText(telegramMessage).catch(() => {});
+        }
+
+        void db.notifyAdminPushEvent({
+          type: "tuition_request",
+          requestId: result.id,
+          classCourse: input.classCourse,
+          guardianName: input.guardianName || `Express Lead (${phone})`,
+          locationText: input.locationLabel,
+        }).catch(() => {});
+
+        return { success: true as const, id: result.id, phone };
+      }),
   }),
 });
 

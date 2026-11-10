@@ -15,7 +15,8 @@ import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/moda
 import { formatPostedDate, isNewJob } from "@shared/job-card";
 import { buildTutorApplyProfilePath, buildTutorApplyReturnPath, buildTutorApplySignInPath, getTutorApplyReturnFromLocation, storeTutorApplyReturnPath } from "@/lib/tutorApplyReturn";
 import { TutorListPager } from "@/components/TutorListPager";
-import { AlertTriangle, BriefcaseBusiness, Check, CheckCircle2, Compass, ExternalLink, HeartHandshake, MapPinned, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, BriefcaseBusiness, Check, CheckCircle2, Compass, ExternalLink, HeartHandshake, MapPinned, ShieldCheck, X, Zap } from "lucide-react";
+import { ExpressTutorRequestModal } from "@/components/ExpressTutorRequestModal";
 import CelebrationConfetti from "@/components/CelebrationConfetti";
 import EmptyState from "@/components/EmptyState";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -344,6 +345,7 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
   // here only between that question and the answer.
   const [confirmJob, setConfirmJob] = useState<JobBoardJob | null>(null);
   const [showApplySuccess, setShowApplySuccess] = useState(false);
+  const [expressModalOpen, setExpressModalOpen] = useState(false);
   const isTutor = user?.role === "tutor";
   const utils = trpc.useUtils();
   const queryInput = useMemo(() => buildJobBoardQuery(filters), [filters]);
@@ -591,6 +593,33 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
   };
 
   return <section className={embedded ? "space-y-5" : "mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12"} aria-label="Available tuition Job Board">
+    {!embedded && (
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-sky-600 via-sky-700 to-indigo-800 p-5 sm:p-6 text-white shadow-md mb-6 border border-sky-400/30">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1.5 max-w-xl">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-xs font-semibold backdrop-blur-sm text-sky-100">
+              <Zap className="h-3.5 w-3.5 fill-current text-amber-300" />
+              অভিভাবকদের জন্য দ্রুত টিউটর রিকুয়েস্ট
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">আপনার সন্তানের জন্য কি দক্ষ টিউটর খুঁজছেন?</h2>
+            <p className="text-sm text-sky-100 leading-relaxed">
+              লম্বা ফরম পূরণ ছাড়া মাত্র ১৫ সেকেন্ডে রিকুয়েস্ট পাঠান। আমাদের বিশেষজ্ঞ টিম ২৪ ঘণ্টার মধ্যে সেরা টিউটর পৌঁছে দেবে।
+            </p>
+          </div>
+          <div className="flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setExpressModalOpen(true)}
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-sky-800 font-bold hover:bg-sky-50 shadow-md hover:shadow-lg active:scale-95 transition-all text-sm sm:text-base"
+            >
+              <Zap className="h-4 w-4 fill-sky-600 text-sky-600" />
+              দ্রুত টিউটর খুঁজুন (১৫ সেকেন্ড)
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     <ListToolbarCard
       eyebrow="Live Jobs"
       count={totalCount}
@@ -656,6 +685,7 @@ export function JobBoardContent({ embedded = false }: { embedded?: boolean }) {
       onConfirm={() => { const job = confirmJob; setConfirmJob(null); updateInterest(job); }}
     /> : null}
     {showApplySuccess ? <JobBoardApplySuccess onClose={() => setShowApplySuccess(false)} /> : null}
+    <ExpressTutorRequestModal open={expressModalOpen} onOpenChange={setExpressModalOpen} source="job_board" />
   </section>;
 }
 

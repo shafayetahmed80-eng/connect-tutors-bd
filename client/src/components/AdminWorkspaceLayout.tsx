@@ -3,7 +3,7 @@ import DashboardLayout, { getDashboardAvatarInitials, type DashboardNavigationIt
 import { trpc } from "@/lib/trpc";
 import { setRecentSearchScope } from "@/lib/recentSearches";
 import { getAdminTwoFactorDestination, type AdminTwoFactorStatus } from "@/pages/admin-two-factor-routing";
-import { Image as ImageIcon, Images, PenTool, CircleCheckBig, CircleX, Download, Inbox, IdCard, MessageCircle, Newspaper, Palette, Share2, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, BrainCircuit, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutPanelTop, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users, Workflow } from "lucide-react";
+import { Image as ImageIcon, Images, PenTool, CircleCheckBig, CircleX, Download, Inbox, IdCard, MessageCircle, Newspaper, Palette, Share2, Star, UserCheck, BadgeCheck, ClipboardPen, UserCog, Building2, MousePointerClick, Type, SquareDashed, BarChart3, BrainCircuit, Compass, CalendarCheck2, ContactRound, FileBadge, FileText, FileUser, Globe, House, LayoutDashboard, LayoutPanelTop, LayoutTemplate, ListChecks, LogOut, MapPin, CircleUserRound, Settings, PanelsTopLeft, Scale, School, ShieldCheck, SlidersHorizontal, Squircle, Target, ToggleRight, UserRoundCog, Users, Workflow, Zap } from "lucide-react";
 import { LoadingCradle } from "@/components/BrandMark";
 import { AdminPushBellDot } from "@/components/AdminPushBellDot";
 import { AdminPushHeaderPopover } from "@/components/AdminPushHeaderPopover";
@@ -73,6 +73,7 @@ export function buildAdminWorkspaceNavigation(isOwner: boolean, pendingChangeReq
     { icon: Users, label: "Applied Tutors", path: "/admin/applied-tutors", sectionLabel: "Tuitions" },
     { icon: Target, label: "Tutor Matching", path: "/admin/tutor-matching", sectionLabel: "Tuitions" },
     // The shortlist is a signal, not a question, so it carries no count.
+    { icon: Zap, label: "Express Leads", path: "/admin/guardian-requests/express", sectionLabel: "Tuitions", subgroup: requests },
     { icon: Star, label: "Shortlist Requests", path: "/admin/guardian-requests/shortlist", sectionLabel: "Tuitions", subgroup: requests },
     { icon: UserCheck, label: "Appoint Requests", path: "/admin/guardian-requests/appoint", sectionLabel: "Tuitions", subgroup: requests, badge: guardianRequests?.appoint },
     { icon: CircleCheckBig, label: "Confirm Requests", path: "/admin/guardian-requests/confirm", sectionLabel: "Tuitions", subgroup: requests, badge: guardianRequests?.confirm },
